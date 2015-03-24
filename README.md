@@ -89,7 +89,7 @@ var UserCard = Rift.BaseView.extend('UserCard', {
 });
 ```
 
-Добавьте файл `App/View/UserCard/UserCard.rtf` — шаблон карточки пользователя. Содержимое файла:
+Добавьте файл `App/View/UserCard/UserCard.rtt` — шаблон карточки пользователя. Содержимое файла:
 ```html
 <span>Hello, {model.name}!</span>
 ```
