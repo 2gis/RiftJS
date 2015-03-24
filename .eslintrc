@@ -1,0 +1,40 @@
+{
+	rules: {
+		'no-cond-assign': 0,
+		'no-console': 0,
+		'no-constant-condition': 0,
+		'consistent-return': 0,
+		'eqeqeq': 0,
+		'no-extend-native': 0,
+		'no-loop-func': 0,
+		'no-new': 0,
+		'no-redeclare': 0,
+		'no-return-assign': 0,
+		'strict': 0,
+		'no-shadow': 0,
+		'no-unused-vars': [2, { vars: 'all', args: 'none' }],
+		'no-use-before-define': 0,
+		'new-cap': 0,
+		'no-underscore-dangle': 0,
+		'quotes': 'single'
+	},
+	globals: {
+		undef: true,
+		global: true,
+		svz: true,
+		isEmpty: true,
+		emptyFn: true,
+		hasOwn: true,
+		slice: true,
+		_: true,
+		isServer: true,
+		isClient: true,
+		logError: true,
+		$: true,
+		keyListeningInner: true
+	},
+	env: {
+		node: true,
+		browser: true
+	}
+}

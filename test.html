@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title></title>
+</head>
+<body>
+
+<script src="build/Rift.js"></script>
+<script>
+
+var $prop = Rift.$prop;
+var $arr = Rift.$arr;
+
+var User = Rift.BaseModel.extend('Model.User', {
+	firstName: $prop(''),
+	lastName: $prop(''),
+
+	fullName: $prop(function() {
+		return (this.firstName() + ' ' + this.lastName()).trim();
+	}, {
+		set: function(fullName) {
+			fullName = fullName.split(' ');
+
+			if (fullName.length != 2) {
+				throw new RangeError('Invalid fullName "' + fullName.join(' ') + '"');
+			}
+
+			this.firstName(fullName[0]);
+			this.lastName(fullName[1]);
+		}
+	}),
+
+	name: $prop(function() {
+		return this.firstName() || this.lastName();
+	}, {
+		set: function(name) {
+			this.firstName(name);
+		}
+	}),
+
+	friends: $prop(null)
+});
+
+var viewer = new User({
+	fullName: 'Krutoy Perec',
+
+	friends: $arr([
+		new User({ fullName: 'Misha Utkin' }),
+		new User({ fullName: 'Gosha Dudkin' }),
+		new User({ fullName: 'Vasya Pupkin' }),
+		new User({ fullName: 'Petya Zalupkin' })
+	])
+});
+
+</script>
+
+</body>
+</html>
