@@ -1,6 +1,5 @@
 (function() {
 
-	var nextTick = _.process.nextTick;
 	var deserialize = _.dump.deserialize;
 	var ViewState = _.ViewState;
 	var Router = _.Router;
@@ -60,20 +59,21 @@
 		 * @param {Function} viewClass
 		 * @param {?HTMLElement} viewBlock
 		 * @param {Object} viewState
+		 * @param {?Object} viewStateData
 		 * @param {Rift.Router} routes
-		 * @param {string} [path='/']
+		 * @param {string|undefined} [path='/']
 		 */
-		_init: function(model, viewClass, viewBlock, viewState, routes, path) {
+		_init: function(model, viewClass, viewBlock, viewState, viewStateData, routes, path) {
 			this.model = typeof model == 'function' ? new model() : deserialize(model);
 
 			var router = this.router = new Router(this, routes);
 
 			this.viewState = new ViewState(collectViewStateFields(viewState, router.routes));
 
-			if (path && path != '/') {
-				router.route(path);
+			if (isServer) {
+				router.route(path || '/');
 			} else {
-				router.reset();
+				this.viewState.updateFromSerializedData(viewStateData);
 			}
 
 			this.view = new viewClass({ app: this, block: viewBlock });

@@ -5120,6 +5120,7 @@ if (!Object.assign) {
 
 (function() {
 
+	var logError = _.logError;
 	var escapeRegExp = _.regex.escape;
 	var nextTick = _.process.nextTick;
 
@@ -5201,6 +5202,48 @@ if (!Object.assign) {
 	 *     callback: Function
 	 * }} Router~Route
 	 */
+
+	/**
+	 * @private
+	 */
+	function setState(router, route, path, viewStateData, mode) {
+		router.currentRoute = route;
+		router.currentPath = path;
+
+		if (isClient) {
+			if (mode) {
+				history[mode == 1 ? 'pushState' : 'replaceState']({
+					'_rt-state': {
+						routeIndex: router.routes.indexOf(route),
+						path: path,
+						viewStateData: viewStateData
+					}
+				}, null, path);
+			} else {
+				var state = history.state || {};
+
+				state['_rt-state'] = {
+					routeIndex: router.routes.indexOf(route),
+					path: path,
+					viewStateData: viewStateData
+				};
+
+				history.replaceState(state, null, path);
+			}
+		}
+
+		if (route.callback) {
+			router._isHistoryPositionFrozen = true;
+
+			try {
+				route.callback.call(router.app, path);
+			} catch (err) {
+				logError(err);
+			} finally {
+				router._isHistoryPositionFrozen = false;
+			}
+		}
+	}
 
 	/**
 	 * @class Rift.Router
@@ -5394,71 +5437,6 @@ if (!Object.assign) {
 		/**
 		 * @returns {Rift.Router}
 		 */
-		reset: function() {
-			this.app.viewState.update({});
-
-			var match = this._tryViewState();
-
-			if (match) {
-				var path = match.path;
-
-				if (path === this.currentPath) {
-					if (isClient) {
-						var state = history.state || {};
-
-						if (!state['_rt-state']) {
-							state['_rt-state'] = {
-								routeIndex: this.routes.indexOf(this.currentRoute),
-								path: path
-							};
-						}
-
-						state['_rt-state'].viewStateData = {};
-
-						history.replaceState(state, null, path);
-					}
-				} else {
-					var route = match.route;
-
-					this.currentRoute = route;
-					this.currentPath = path;
-
-					if (isClient) {
-						var state = history.state || {};
-
-						state['_rt-state'] = {
-							routeIndex: this.routes.indexOf(this.currentRoute),
-							path: path,
-							viewStateData: {}
-						};
-
-						history.replaceState(state, null, path);
-					}
-
-					if (route.callback) {
-						this._isHistoryPositionFrozen = true;
-						route.callback.call(this.app, path);
-						this._isHistoryPositionFrozen = false;
-					}
-				}
-			} else {
-				this.currentRoute = null;
-				this.currentPath = undef;
-
-				if (isClient) {
-					var state = history.state || {};
-
-					delete state['_rt-state'];
-					history.replaceState(state, null, '/');
-				}
-			}
-
-			return this;
-		},
-
-		/**
-		 * @returns {Rift.Router}
-		 */
 		start: function() {
 			if (this.started) {
 				return this;
@@ -5473,6 +5451,16 @@ if (!Object.assign) {
 			this.viewState = this.app.viewState;
 
 			this._bindEvents();
+
+			var match = this._tryViewState();
+
+			if (match) {
+				setState(this, match.route, match.path, this.app.viewState.serializeData());
+			} else {
+				if (isClient) {
+					history.replaceState(history.state || {}, null, '/');
+				}
+			}
 
 			return this;
 		},
@@ -5501,24 +5489,34 @@ if (!Object.assign) {
 		_onWindowPopState: function() {
 			var state = history.state && history.state['_rt-state'];
 
-			if (!state) {
-				this.currentRoute = null;
-				this.currentPath = undef;
+			if (state) {
+				var route = this.currentRoute = this.routes[state.routeIndex];
+				var path = this.currentPath = state.path;
+
+				this.app.viewState.updateFromSerializedData(state.viewStateData);
+
+				if (route.callback) {
+					this._isHistoryPositionFrozen = true;
+
+					try {
+						route.callback.call(this.app, path);
+					} catch (err) {
+						logError(err);
+					} finally {
+						this._isHistoryPositionFrozen = false;
+					}
+				}
+			} else {
 				this.app.viewState.update({});
 
-				return;
-			}
+				var match = this._tryViewState();
 
-			var route = this.routes[state.routeIndex];
-
-			this.currentRoute = route;
-			this.currentPath = state.path;
-			this.app.viewState.updateFromSerializedData(state.viewStateData);
-
-			if (route.callback) {
-				this._isHistoryPositionFrozen = true;
-				route.callback.call(this.app, state.path);
-				this._isHistoryPositionFrozen = false;
+				if (match) {
+					setState(this, match.route, match.path, {});
+				} else {
+					this.currentRoute = null;
+					this.currentPath = undef;
+				}
 			}
 		},
 
@@ -5597,26 +5595,7 @@ if (!Object.assign) {
 					history.replaceState(state, null, path);
 				}
 			} else {
-				var route = match.route;
-
-				this.currentRoute = route;
-				this.currentPath = path;
-
-				if (isClient) {
-					history.pushState({
-						'_rt-state': {
-							routeIndex: this.routes.indexOf(route),
-							path: path,
-							viewStateData: this.app.viewState.serializeData()
-						}
-					}, null, path);
-				}
-
-				if (route.callback) {
-					this._isHistoryPositionFrozen = true;
-					route.callback.call(this.app, path);
-					this._isHistoryPositionFrozen = false;
-				}
+				setState(this, match.route, path, this.app.viewState.serializeData(), 1);
 			}
 		},
 
@@ -5649,27 +5628,8 @@ if (!Object.assign) {
 				return false;
 			}
 
-			var route = match.route;
-
-			this.currentRoute = route;
-			this.currentPath = path;
 			this.app.viewState.update(match.state);
-
-			if (isClient) {
-				history[this._isHistoryPositionFrozen ? 'replaceState' : 'pushState']({
-					'_rt-state': {
-						routeIndex: this.routes.indexOf(route),
-						path: path,
-						viewStateData: this.app.viewState.serializeData()
-					}
-				}, null, path);
-			}
-
-			if (route.callback) {
-				this._isHistoryPositionFrozen = true;
-				route.callback.call(this.app, path);
-				this._isHistoryPositionFrozen = false;
-			}
+			setState(this, match.route, path, this.app.viewState.serializeData(), !this._isHistoryPositionFrozen, 2);
 
 			return true;
 		},
@@ -5786,7 +5746,6 @@ if (!Object.assign) {
 
 (function() {
 
-	var nextTick = _.process.nextTick;
 	var deserialize = _.dump.deserialize;
 	var ViewState = _.ViewState;
 	var Router = _.Router;
@@ -5846,20 +5805,21 @@ if (!Object.assign) {
 		 * @param {Function} viewClass
 		 * @param {?HTMLElement} viewBlock
 		 * @param {Object} viewState
+		 * @param {?Object} viewStateData
 		 * @param {Rift.Router} routes
-		 * @param {string} [path='/']
+		 * @param {string|undefined} [path='/']
 		 */
-		_init: function(model, viewClass, viewBlock, viewState, routes, path) {
+		_init: function(model, viewClass, viewBlock, viewState, viewStateData, routes, path) {
 			this.model = typeof model == 'function' ? new model() : deserialize(model);
 
 			var router = this.router = new Router(this, routes);
 
 			this.viewState = new ViewState(collectViewStateFields(viewState, router.routes));
 
-			if (path && path != '/') {
-				router.route(path);
+			if (isServer) {
+				router.route(path || '/');
 			} else {
-				router.reset();
+				this.viewState.updateFromSerializedData(viewStateData);
 			}
 
 			this.view = new viewClass({ app: this, block: viewBlock });
