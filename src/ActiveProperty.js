@@ -69,7 +69,7 @@
 			default: {
 				var methodName = args[0];
 				args[0] = dc;
-				return ActiveProperty.prototype[methodName].apply(prop, args);
+				return ActiveProperty.prototype[methodName].apply(this, args);
 			}
 		}
 
@@ -162,10 +162,10 @@
 		 * @param {Rift.DataCell} dc
 		 * @param {Function} listener
 		 * @param {Object} [context]
-		 * @returns {Rift.ActiveProperty}
+		 * @returns {Object}
 		 */
 		subscribe: function(dc, listener, context) {
-			dc.on('change', listener, context);
+			dc.on('change', listener, context || this);
 			return this;
 		},
 
@@ -173,10 +173,10 @@
 		 * @param {Rift.DataCell} dc
 		 * @param {Function} listener
 		 * @param {Object} [context]
-		 * @returns {Rift.ActiveProperty}
+		 * @returns {Object}
 		 */
 		unsubscribe: function(dc, listener, context) {
-			dc.off('change', listener, context);
+			dc.off('change', listener, context || this);
 			return this;
 		}
 	});

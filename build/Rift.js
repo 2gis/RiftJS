@@ -3053,7 +3053,7 @@ if (!Object.assign) {
 			default: {
 				var methodName = args[0];
 				args[0] = dc;
-				return ActiveProperty.prototype[methodName].apply(prop, args);
+				return ActiveProperty.prototype[methodName].apply(this, args);
 			}
 		}
 
@@ -3146,10 +3146,10 @@ if (!Object.assign) {
 		 * @param {Rift.DataCell} dc
 		 * @param {Function} listener
 		 * @param {Object} [context]
-		 * @returns {Rift.ActiveProperty}
+		 * @returns {Object}
 		 */
 		subscribe: function(dc, listener, context) {
-			dc.on('change', listener, context);
+			dc.on('change', listener, context || this);
 			return this;
 		},
 
@@ -3157,10 +3157,10 @@ if (!Object.assign) {
 		 * @param {Rift.DataCell} dc
 		 * @param {Function} listener
 		 * @param {Object} [context]
-		 * @returns {Rift.ActiveProperty}
+		 * @returns {Object}
 		 */
 		unsubscribe: function(dc, listener, context) {
-			dc.off('change', listener, context);
+			dc.off('change', listener, context || this);
 			return this;
 		}
 	});
@@ -4248,7 +4248,7 @@ if (!Object.assign) {
 		_parent: null,
 
 		/**
-		 * Родительская въюшка.
+		 * Родительская вьюшка.
 		 *
 		 * @type {?Rift.BaseView}
 		 * @writable
@@ -4265,21 +4265,21 @@ if (!Object.assign) {
 		},
 
 		/**
-		 * Дочерние въюшки.
+		 * Дочерние вьюшки.
 		 *
 		 * @type {Array<Rift.BaseView>}
 		 */
 		children: null,
 
 		/**
-		 * Корневой элемент въюшки.
+		 * Корневой элемент вьюшки.
 		 *
 		 * @type {?$}
 		 */
 		block: null,
 
 		/**
-		 * Элементы въюшки.
+		 * Элементы вьюшки.
 		 *
 		 * @type {Object<$>}
 		 */
@@ -4661,7 +4661,7 @@ if (!Object.assign) {
 		_bindEvents: emptyFn,
 
 		/**
-		 * Регистрирует дочернюю въюшку.
+		 * Регистрирует дочернюю вьюшку.
 		 *
 		 * @param {Rift.BaseView} child
 		 * @returns {Rift.BaseView}
@@ -4690,7 +4690,7 @@ if (!Object.assign) {
 		},
 
 		/**
-		 * Отменяет регистрацию дочерней въюшки.
+		 * Отменяет регистрацию дочерней вьюшки.
 		 *
 		 * @param {Rift.BaseView} child
 		 * @returns {Rift.BaseView}
@@ -4995,7 +4995,7 @@ if (!Object.assign) {
 		},
 
 		/**
-		 * Уничтожает въюшку освобождая занятые ей ресурсы.
+		 * Уничтожает вьюшку освобождая занятые ей ресурсы.
 		 */
 		dispose: function() {
 			var block = this.block[0];
@@ -5273,7 +5273,7 @@ if (!Object.assign) {
 		app: null,
 
 		/**
-		 * Ссылка на корневой элемент въюшки.
+		 * Ссылка на корневой элемент вьюшки.
 		 *
 		 * @type {?HTMLElement}
 		 */
@@ -5521,7 +5521,7 @@ if (!Object.assign) {
 		},
 
 		/**
-		 * Обработчик клика по корневому элементу въюшки.
+		 * Обработчик клика по корневому элементу вьюшки.
 		 *
 		 * @protected
 		 *
