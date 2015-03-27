@@ -34,12 +34,12 @@
 	/**
 	 * Кодирует путь. Символы те же, что и у encodeURIComponent, кроме слеша `/`.
 	 * В отличии от encodeURI и encodeURIComponent не трогает уже закодированное:
-	 *     encodeURIComponent(' %20'); // => '%20%2520'
-	 *     encodePath(' %20'); // => '%20%20'
+	 *     encodeURIComponent(' %20'); // '%20%2520'
+	 *     encodePath(' %20'); // '%20%20'
 	 *
 	 * @example
-	 * encodeURIComponent(' %20/%2F'); // => '%20%2520%2F%252F'
-	 * encodePath(' %20/%2F'); // => '%20%20/%2F'
+	 * encodeURIComponent(' %20/%2F'); // '%20%2520%2F%252F'
+	 * encodePath(' %20/%2F'); // '%20%20/%2F'
 	 *
 	 * @private
 	 *

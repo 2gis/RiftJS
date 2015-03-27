@@ -40,7 +40,7 @@
 				if (!dc.computable) {
 					var value = dc.value;
 
-					if (dc.initialValue !== value || value === Object(value)) {
+					if (value === Object(value) ? dc.changed : dc.initialValue !== value) {
 						data[props[i]] = serialize({ v: value });
 					}
 				}

@@ -9,9 +9,9 @@
 	 * @memberOf Rift.uid
 	 *
 	 * @example
-	 * nextUID(); // => '1'
-	 * nextUID(); // => '2'
-	 * nextUID(); // => '3'
+	 * nextUID(); // '1'
+	 * nextUID(); // '2'
+	 * nextUID(); // '3'
 	 *
 	 * @param {string} [prefix='']
 	 * @returns {string}

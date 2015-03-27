@@ -1,10 +1,10 @@
 (function() {
 
 	var getUID = _.object.getUID;
-	var getDataPropertyValues = _.object.getDataPropertyValues;
 	var getHash = _.value.getHash;
 	var EventEmitter = _.EventEmitter;
 	var ActiveProperty = _.ActiveProperty;
+	var autoBind = _.ActiveProperty.autoBind;
 	var disposeDataCells = _.ActiveProperty.disposeDataCells;
 
 	/**
@@ -70,6 +70,21 @@
 		_callbacks: null,
 		_timeouts: null,
 		_dataCells: null,
+
+		constructor: function() {
+			EventEmitter.call(this);
+
+			if (!this.constructor._isActivePropertiesBound) {
+				var cl = this.constructor;
+
+				do {
+					autoBind(cl.prototype);
+					cl._isActivePropertiesBound = true;
+
+					cl = cl.$super.constructor;
+				} while (cl != Cleanable && !cl._isActivePropertiesBound);
+			}
+		},
 
 		/**
 		 * Начинает прослушивание события на объекте.
@@ -316,33 +331,21 @@
 		 * @param {Object} data
 		 */
 		collectDumpObject: function(data) {
-			var dcs = this._dataCells;
-
-			if (!dcs) {
-				return;
-			}
-
-			var values = getDataPropertyValues(this);
-
-			for (var name in values) {
-				var value = values[name];
+			Object.keys(this).forEach(function(name) {
+				var value = Object.getOwnPropertyDescriptor(this, name).value;
 
 				if (typeof value == 'function' && value.constructor == ActiveProperty) {
-					var id = getUID(value);
+					var dc = value('dataCell', 0);
 
-					if (hasOwn.call(dcs, id)) {
-						var dc = dcs[id];
+					if (!dc.computable) {
+						var dcValue = dc.value;
 
-						if (!dc.computable) {
-							var dcValue = dc.value;
-
-							if (dcValue === Object(dcValue) ? dc.changed : dc.initialValue !== dcValue) {
-								data[name] = dcValue;
-							}
+						if (dcValue === Object(dcValue) ? dc.changed : dc.initialValue !== dcValue) {
+							data[name] = dcValue;
 						}
 					}
 				}
-			}
+			}, this);
 		},
 
 		/**

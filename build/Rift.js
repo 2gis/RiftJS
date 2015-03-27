@@ -105,9 +105,9 @@ if (!Object.assign) {
 	 * @memberOf Rift.uid
 	 *
 	 * @example
-	 * nextUID(); // => '1'
-	 * nextUID(); // => '2'
-	 * nextUID(); // => '3'
+	 * nextUID(); // '1'
+	 * nextUID(); // '2'
+	 * nextUID(); // '3'
 	 *
 	 * @param {string} [prefix='']
 	 * @returns {string}
@@ -160,74 +160,6 @@ if (!Object.assign) {
 	}
 
 	/**
-	 * Получает дескрипторы перечисляемых свойств (в том числе унаследованых).
-	 *
-	 * @memberOf Rift.object
-	 *
-	 * @example
-	 * var obj = { __proto__: { inheritedProperty: 1 }, property: 1 };
-	 *
-	 * console.log(Object.getOwnPropertyDescriptor(obj, 'inheritedProperty'));
-	 * // => undefined
-	 *
-	 * console.log(getPropertyDescriptors(obj));
-	 * // => { inheritedProperty: { value: 1, ... }, property: { value: 1, ... } }
-	 *
-	 * @param {Object} obj
-	 * @returns {Object}
-	 */
-	function getPropertyDescriptors(obj) {
-		var names = {};
-		var nameCount = 0;
-
-		for (var name in obj) {
-			names[name] = true;
-			nameCount++;
-		}
-
-		if (!nameCount) {
-			return {};
-		}
-
-		var descrs = {};
-
-		while (true) {
-			for (var name in names) {
-				if (hasOwn.call(obj, name)) {
-					descrs[name] = Object.getOwnPropertyDescriptor(obj, name);
-					delete names[name];
-					nameCount--;
-				}
-			}
-
-			if (!nameCount) {
-				return descrs;
-			}
-
-			obj = Object.getPrototypeOf(obj);
-		}
-	}
-
-	/**
-	 * @memberOf Rift.object
-	 *
-	 * @param {Object} obj
-	 * @returns {Object}
-	 */
-	function getDataPropertyValues(obj) {
-		var descrs = getPropertyDescriptors(obj);
-		var values = {};
-
-		for (var name in descrs) {
-			if (hasOwn.call(descrs[name], 'value')) {
-				values[name] = descrs[name].value;
-			}
-		}
-
-		return values;
-	}
-
-	/**
 	 * @memberOf Rift.object
 	 *
 	 * @param {Object} obj
@@ -261,8 +193,6 @@ if (!Object.assign) {
 	 */
 	_.object = {
 		getUID: getUID,
-		getPropertyDescriptors: getPropertyDescriptors,
-		getDataPropertyValues: getDataPropertyValues,
 		mixin: mixin,
 		clone: cloneObject
 	};
@@ -1837,11 +1767,13 @@ if (!Object.assign) {
 		 * @example
 		 * var arr = [1, 2];
 		 *
-		 * arr.unshift(0); // => 3
-		 * concole.log(arr); // [0, 1, 2]
+		 * arr.unshift(0); // 3
+		 * concole.log(arr);
+		 * // => [0, 1, 2]
 		 *
-		 * arr.unshift(-2, -1); // => 5
-		 * concole.log(arr); // [-2, -1, 0, 1, 2]
+		 * arr.unshift(-2, -1); // 5
+		 * concole.log(arr);
+		 * // => [-2, -1, 0, 1, 2]
 		 *
 		 * @param {...*} values - Элементы, добавляемые в начало массива.
 		 * @returns {int}
@@ -2992,6 +2924,47 @@ if (!Object.assign) {
 	var DataCell = _.DataCell;
 
 	/**
+	 * Заменяет активные свойства на геттеры, которые при срабатывании будут подставлять в инстанс исходные свойства,
+	 * но уже связанные с инстансом.
+	 *
+	 * @memberOf Rift.ActiveProperty
+	 *
+	 * @param {Object} obj
+	 * @returns {Object}
+	 */
+	function autoBind(obj) {
+		Object.keys(obj).forEach(function(name) {
+			var descr = Object.getOwnPropertyDescriptor(obj, name);
+			var value = descr.value;
+
+			if (typeof value == 'function' && value.constructor == ActiveProperty) {
+				var origDescr = descr;
+
+				descr = {
+					configurable: true,
+					enumerable: origDescr.enumerable,
+
+					get: function() {
+						origDescr.value = Object.defineProperty(value.bind(this), 'constructor', {
+							configurable: true,
+							writable: true,
+							value: ActiveProperty
+						});
+
+						Object.defineProperty(this, name, origDescr);
+
+						return this[name];
+					}
+				};
+
+				Object.defineProperty(obj, name, descr);
+			}
+		});
+
+		return obj;
+	}
+
+	/**
 	 * Уничтожает активные свойства инстанса.
 	 *
 	 * @memberOf Rift.ActiveProperty
@@ -3100,16 +3073,21 @@ if (!Object.assign) {
 	 *
 	 * var user = new User();
 	 *
-	 * console.log(user.fullName()); // => ''
-	 * console.log(user.name()); // => ''
+	 * console.log(user.fullName());
+	 * // => ''
+	 *
+	 * console.log(user.name());
+	 * // => ''
 	 *
 	 * user.firstName('Vasya');
 	 * user.lastName('Pupkin');
+	 * // => evt.detail.diff: {"value":{"oldValue":"","value":"Vasya Pupkin"}}
 	 *
-	 * // evt.detail.diff: {"value":{"oldValue":"","value":"Vasya Pupkin"}}
+	 * console.log(user.fullName());
+	 * // => 'Vasya Pupkin'
 	 *
-	 * console.log(user.fullName()); // => 'Vasya Pupkin'
-	 * console.log(user.name()); // => 'Vasya'
+	 * console.log(user.name());
+	 * // => 'Vasya'
 	 *
 	 * @param {*|Function} [value] - Значение или функция для его вычисления.
 	 * @param {Object} [opts] - Опции.
@@ -3134,6 +3112,7 @@ if (!Object.assign) {
 		return prop;
 	}
 
+	ActiveProperty.autoBind = autoBind;
 	ActiveProperty.disposeDataCells = disposeDataCells;
 
 	Object.assign(ActiveProperty.prototype, /** @lends Rift.ActiveProperty# */{
@@ -3179,10 +3158,10 @@ if (!Object.assign) {
 (function() {
 
 	var getUID = _.object.getUID;
-	var getDataPropertyValues = _.object.getDataPropertyValues;
 	var getHash = _.value.getHash;
 	var EventEmitter = _.EventEmitter;
 	var ActiveProperty = _.ActiveProperty;
+	var autoBind = _.ActiveProperty.autoBind;
 	var disposeDataCells = _.ActiveProperty.disposeDataCells;
 
 	/**
@@ -3248,6 +3227,21 @@ if (!Object.assign) {
 		_callbacks: null,
 		_timeouts: null,
 		_dataCells: null,
+
+		constructor: function() {
+			EventEmitter.call(this);
+
+			if (!this.constructor._isActivePropertiesBound) {
+				var cl = this.constructor;
+
+				do {
+					autoBind(cl.prototype);
+					cl._isActivePropertiesBound = true;
+
+					cl = cl.$super.constructor;
+				} while (cl != Cleanable && !cl._isActivePropertiesBound);
+			}
+		},
 
 		/**
 		 * Начинает прослушивание события на объекте.
@@ -3494,33 +3488,21 @@ if (!Object.assign) {
 		 * @param {Object} data
 		 */
 		collectDumpObject: function(data) {
-			var dcs = this._dataCells;
-
-			if (!dcs) {
-				return;
-			}
-
-			var values = getDataPropertyValues(this);
-
-			for (var name in values) {
-				var value = values[name];
+			Object.keys(this).forEach(function(name) {
+				var value = Object.getOwnPropertyDescriptor(this, name).value;
 
 				if (typeof value == 'function' && value.constructor == ActiveProperty) {
-					var id = getUID(value);
+					var dc = value('dataCell', 0);
 
-					if (hasOwn.call(dcs, id)) {
-						var dc = dcs[id];
+					if (!dc.computable) {
+						var dcValue = dc.value;
 
-						if (!dc.computable) {
-							var dcValue = dc.value;
-
-							if (dcValue === Object(dcValue) ? dc.changed : dc.initialValue !== dcValue) {
-								data[name] = dcValue;
-							}
+						if (dcValue === Object(dcValue) ? dc.changed : dc.initialValue !== dcValue) {
+							data[name] = dcValue;
 						}
 					}
 				}
-			}
+			}, this);
 		},
 
 		/**
@@ -5076,7 +5058,7 @@ if (!Object.assign) {
 				if (!dc.computable) {
 					var value = dc.value;
 
-					if (dc.initialValue !== value || value === Object(value)) {
+					if (value === Object(value) ? dc.changed : dc.initialValue !== value) {
 						data[props[i]] = serialize({ v: value });
 					}
 				}
@@ -5157,12 +5139,12 @@ if (!Object.assign) {
 	/**
 	 * Кодирует путь. Символы те же, что и у encodeURIComponent, кроме слеша `/`.
 	 * В отличии от encodeURI и encodeURIComponent не трогает уже закодированное:
-	 *     encodeURIComponent(' %20'); // => '%20%2520'
-	 *     encodePath(' %20'); // => '%20%20'
+	 *     encodeURIComponent(' %20'); // '%20%2520'
+	 *     encodePath(' %20'); // '%20%20'
 	 *
 	 * @example
-	 * encodeURIComponent(' %20/%2F'); // => '%20%2520%2F%252F'
-	 * encodePath(' %20/%2F'); // => '%20%20/%2F'
+	 * encodeURIComponent(' %20/%2F'); // '%20%2520%2F%252F'
+	 * encodePath(' %20/%2F'); // '%20%20/%2F'
 	 *
 	 * @private
 	 *

@@ -359,11 +359,13 @@
 		 * @example
 		 * var arr = [1, 2];
 		 *
-		 * arr.unshift(0); // => 3
-		 * concole.log(arr); // [0, 1, 2]
+		 * arr.unshift(0); // 3
+		 * concole.log(arr);
+		 * // => [0, 1, 2]
 		 *
-		 * arr.unshift(-2, -1); // => 5
-		 * concole.log(arr); // [-2, -1, 0, 1, 2]
+		 * arr.unshift(-2, -1); // 5
+		 * concole.log(arr);
+		 * // => [-2, -1, 0, 1, 2]
 		 *
 		 * @param {...*} values - Элементы, добавляемые в начало массива.
 		 * @returns {int}

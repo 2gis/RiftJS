@@ -5,6 +5,47 @@
 	var DataCell = _.DataCell;
 
 	/**
+	 * Заменяет активные свойства на геттеры, которые при срабатывании будут подставлять в инстанс исходные свойства,
+	 * но уже связанные с инстансом.
+	 *
+	 * @memberOf Rift.ActiveProperty
+	 *
+	 * @param {Object} obj
+	 * @returns {Object}
+	 */
+	function autoBind(obj) {
+		Object.keys(obj).forEach(function(name) {
+			var descr = Object.getOwnPropertyDescriptor(obj, name);
+			var value = descr.value;
+
+			if (typeof value == 'function' && value.constructor == ActiveProperty) {
+				var origDescr = descr;
+
+				descr = {
+					configurable: true,
+					enumerable: origDescr.enumerable,
+
+					get: function() {
+						origDescr.value = Object.defineProperty(value.bind(this), 'constructor', {
+							configurable: true,
+							writable: true,
+							value: ActiveProperty
+						});
+
+						Object.defineProperty(this, name, origDescr);
+
+						return this[name];
+					}
+				};
+
+				Object.defineProperty(obj, name, descr);
+			}
+		});
+
+		return obj;
+	}
+
+	/**
 	 * Уничтожает активные свойства инстанса.
 	 *
 	 * @memberOf Rift.ActiveProperty
@@ -113,16 +154,21 @@
 	 *
 	 * var user = new User();
 	 *
-	 * console.log(user.fullName()); // => ''
-	 * console.log(user.name()); // => ''
+	 * console.log(user.fullName());
+	 * // => ''
+	 *
+	 * console.log(user.name());
+	 * // => ''
 	 *
 	 * user.firstName('Vasya');
 	 * user.lastName('Pupkin');
+	 * // => evt.detail.diff: {"value":{"oldValue":"","value":"Vasya Pupkin"}}
 	 *
-	 * // evt.detail.diff: {"value":{"oldValue":"","value":"Vasya Pupkin"}}
+	 * console.log(user.fullName());
+	 * // => 'Vasya Pupkin'
 	 *
-	 * console.log(user.fullName()); // => 'Vasya Pupkin'
-	 * console.log(user.name()); // => 'Vasya'
+	 * console.log(user.name());
+	 * // => 'Vasya'
 	 *
 	 * @param {*|Function} [value] - Значение или функция для его вычисления.
 	 * @param {Object} [opts] - Опции.
@@ -147,6 +193,7 @@
 		return prop;
 	}
 
+	ActiveProperty.autoBind = autoBind;
 	ActiveProperty.disposeDataCells = disposeDataCells;
 
 	Object.assign(ActiveProperty.prototype, /** @lends Rift.ActiveProperty# */{
