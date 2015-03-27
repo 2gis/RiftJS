@@ -9,7 +9,7 @@ RiftJS — js-фреймворк для написания изоморфных 
 * реактивное программирование на всех уровнях с использованием сверхбыстрого движка;
 * двунаправленный data-binding;
 * роутинг с привязкой к вьюстейту и истории браузера (HTML5 history API);
-* изоморфизм.
+* изоморфность (честное SEO и быстрая первоначальная загрузка со всеми преимуществати single-page приложения).
 
 В отличии от многих современных фреймворков, в RiftJS упор сделан не на изобретение супер удобных синтаксисов на все случаи жизни, а на решение реальных проблем, возникающих при разработке сложных приложений.  
 При написании фреймворка в приоритет всегда ставились максимально простые и прозрачные решения.
@@ -167,3 +167,9 @@ module.exports = viewState;
 ```html
 <span>{app.viewState['unit.name']}</span>
 ```
+
+## 6. Стандартные классы
+
+[Rift.EventEmitter](https://github.com/2gis/RiftJS/blob/master/docs/EventEmitter.ru.md)
+[Rift.Cleanable](https://github.com/2gis/RiftJS/blob/master/docs/Cleanable.ru.md)
+[Rift.ActiveProperty](https://github.com/2gis/RiftJS/blob/master/docs/ActiveProperty.ru.md)
