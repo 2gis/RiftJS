@@ -2,29 +2,29 @@
 
 Почти простейшая реализация EventEmitter-а. Из отличительных особенностей:
 
-1. Кроме основных обработчиков запускает инлайновый (при наличии):
+* Кроме основных обработчиков запускает инлайновый (при наличии):
 
 ```js
 var User = Rift.EventEmitter.extend({});
 
 var user = new User();
 
-user.onchange = function(evt) {
-	console.log('inline listener', evt.detail.value);
+user.onchange = function() {
+	console.log('inline listener');
 };
 
-user.on('change', function(evt) {
-	console.log('simple listener', evt.detail.value);
+user.on('change', function() {
+	console.log('simple listener');
 });
 
-user.emit('change', { value: 1 });
-// => 'simple listener' 1
-// => 'inline listener' 1
+user.emit('change');
+// => 'simple listener'
+// => 'inline listener'
 ```
 
 Инлайновый обработчик всегда запускается после основных.
 
-2. После вызова собственных обработчиков, передаёт дальнейшую обработку по ссылке `parent`, которая должна быть либо `null`, либо другим EventEmitter-ом. Получается что-то вроде всплытия события. Эта особенность активно используется в [Rift.BaseView](https://github.com/2gis/RiftJS/blob/master/docs/BaseView.ru.md)
+* После вызова собственных обработчиков, передаёт дальнейшую обработку по ссылке `parent`, которая должна быть либо `null`, либо другим EventEmitter-ом. Получается что-то вроде всплытия события. Эта особенность активно используется в [Rift.BaseView](https://github.com/2gis/RiftJS/blob/master/docs/BaseView.ru.md)
 
 Пример:
 
@@ -49,7 +49,7 @@ child.emit('change');
 // => 'parent' true
 ```
 
-3. При установке свойства `silent` в `true`, пропускает вызов своих обработчиков, но как обычно передаёт дальнейшую обработку по ссылке `parent`. Пример:
+* При установке свойства `silent` в `true`, пропускает вызов своих обработчиков, но как обычно передаёт дальнейшую обработку по ссылке `parent`. Пример:
 
 ```js
 var View = Rift.EventEmitter.extend({});
@@ -72,4 +72,19 @@ child.silent = true;
 
 child.emit('change');
 // => 'parent'
+```
+
+Передача данных в обработчики делается через `evt.detail`:
+
+```js
+var User = Rift.EventEmitter.extend({});
+
+var user = new User();
+
+user.onchange = function(evt) {
+	console.log(evt.detail.value);
+};
+
+user.emit('change', { value: 1 });
+// => 1
 ```
