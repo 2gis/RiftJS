@@ -5,14 +5,16 @@
 ```js
 // псевдокод
 function MyModule() {
-	// Для сохранения контекста в обработчике.
-	// Делать bind прямо при добавлении обработчика в `_bindEvents` не получится,
+	// Для сохранения контекста в обработчиках.
+	// Делать bind прямо при добавлении обработчиков не получится,
 	// т. к. этот обработчик нужно ещё снять и сделать это нужно по его забинденной копии,
-	// которую здесь и сохраняем в `_onWindowLoad`.
+	// которую здесь и сохраняем.
 	// Таких строк получается по числу добавляемых обработчиков,
 	// либо юзаем что-нибудь вроде bindAll (http://habrahabr.ru/post/231411/),
 	// который несколько сокращает запись.
 	this._onWindowLoad = this._onWindowLoad.bind(this);
+	this._onTimerTick = this._onTimerTick.bind(this);
+	this._onRequestComplete = this._onRequestComplete.bind(this);
 
 	this._timerId = setTimeout(this._onTimerTick, 1000); // устанавливаем какой-то таймер
 	this._request = sendRequest(this._onRequestComplete); // посылаем какой-то запрос
