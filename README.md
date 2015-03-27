@@ -61,7 +61,7 @@ module.exports = User;
 ```
 
 Первый аргумент метода `extend` — имя класса — используется для разных целей, в первую очередь для передачи состояния с сервера на клиент. Имя может быть с пространством имён, например: `'2gis.ProjectName.User'`.  
-`Rift.$prop` — создаёт активное свойство. Подробнее про активные свойства — [Rift.ActiveProperty](https://github.com/2gis/RiftJS/blob/master/docs/ActiveProperty.md).
+`Rift.$prop` — создаёт активное свойство. Подробнее про активные свойства — [Rift.ActiveProperty](https://github.com/2gis/RiftJS/blob/master/docs/ActiveProperty.ru.md).
 
 В файл `App/Model/Model.js` добавьте свойство `viewer` — текущий пользователь приложения. Должно получиться так:
 ```js

@@ -912,7 +912,7 @@ if (!Object.assign) {
 		 *
 		 * @type {boolean}
 		 */
-		bubbles: false,
+		bubbles: true,
 
 		/**
 		 * Распространение события на другие объекты остановлено.
