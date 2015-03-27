@@ -7,22 +7,22 @@
 	/**
 	 * @private
 	 */
-	function collectViewStateFields(viewState, routes) {
-		var fields = Object.assign({}, viewState);
+	function collectViewStateProperties(viewState, routes) {
+		var props = Object.assign({}, viewState);
 
 		for (var i = routes.length; i;) {
-			var routeFields = routes[--i].fields;
+			var routeProps = routes[--i].properties;
 
-			for (var j = routeFields.length; j;) {
-				var id = routeFields[--j].id;
+			for (var j = routeProps.length; j;) {
+				var id = routeProps[--j].id;
 
-				if (!hasOwn.call(fields, id)) {
-					fields[id] = undef;
+				if (!hasOwn.call(props, id)) {
+					props[id] = undef;
 				}
 			}
 		}
 
-		return fields;
+		return props;
 	}
 
 	/**
@@ -68,7 +68,7 @@
 
 			var router = this.router = new Router(this, routes);
 
-			this.viewState = new ViewState(collectViewStateFields(viewState, router.routes));
+			this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
 
 			if (isServer) {
 				router.route(path || '/');

@@ -10,16 +10,16 @@ describe('object.js', function() {
 	describe('object.mixin', function() {
 
 		var obj = Rift.object.mixin({}, Object.create({
-			inheritedProp: 1
+			inheritedProperty: 1
 		}, {
-			simpleProp: {
+			simpleProperty: {
 				configurable: true,
 				enumerable: true,
 				writable: true,
 				value: 1
 			},
 
-			notEnumerableProp: {
+			notEnumerableProperty: {
 				configurable: true,
 				enumerable: false,
 				writable: true,
@@ -41,7 +41,7 @@ describe('object.js', function() {
 
 		it('Не переписывает унаследованные свойства', function() {
 			expect(obj)
-				.to.not.have.ownProperty('inheritedProp');
+				.to.not.have.ownProperty('inheritedProperty');
 		});
 
 		it('Переписывает по дескрипторам а не по значениям', function() {
@@ -51,7 +51,7 @@ describe('object.js', function() {
 
 		it('Переписывает notEnumerable свойства', function() {
 			expect(obj)
-				.to.have.property('notEnumerableProp');
+				.to.have.property('notEnumerableProperty');
 
 			expect(obj)
 				.to.have.property('notEnumerableAccessor');

@@ -29,10 +29,13 @@
 	 * @memberOf Rift.object
 	 *
 	 * @example
-	 * var obj = { __proto__: { inheritedProp: 1 }, prop: 1 };
+	 * var obj = { __proto__: { inheritedProperty: 1 }, property: 1 };
 	 *
-	 * console.log(Object.getOwnPropertyDescriptor(obj, 'inheritedProp')); // undefined
-	 * console.log(getPropertyDescriptors(obj)); // { inheritedProp: { value: 1, ... }, prop: { value: 1, ... } }
+	 * console.log(Object.getOwnPropertyDescriptor(obj, 'inheritedProperty'));
+	 * // => undefined
+	 *
+	 * console.log(getPropertyDescriptors(obj));
+	 * // => { inheritedProperty: { value: 1, ... }, property: { value: 1, ... } }
 	 *
 	 * @param {Object} obj
 	 * @returns {Object}

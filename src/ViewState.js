@@ -9,21 +9,21 @@
 	 * @class Rift.ViewState
 	 * @extends {Rift.Cleanable}
 	 *
-	 * @param {Object} fields
+	 * @param {Object} props
 	 */
 	var ViewState = Cleanable.extend('Rift.ViewState', /** @lends Rift.ViewState# */{
 		/**
 		 * @type {Array<string>}
 		 */
-		fields: null,
+		properties: null,
 
-		constructor: function(fields) {
+		constructor: function(props) {
 			Cleanable.call(this);
 
-			this.fields = Object.keys(fields);
+			this.properties = Object.keys(props);
 
-			for (var id in fields) {
-				this[id] = typeof fields[id] == 'function' ? fields[id] : new ActiveProperty(fields[id]);
+			for (var id in props) {
+				this[id] = typeof props[id] == 'function' ? props[id] : new ActiveProperty(props[id]);
 			}
 		},
 
@@ -31,17 +31,17 @@
 		 * @returns {Object<string>}
 		 */
 		serializeData: function() {
-			var fields = this.fields;
+			var props = this.properties;
 			var data = {};
 
-			for (var i = fields.length; i;) {
-				var dc = this[fields[--i]]('dataCell', 0);
+			for (var i = props.length; i;) {
+				var dc = this[props[--i]]('dataCell', 0);
 
 				if (!dc.computable) {
 					var value = dc.value;
 
 					if (dc.initialValue !== value || value === Object(value)) {
-						data[fields[i]] = serialize({ v: value });
+						data[props[i]] = serialize({ v: value });
 					}
 				}
 			}
@@ -70,10 +70,10 @@
 		 * @returns {Rift.ViewState}
 		 */
 		update: function(data) {
-			var fields = this.fields;
+			var props = this.properties;
 
-			for (var i = fields.length; i;) {
-				var id = fields[--i];
+			for (var i = props.length; i;) {
+				var id = props[--i];
 				this[id](hasOwn.call(data, id) ? data[id] : this[id]('dataCell', 0).initialValue);
 			}
 

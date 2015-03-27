@@ -165,10 +165,13 @@ if (!Object.assign) {
 	 * @memberOf Rift.object
 	 *
 	 * @example
-	 * var obj = { __proto__: { inheritedProp: 1 }, prop: 1 };
+	 * var obj = { __proto__: { inheritedProperty: 1 }, property: 1 };
 	 *
-	 * console.log(Object.getOwnPropertyDescriptor(obj, 'inheritedProp')); // undefined
-	 * console.log(getPropertyDescriptors(obj)); // { inheritedProp: { value: 1, ... }, prop: { value: 1, ... } }
+	 * console.log(Object.getOwnPropertyDescriptor(obj, 'inheritedProperty'));
+	 * // => undefined
+	 *
+	 * console.log(getPropertyDescriptors(obj));
+	 * // => { inheritedProperty: { value: 1, ... }, property: { value: 1, ... } }
 	 *
 	 * @param {Object} obj
 	 * @returns {Object}
@@ -5042,21 +5045,21 @@ if (!Object.assign) {
 	 * @class Rift.ViewState
 	 * @extends {Rift.Cleanable}
 	 *
-	 * @param {Object} fields
+	 * @param {Object} props
 	 */
 	var ViewState = Cleanable.extend('Rift.ViewState', /** @lends Rift.ViewState# */{
 		/**
 		 * @type {Array<string>}
 		 */
-		fields: null,
+		properties: null,
 
-		constructor: function(fields) {
+		constructor: function(props) {
 			Cleanable.call(this);
 
-			this.fields = Object.keys(fields);
+			this.properties = Object.keys(props);
 
-			for (var id in fields) {
-				this[id] = typeof fields[id] == 'function' ? fields[id] : new ActiveProperty(fields[id]);
+			for (var id in props) {
+				this[id] = typeof props[id] == 'function' ? props[id] : new ActiveProperty(props[id]);
 			}
 		},
 
@@ -5064,17 +5067,17 @@ if (!Object.assign) {
 		 * @returns {Object<string>}
 		 */
 		serializeData: function() {
-			var fields = this.fields;
+			var props = this.properties;
 			var data = {};
 
-			for (var i = fields.length; i;) {
-				var dc = this[fields[--i]]('dataCell', 0);
+			for (var i = props.length; i;) {
+				var dc = this[props[--i]]('dataCell', 0);
 
 				if (!dc.computable) {
 					var value = dc.value;
 
 					if (dc.initialValue !== value || value === Object(value)) {
-						data[fields[i]] = serialize({ v: value });
+						data[props[i]] = serialize({ v: value });
 					}
 				}
 			}
@@ -5103,10 +5106,10 @@ if (!Object.assign) {
 		 * @returns {Rift.ViewState}
 		 */
 		update: function(data) {
-			var fields = this.fields;
+			var props = this.properties;
 
-			for (var i = fields.length; i;) {
-				var id = fields[--i];
+			for (var i = props.length; i;) {
+				var id = props[--i];
 				this[id](hasOwn.call(data, id) ? data[id] : this[id]('dataCell', 0).initialValue);
 			}
 
@@ -5196,9 +5199,9 @@ if (!Object.assign) {
 	/**
 	 * @typedef {{
 	 *     rePath: RegExp,
-	 *     fields: { type: int, id: string },
-	 *     requiredFields: Array<string>,
-	 *     pathMap: { requiredFields: Array<string>, pathPart: string=, field: string= },
+	 *     properties: { type: int, id: string },
+	 *     requiredProperties: Array<string>,
+	 *     pathMap: { requiredProperties: Array<string>, pathPart: string=, field: string= },
 	 *     callback: Function
 	 * }} Router~Route
 	 */
@@ -5328,20 +5331,20 @@ if (!Object.assign) {
 			path = path.split(reOption);
 
 			var rePath = [];
-			var fields = [];
-			var requiredFields = [];
+			var props = [];
+			var requiredProps = [];
 			var pathMap = [];
 
 			for (var i = 0, l = path.length; i < l;) {
 				if (i % 3) {
 					rePath.push('(');
 
-					var pathMapItemRequiredFields = [];
+					var pathMapItemRequiredProps = [];
 
 					if (path[i]) {
-						pathMapItemRequiredFields.push(path[i]);
+						pathMapItemRequiredProps.push(path[i]);
 
-						fields.push({
+						props.push({
 							type: 1,
 							id: path[i]
 						});
@@ -5353,17 +5356,17 @@ if (!Object.assign) {
 						if (j % 2) {
 							var id = pathPart[j];
 
-							pathMapItemRequiredFields.push(id);
+							pathMapItemRequiredProps.push(id);
 
 							rePath.push('([^\\/]+)');
 
-							fields.push({
+							props.push({
 								type: 2,
 								id: id
 							});
 
 							pathMap.push({
-								requiredFields: pathMapItemRequiredFields,
+								requiredProperties: pathMapItemRequiredProps,
 								field: id
 							});
 						} else {
@@ -5373,7 +5376,7 @@ if (!Object.assign) {
 								rePath.push(escapeRegExp(encodedPathPart).split('\\*').join('.*?'));
 
 								pathMap.push({
-									requiredFields: pathMapItemRequiredFields,
+									requiredProperties: pathMapItemRequiredProps,
 									pathPart: encodedPathPart.split('*').join('')
 								});
 							}
@@ -5393,15 +5396,15 @@ if (!Object.assign) {
 
 								rePath.push('([^\\/]+)');
 
-								fields.push({
+								props.push({
 									type: 0,
 									id: id
 								});
 
-								requiredFields.push(id);
+								requiredProps.push(id);
 
 								pathMap.push({
-									requiredFields: [id],
+									requiredProperties: [id],
 									field: id
 								});
 							} else {
@@ -5411,7 +5414,7 @@ if (!Object.assign) {
 									rePath.push(escapeRegExp(encodedPathPart).split('\\*').join('.*?'));
 
 									pathMap.push({
-										requiredFields: [],
+										requiredProperties: [],
 										pathPart: encodedPathPart.split('*').join('')
 									});
 								}
@@ -5425,8 +5428,8 @@ if (!Object.assign) {
 
 			this.routes.push({
 				rePath: RegExp('^\\/?' + rePath.join('') + '\\/?$'),
-				fields: fields,
-				requiredFields: requiredFields,
+				properties: props,
+				requiredProperties: requiredProps,
 				pathMap: pathMap,
 				callback: callback
 			});
@@ -5476,10 +5479,10 @@ if (!Object.assign) {
 
 			var viewState = this.app.viewState;
 			var onViewStateFieldChange = this._onViewStateFieldChange;
-			var fields = viewState.fields;
+			var props = viewState.properties;
 
-			for (var i = fields.length; i;) {
-				viewState[fields[--i]]('subscribe', onViewStateFieldChange, this);
+			for (var i = props.length; i;) {
+				viewState[props[--i]]('subscribe', onViewStateFieldChange, this);
 			}
 		},
 
@@ -5651,7 +5654,7 @@ if (!Object.assign) {
 					return {
 						route: route,
 
-						state: route.fields.reduce(function(state, field, index) {
+						state: route.properties.reduce(function(state, field, index) {
 							state[field.id] = field.type == 1 ?
 								match[index + 1] !== undef :
 								tryStringAsNumber(decodeURIComponent(match[index + 1]));
@@ -5678,11 +5681,11 @@ if (!Object.assign) {
 
 			for (var i = 0, l = routes.length; i < l; i++) {
 				var route = routes[i];
-				var requiredFields = route.requiredFields;
-				var j = requiredFields.length;
+				var requiredProps = route.requiredProperties;
+				var j = requiredProps.length;
 
 				while (j--) {
-					var value = viewState[requiredFields[j]]();
+					var value = viewState[requiredProps[j]]();
 
 					if (value == null || value === false || value === '') {
 						break;
@@ -5690,7 +5693,7 @@ if (!Object.assign) {
 				}
 
 				if (j == -1) {
-					if (requiredFields.length) {
+					if (requiredProps.length) {
 						resultRoute = route;
 						break;
 					} else if (!resultRoute || route === preferredRoute) {
@@ -5718,11 +5721,11 @@ if (!Object.assign) {
 
 			for (var i = 0, l = pathMap.length; i < l; i++) {
 				var pathMapItem = pathMap[i];
-				var requiredFields = pathMapItem.requiredFields;
-				var j = requiredFields.length;
+				var requiredProps = pathMapItem.requiredProperties;
+				var j = requiredProps.length;
 
 				while (j--) {
-					var value = viewState[requiredFields[j]]();
+					var value = viewState[requiredProps[j]]();
 
 					if (value == null || value === false || value === '') {
 						break;
@@ -5753,22 +5756,22 @@ if (!Object.assign) {
 	/**
 	 * @private
 	 */
-	function collectViewStateFields(viewState, routes) {
-		var fields = Object.assign({}, viewState);
+	function collectViewStateProperties(viewState, routes) {
+		var props = Object.assign({}, viewState);
 
 		for (var i = routes.length; i;) {
-			var routeFields = routes[--i].fields;
+			var routeProps = routes[--i].properties;
 
-			for (var j = routeFields.length; j;) {
-				var id = routeFields[--j].id;
+			for (var j = routeProps.length; j;) {
+				var id = routeProps[--j].id;
 
-				if (!hasOwn.call(fields, id)) {
-					fields[id] = undef;
+				if (!hasOwn.call(props, id)) {
+					props[id] = undef;
 				}
 			}
 		}
 
-		return fields;
+		return props;
 	}
 
 	/**
@@ -5814,7 +5817,7 @@ if (!Object.assign) {
 
 			var router = this.router = new Router(this, routes);
 
-			this.viewState = new ViewState(collectViewStateFields(viewState, router.routes));
+			this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
 
 			if (isServer) {
 				router.route(path || '/');

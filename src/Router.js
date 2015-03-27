@@ -76,9 +76,9 @@
 	/**
 	 * @typedef {{
 	 *     rePath: RegExp,
-	 *     fields: { type: int, id: string },
-	 *     requiredFields: Array<string>,
-	 *     pathMap: { requiredFields: Array<string>, pathPart: string=, field: string= },
+	 *     properties: { type: int, id: string },
+	 *     requiredProperties: Array<string>,
+	 *     pathMap: { requiredProperties: Array<string>, pathPart: string=, field: string= },
 	 *     callback: Function
 	 * }} Router~Route
 	 */
@@ -208,20 +208,20 @@
 			path = path.split(reOption);
 
 			var rePath = [];
-			var fields = [];
-			var requiredFields = [];
+			var props = [];
+			var requiredProps = [];
 			var pathMap = [];
 
 			for (var i = 0, l = path.length; i < l;) {
 				if (i % 3) {
 					rePath.push('(');
 
-					var pathMapItemRequiredFields = [];
+					var pathMapItemRequiredProps = [];
 
 					if (path[i]) {
-						pathMapItemRequiredFields.push(path[i]);
+						pathMapItemRequiredProps.push(path[i]);
 
-						fields.push({
+						props.push({
 							type: 1,
 							id: path[i]
 						});
@@ -233,17 +233,17 @@
 						if (j % 2) {
 							var id = pathPart[j];
 
-							pathMapItemRequiredFields.push(id);
+							pathMapItemRequiredProps.push(id);
 
 							rePath.push('([^\\/]+)');
 
-							fields.push({
+							props.push({
 								type: 2,
 								id: id
 							});
 
 							pathMap.push({
-								requiredFields: pathMapItemRequiredFields,
+								requiredProperties: pathMapItemRequiredProps,
 								field: id
 							});
 						} else {
@@ -253,7 +253,7 @@
 								rePath.push(escapeRegExp(encodedPathPart).split('\\*').join('.*?'));
 
 								pathMap.push({
-									requiredFields: pathMapItemRequiredFields,
+									requiredProperties: pathMapItemRequiredProps,
 									pathPart: encodedPathPart.split('*').join('')
 								});
 							}
@@ -273,15 +273,15 @@
 
 								rePath.push('([^\\/]+)');
 
-								fields.push({
+								props.push({
 									type: 0,
 									id: id
 								});
 
-								requiredFields.push(id);
+								requiredProps.push(id);
 
 								pathMap.push({
-									requiredFields: [id],
+									requiredProperties: [id],
 									field: id
 								});
 							} else {
@@ -291,7 +291,7 @@
 									rePath.push(escapeRegExp(encodedPathPart).split('\\*').join('.*?'));
 
 									pathMap.push({
-										requiredFields: [],
+										requiredProperties: [],
 										pathPart: encodedPathPart.split('*').join('')
 									});
 								}
@@ -305,8 +305,8 @@
 
 			this.routes.push({
 				rePath: RegExp('^\\/?' + rePath.join('') + '\\/?$'),
-				fields: fields,
-				requiredFields: requiredFields,
+				properties: props,
+				requiredProperties: requiredProps,
 				pathMap: pathMap,
 				callback: callback
 			});
@@ -356,10 +356,10 @@
 
 			var viewState = this.app.viewState;
 			var onViewStateFieldChange = this._onViewStateFieldChange;
-			var fields = viewState.fields;
+			var props = viewState.properties;
 
-			for (var i = fields.length; i;) {
-				viewState[fields[--i]]('subscribe', onViewStateFieldChange, this);
+			for (var i = props.length; i;) {
+				viewState[props[--i]]('subscribe', onViewStateFieldChange, this);
 			}
 		},
 
@@ -531,7 +531,7 @@
 					return {
 						route: route,
 
-						state: route.fields.reduce(function(state, field, index) {
+						state: route.properties.reduce(function(state, field, index) {
 							state[field.id] = field.type == 1 ?
 								match[index + 1] !== undef :
 								tryStringAsNumber(decodeURIComponent(match[index + 1]));
@@ -558,11 +558,11 @@
 
 			for (var i = 0, l = routes.length; i < l; i++) {
 				var route = routes[i];
-				var requiredFields = route.requiredFields;
-				var j = requiredFields.length;
+				var requiredProps = route.requiredProperties;
+				var j = requiredProps.length;
 
 				while (j--) {
-					var value = viewState[requiredFields[j]]();
+					var value = viewState[requiredProps[j]]();
 
 					if (value == null || value === false || value === '') {
 						break;
@@ -570,7 +570,7 @@
 				}
 
 				if (j == -1) {
-					if (requiredFields.length) {
+					if (requiredProps.length) {
 						resultRoute = route;
 						break;
 					} else if (!resultRoute || route === preferredRoute) {
@@ -598,11 +598,11 @@
 
 			for (var i = 0, l = pathMap.length; i < l; i++) {
 				var pathMapItem = pathMap[i];
-				var requiredFields = pathMapItem.requiredFields;
-				var j = requiredFields.length;
+				var requiredProps = pathMapItem.requiredProperties;
+				var j = requiredProps.length;
 
 				while (j--) {
-					var value = viewState[requiredFields[j]]();
+					var value = viewState[requiredProps[j]]();
 
 					if (value == null || value === false || value === '') {
 						break;
