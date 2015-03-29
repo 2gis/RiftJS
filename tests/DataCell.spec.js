@@ -6,7 +6,7 @@ describe('DataCell.js', function() {
 		it('Нет изменения, если установить значение равное текущему', function(done) {
 			var onChangeSpy = sinon.spy();
 
-			var a = new Rift.DataCell(1, { onchange: onChangeSpy });
+			var a = new rt.DataCell(1, { onchange: onChangeSpy });
 
 			a.value = 1;
 
@@ -21,7 +21,7 @@ describe('DataCell.js', function() {
 		it('Нет изменения, если NaN заменяется на NaN', function(done) {
 			var onChangeSpy = sinon.spy();
 
-			var a = new Rift.DataCell(NaN, { onchange: onChangeSpy });
+			var a = new rt.DataCell(NaN, { onchange: onChangeSpy });
 
 			a.value = NaN;
 
@@ -36,8 +36,8 @@ describe('DataCell.js', function() {
 		it('Нет изменения, если вычесляемое значение меняется с NaN на NaN', function(done) {
 			var onChangeSpy = sinon.spy();
 
-			var a = new Rift.DataCell(1);
-			var b = new Rift.DataCell(function() {
+			var a = new rt.DataCell(1);
+			var b = new rt.DataCell(function() {
 				return a.value + NaN;
 			}, { onchange: onChangeSpy });
 
@@ -56,7 +56,7 @@ describe('DataCell.js', function() {
 			function(done) {
 				var onChangeSpy = sinon.spy();
 
-				var a = new Rift.DataCell(1, { onchange: onChangeSpy });
+				var a = new rt.DataCell(1, { onchange: onChangeSpy });
 
 				a.value = 5;
 				a.value = 1;
@@ -76,12 +76,12 @@ describe('DataCell.js', function() {
 		it(
 			'Изменение не эмитится, если установить значение не равное текущему и сразу вернуть исходное значению (2)',
 			function(done) {
-				var ee1 = new Rift.EventEmitter();
-				var ee2 = new Rift.EventEmitter();
+				var ee1 = new rt.EventEmitter();
+				var ee2 = new rt.EventEmitter();
 
 				var onChangeSpy = sinon.spy();
 
-				var a = new Rift.DataCell(ee1, { onchange: onChangeSpy });
+				var a = new rt.DataCell(ee1, { onchange: onChangeSpy });
 
 				a.value = ee2;
 				a.value = ee1;
@@ -99,12 +99,12 @@ describe('DataCell.js', function() {
 			'Изменение не эмитится, если установить значение не равное текущему, сделать в нём внутреннее изменение' +
 				' и вернуть исходное значение',
 			function(done) {
-				var ee1 = new Rift.EventEmitter();
-				var ee2 = new Rift.EventEmitter();
+				var ee1 = new rt.EventEmitter();
+				var ee2 = new rt.EventEmitter();
 
 				var onChangeSpy = sinon.spy();
 
-				var a = new Rift.DataCell(ee1, { onchange: onChangeSpy });
+				var a = new rt.DataCell(ee1, { onchange: onChangeSpy });
 
 				a.value = ee2;
 
@@ -125,12 +125,12 @@ describe('DataCell.js', function() {
 			'Изменение эмитится, если сделать внутреннее изменение в текущем значении,' +
 				' установить значение не равное текущему и вернуть исходное значение',
 			function(done) {
-				var ee1 = new Rift.EventEmitter();
-				var ee2 = new Rift.EventEmitter();
+				var ee1 = new rt.EventEmitter();
+				var ee2 = new rt.EventEmitter();
 
 				var onChangeSpy = sinon.spy();
 
-				var a = new Rift.DataCell(ee1, { onchange: onChangeSpy });
+				var a = new rt.DataCell(ee1, { onchange: onChangeSpy });
 
 				ee1.emit('change');
 
@@ -147,14 +147,14 @@ describe('DataCell.js', function() {
 		);
 
 		it('При инициализации дочерний вычисляется 1 раз, даже если родителей больше одного', function(done) {
-			var a = new Rift.DataCell(1);
-			var b = new Rift.DataCell(2);
+			var a = new rt.DataCell(1);
+			var b = new rt.DataCell(2);
 
 			var cFormulaSpy = sinon.spy(function() {
 				return a.value + b.value;
 			});
 
-			var c = new Rift.DataCell(cFormulaSpy);
+			var c = new rt.DataCell(cFormulaSpy);
 
 			setTimeout(function() {
 				expect(cFormulaSpy.calledOnce)
@@ -171,14 +171,14 @@ describe('DataCell.js', function() {
 		});
 
 		it('При изменении нескольких родителей дочерний пересчитывается 1 раз', function(done) {
-			var a = new Rift.DataCell(1);
-			var b = new Rift.DataCell(2);
+			var a = new rt.DataCell(1);
+			var b = new rt.DataCell(2);
 
 			var cFormulaSpy = sinon.spy(function() {
 				return a.value + b.value;
 			});
 
-			var c = new Rift.DataCell(cFormulaSpy);
+			var c = new rt.DataCell(cFormulaSpy);
 
 			setTimeout(function() {
 				cFormulaSpy.reset();
@@ -202,16 +202,16 @@ describe('DataCell.js', function() {
 		});
 
 		it('При изменении нескольких родителей дочерний пересчитывается 1 раз (2)', function(done) {
-			var a = new Rift.DataCell(1);
-			var b = new Rift.DataCell(2);
-			var aa = new Rift.DataCell(function() { return a.value + 1; });
-			var bb = new Rift.DataCell(function() { return b.value + 1; });
+			var a = new rt.DataCell(1);
+			var b = new rt.DataCell(2);
+			var aa = new rt.DataCell(function() { return a.value + 1; });
+			var bb = new rt.DataCell(function() { return b.value + 1; });
 
 			var cFormulaSpy = sinon.spy(function() {
 				return aa.value + bb.value;
 			});
 
-			var c = new Rift.DataCell(cFormulaSpy);
+			var c = new rt.DataCell(cFormulaSpy);
 
 			setTimeout(function() {
 				cFormulaSpy.reset();
@@ -245,9 +245,9 @@ describe('DataCell.js', function() {
 				var aValue = a.value;
 			});
 
-			var a = new Rift.DataCell(1, { onchange: aChangeSpy });
-			var b = new Rift.DataCell(2, { onchange: bChangeSpy });
-			var c = new Rift.DataCell(3, { onchange: cChangeSpy });
+			var a = new rt.DataCell(1, { onchange: aChangeSpy });
+			var b = new rt.DataCell(2, { onchange: bChangeSpy });
+			var c = new rt.DataCell(3, { onchange: cChangeSpy });
 
 			setTimeout(function() {
 				a.value = 5;
@@ -270,11 +270,11 @@ describe('DataCell.js', function() {
 		});
 
 		it('Второй поток не портит жизнь первому', function() {
-			var a = new Rift.DataCell(1);
-			var b = new Rift.DataCell(2);
+			var a = new rt.DataCell(1);
+			var b = new rt.DataCell(2);
 
 			var t = 0;
-			var aa = new Rift.DataCell(function() {
+			var aa = new rt.DataCell(function() {
 				if (t++) {
 					b.value = 10;
 				}
@@ -282,7 +282,7 @@ describe('DataCell.js', function() {
 				return a.value + 1;
 			});
 
-			var bb = new Rift.DataCell(function() {
+			var bb = new rt.DataCell(function() {
 				return b.value + 1;
 			});
 
@@ -293,18 +293,18 @@ describe('DataCell.js', function() {
 		});
 
 		it('Правильно считается, если в формуле делаем set и сразу get', function() {
-			var a = new Rift.DataCell(1);
-			var b = new Rift.DataCell(function() {
+			var a = new rt.DataCell(1);
+			var b = new rt.DataCell(function() {
 				return a.value + 1;
 			});
-			var c = new Rift.DataCell(function() {
+			var c = new rt.DataCell(function() {
 				if (b.value == 3) {
 					a.value = 10;
 				}
 
 				return b.value + 1;
 			});
-			var d = new Rift.DataCell(function() {
+			var d = new rt.DataCell(function() {
 				return c.value + 1;
 			});
 
@@ -317,7 +317,7 @@ describe('DataCell.js', function() {
 		it('Обработчик изменения не срабатывает, если добавить его после изменения', function(done) {
 			var onChangeSpy = sinon.spy();
 
-			var a = new Rift.DataCell(1);
+			var a = new rt.DataCell(1);
 
 			a.value = 2;
 
@@ -334,7 +334,7 @@ describe('DataCell.js', function() {
 		it('Инлайновый обработчик изменения не срабатывает, если добавить его после изменения', function(done) {
 			var onChangeSpy = sinon.spy();
 
-			var a = new Rift.DataCell(1);
+			var a = new rt.DataCell(1);
 
 			a.value = 2;
 
@@ -354,10 +354,10 @@ describe('DataCell.js', function() {
 			var c2OnErrorSpy = sinon.spy();
 			var dOnErrorSpy = sinon.spy();
 
-			var a = new Rift.DataCell(1);
+			var a = new rt.DataCell(1);
 
 			var t = 0;
-			var b = new Rift.DataCell(function() {
+			var b = new rt.DataCell(function() {
 				if (t++) {
 					throw 1;
 				}
@@ -365,9 +365,9 @@ describe('DataCell.js', function() {
 				return a.value + 1;
 			}, { onerror: bOnErrorSpy });
 
-			var c1 = new Rift.DataCell(function() { return b.value + 1; }, { onerror: c1OnErrorSpy });
-			var c2 = new Rift.DataCell(function() { return b.value + 1; }, { onerror: c2OnErrorSpy });
-			var d = new Rift.DataCell(function() { return c1.value + c2.value; }, { onerror: dOnErrorSpy });
+			var c1 = new rt.DataCell(function() { return b.value + 1; }, { onerror: c1OnErrorSpy });
+			var c2 = new rt.DataCell(function() { return b.value + 1; }, { onerror: c2OnErrorSpy });
+			var d = new rt.DataCell(function() { return c1.value + c2.value; }, { onerror: dOnErrorSpy });
 
 			a.value = 2;
 

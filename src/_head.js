@@ -27,18 +27,18 @@ var slice = Array.prototype.slice;
 /**
  * @namespace Rift
  */
-var _;
+var rt;
 
 if (typeof exports != 'undefined') {
-	_ = exports;
+	rt = exports;
 } else {
-	_ = global.Rift = {};
+	rt = global.Rift = global.rt = {};
 }
 
-_.global = global;
+rt.global = global;
 
-var isServer = _.isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
-var isClient = _.isClient = !isServer;
+var isServer = rt.isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
+var isClient = rt.isClient = !isServer;
 
 /**
  * @memberOf Rift
@@ -49,12 +49,12 @@ function logError(err) {
 	console.error(err === Object(err) && err.stack || err);
 }
 
-_.logError = logError;
+rt.logError = logError;
 
 var $;
 
 if (isClient) {
-	$ = _.$ = global.jQuery || global.Zepto || global.ender || global.$;
+	$ = rt.$ = global.jQuery || global.Zepto || global.ender || global.$;
 }
 
 var keyListeningInner = '_rt-listeningInner';

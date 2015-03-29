@@ -27,18 +27,18 @@ var slice = Array.prototype.slice;
 /**
  * @namespace Rift
  */
-var _;
+var rt;
 
 if (typeof exports != 'undefined') {
-	_ = exports;
+	rt = exports;
 } else {
-	_ = global.Rift = {};
+	rt = global.Rift = global.rt = {};
 }
 
-_.global = global;
+rt.global = global;
 
-var isServer = _.isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
-var isClient = _.isClient = !isServer;
+var isServer = rt.isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
+var isClient = rt.isClient = !isServer;
 
 /**
  * @memberOf Rift
@@ -49,12 +49,12 @@ function logError(err) {
 	console.error(err === Object(err) && err.stack || err);
 }
 
-_.logError = logError;
+rt.logError = logError;
 
 var $;
 
 if (isClient) {
-	$ = _.$ = global.jQuery || global.Zepto || global.ender || global.$;
+	$ = rt.$ = global.jQuery || global.Zepto || global.ender || global.$;
 }
 
 var keyListeningInner = '_rt-listeningInner';
@@ -127,7 +127,7 @@ if (!Object.assign) {
 	/**
 	 * @namespace Rift.uid
 	 */
-	_.uid = {
+	rt.uid = {
 		next: nextUID,
 		resetCounter: resetUIDCounter
 	};
@@ -136,7 +136,7 @@ if (!Object.assign) {
 
 (function() {
 
-	var nextUID = _.uid.next;
+	var nextUID = rt.uid.next;
 
 	var keyUID = '_rt-uid';
 
@@ -191,7 +191,7 @@ if (!Object.assign) {
 	/**
 	 * @namespace Rift.object
 	 */
-	_.object = {
+	rt.object = {
 		getUID: getUID,
 		mixin: mixin,
 		clone: cloneObject
@@ -250,7 +250,7 @@ if (!Object.assign) {
 	/**
 	 * @namespace Rift.namespace
 	 */
-	_.namespace = {
+	rt.namespace = {
 		create: createNamespace,
 		exec: execNamespace
 	};
@@ -319,7 +319,7 @@ if (!Object.assign) {
 	/**
 	 * @namespace Rift.regex
 	 */
-	_.regex = {
+	rt.regex = {
 		escape: escapeRegExp,
 		forEach: forEachMatch
 	};
@@ -328,7 +328,7 @@ if (!Object.assign) {
 
 (function() {
 
-	var getUID = _.object.getUID;
+	var getUID = rt.object.getUID;
 
 	/**
 	 * @memberOf Rift.value
@@ -446,7 +446,7 @@ if (!Object.assign) {
 	/**
 	 * @namespace Rift.value
 	 */
-	_.value = {
+	rt.value = {
 		getHash: getHash,
 		toString: toString
 	};
@@ -487,7 +487,7 @@ if (!Object.assign) {
 					try {
 						q[i]();
 					} catch (err) {
-						_.logError(err);
+						rt.logError(err);
 					}
 				}
 			}
@@ -510,7 +510,7 @@ if (!Object.assign) {
 	/**
 	 * @namespace Rift.process
 	 */
-	_.process = {
+	rt.process = {
 		nextTick: nextTick
 	};
 
@@ -518,7 +518,7 @@ if (!Object.assign) {
 
 (function() {
 
-	var mixin = _.object.mixin;
+	var mixin = rt.object.mixin;
 
 	/**
 	 * @property {Object<Function>}
@@ -629,7 +629,7 @@ if (!Object.assign) {
 	/**
 	 * @namespace Rift.Class
 	 */
-	_.Class = {
+	rt.Class = {
 		classes: classes,
 		getOrError: getClassOrError,
 		register: regClass,
@@ -640,10 +640,10 @@ if (!Object.assign) {
 
 (function() {
 
-	var getUID = _.object.getUID;
-	var toString = _.value.toString;
-	var classes = _.Class.classes;
-	var regClass = _.Class.register;
+	var getUID = rt.object.getUID;
+	var toString = rt.value.toString;
+	var classes = rt.Class.classes;
+	var regClass = rt.Class.register;
 
 	regClass('Array', Array);
 	regClass('Date', Date);
@@ -789,7 +789,10 @@ if (!Object.assign) {
 		return objects[dump.r].instance;
 	}
 
-	_.dump = {
+	/**
+	 * @namespace Rift.dump
+	 */
+	rt.dump = {
 		serialize: serialize,
 		deserialize: deserialize
 	};
@@ -813,7 +816,7 @@ if (!Object.assign) {
 		}
 	}
 
-	Event.extend = _.Class.extend;
+	Event.extend = rt.Class.extend;
 
 	Object.assign(Event.prototype, /** @lends Rift.Event# */{
 		/**
@@ -882,13 +885,13 @@ if (!Object.assign) {
 		}
 	});
 
-	_.Event = Event;
+	rt.Event = Event;
 
 })();
 
 (function() {
 
-	var Event = _.Event;
+	var Event = rt.Event;
 
 	var keyUsed = '_emt-used';
 
@@ -922,7 +925,7 @@ if (!Object.assign) {
 	 */
 	function EventEmitter() {}
 
-	EventEmitter.extend = _.Class.extend;
+	EventEmitter.extend = rt.Class.extend;
 
 	Object.assign(EventEmitter.prototype, /** @lends Rift.EventEmitter# */{
 		_events: null,
@@ -1090,18 +1093,18 @@ if (!Object.assign) {
 		 * @param {*} err
 		 */
 		_logError: function(err) {
-			_.logError(err);
+			rt.logError(err);
 		}
 	});
 
-	_.EventEmitter = EventEmitter;
+	rt.EventEmitter = EventEmitter;
 
 })();
 
 (function() {
 
-	var getHash = _.value.getHash;
-	var EventEmitter = _.EventEmitter;
+	var getHash = rt.value.getHash;
+	var EventEmitter = rt.EventEmitter;
 
 	/**
 	 * @class Rift.ActiveDictionary
@@ -1398,18 +1401,14 @@ if (!Object.assign) {
 		}
 	});
 
-	_.ActiveDictionary = ActiveDictionary;
-
-	_.$dict = function(obj, opts) {
-		return new ActiveDictionary(obj, opts);
-	};
+	rt.ActiveDictionary = ActiveDictionary;
 
 })();
 
 (function() {
 
-	var getHash = _.value.getHash;
-	var EventEmitter = _.EventEmitter;
+	var getHash = rt.value.getHash;
+	var EventEmitter = rt.EventEmitter;
 
 	var arrayProto = Array.prototype;
 	var push = arrayProto.push;
@@ -2148,20 +2147,16 @@ if (!Object.assign) {
 		};
 	}, ActiveArray.prototype);
 
-	_.ActiveArray = ActiveArray;
-
-	_.$arr = function(arr, opts) {
-		return new ActiveArray(arr, opts);
-	};
+	rt.ActiveArray = ActiveArray;
 
 })();
 
 (function() {
 
-	var getUID = _.object.getUID;
-	var nextTick = _.process.nextTick;
-	var Event = _.Event;
-	var EventEmitter = _.EventEmitter;
+	var getUID = rt.object.getUID;
+	var nextTick = rt.process.nextTick;
+	var Event = rt.Event;
+	var EventEmitter = rt.EventEmitter;
 
 	var STATE_CHANGES_ACCUMULATION = 0;
 	var STATE_CHANGES_HANDLING = 1;
@@ -2489,6 +2484,7 @@ if (!Object.assign) {
 	 * @param {Object} [opts] - Опции.
 	 * @param {Function} [opts.get] - Будет использоваться при получении значения.
 	 * @param {Function} [opts.set] - Будет использоваться при установке значения.
+	 * @param {boolean} [opts.computable]
 	 * @param {Function} [opts.onchange] - Инлайновый обработчик изменения значения.
 	 */
 	var DataCell = EventEmitter.extend(/** @lends Rift.DataCell# */{
@@ -2608,7 +2604,12 @@ if (!Object.assign) {
 
 			this._children = {};
 
-			this.computable = typeof value == 'function' && value.constructor == Function;
+			if (
+				typeof value == 'function' &&
+					(opts.computable !== undef ? opts.computable : value.constructor == Function)
+			) {
+				this.computable = true;
+			}
 
 			if (this.computable) {
 				this._formula = value;
@@ -2913,15 +2914,15 @@ if (!Object.assign) {
 		}
 	});
 
-	_.DataCell = DataCell;
+	rt.DataCell = DataCell;
 
 })();
 
 (function() {
 
-	var getUID = _.object.getUID;
-	var cloneObject = _.object.clone;
-	var DataCell = _.DataCell;
+	var getUID = rt.object.getUID;
+	var cloneObject = rt.object.clone;
+	var DataCell = rt.DataCell;
 
 	/**
 	 * Заменяет активные свойства на геттеры, которые при срабатывании будут подставлять в инстанс исходные свойства,
@@ -3147,22 +3148,54 @@ if (!Object.assign) {
 		}
 	});
 
-	_.ActiveProperty = ActiveProperty;
+	rt.ActiveProperty = ActiveProperty;
 
-	_.$prop = function(value, opts) {
+	/**
+	 * @memberOf Rift
+	 *
+	 * @param {Function} value
+	 * @param {Object} [opts]
+	 */
+	rt.observable = function(value, opts) {
+		if (typeof value == 'function' && value.constructor == Function) {
+			if (!opts) {
+				opts = {};
+			}
+
+			opts.computable = false;
+		}
+
 		return new ActiveProperty(value, opts);
+	};
+
+	/**
+	 * @memberOf Rift
+	 *
+	 * @param {Function} formula
+	 * @param {Object} [opts]
+	 */
+	rt.computable = function(formula, opts) {
+		if (formula.constructor != Function) {
+			if (!opts) {
+				opts = {};
+			}
+
+			opts.computable = true;
+		}
+
+		return new ActiveProperty(formula, opts);
 	};
 
 })();
 
 (function() {
 
-	var getUID = _.object.getUID;
-	var getHash = _.value.getHash;
-	var EventEmitter = _.EventEmitter;
-	var ActiveProperty = _.ActiveProperty;
-	var autoBind = _.ActiveProperty.autoBind;
-	var disposeDataCells = _.ActiveProperty.disposeDataCells;
+	var getUID = rt.object.getUID;
+	var getHash = rt.value.getHash;
+	var EventEmitter = rt.EventEmitter;
+	var ActiveProperty = rt.ActiveProperty;
+	var autoBind = rt.ActiveProperty.autoBind;
+	var disposeDataCells = rt.ActiveProperty.disposeDataCells;
 
 	/**
 	 * @private
@@ -3534,13 +3567,13 @@ if (!Object.assign) {
 		}
 	});
 
-	_.Cleanable = Cleanable;
+	rt.Cleanable = Cleanable;
 
 })();
 
 (function() {
 
-	var Cleanable = _.Cleanable;
+	var Cleanable = rt.Cleanable;
 
 	/**
 	 * @class Rift.BaseModel
@@ -3584,7 +3617,7 @@ if (!Object.assign) {
 		}
 	});
 
-	_.BaseModel = BaseModel;
+	rt.BaseModel = BaseModel;
 
 })();
 
@@ -3613,7 +3646,7 @@ if (!Object.assign) {
 	/**
 	 * @namespace Rift.html
 	 */
-	_.html = {
+	rt.html = {
 		escape: escapeHTML
 	};
 
@@ -3644,7 +3677,7 @@ if (!Object.assign) {
 	/**
 	 * @namespace Rift.mods
 	 */
-	_.mods = {
+	rt.mods = {
 		push: pushMods
 	};
 
@@ -3652,11 +3685,11 @@ if (!Object.assign) {
 
 (function() {
 
-	var nextUID = _.uid.next;
-	var classes = _.Class.classes;
-	var ActiveDictionary = _.ActiveDictionary;
-	var ActiveArray = _.ActiveArray;
-	var pushMods = _.mods.push;
+	var nextUID = rt.uid.next;
+	var classes = rt.Class.classes;
+	var ActiveDictionary = rt.ActiveDictionary;
+	var ActiveArray = rt.ActiveArray;
+	var pushMods = rt.mods.push;
 
 	/**
 	 * @param {Object|Array|Rift.ActiveDictionary|Rift.ActiveArray} [target]
@@ -3743,7 +3776,7 @@ if (!Object.assign) {
 	/**
 	 * @namespace Rift.template
 	 */
-	_.template = {
+	rt.template = {
 		defaults: {
 			include: include,
 			helpers: helpers,
@@ -3757,10 +3790,10 @@ if (!Object.assign) {
 
 (function() {
 
-	var getUID = _.object.getUID;
-	var createNamespace = _.namespace.create;
-	var forEachMatch = _.regex.forEach;
-	var DataCell = _.DataCell;
+	var getUID = rt.object.getUID;
+	var createNamespace = rt.namespace.create;
+	var forEachMatch = rt.regex.forEach;
+	var DataCell = rt.DataCell;
 
 	/**
 	 * @namespace Rift.domBinding.helpers
@@ -3974,7 +4007,7 @@ if (!Object.assign) {
 	/**
 	 * @namespace Rift.domBinding
 	 */
-	_.domBinding = {
+	rt.domBinding = {
 		helpers: helpers,
 		bindElement: bindElement,
 		unbindElement: unbindElement,
@@ -3985,19 +4018,19 @@ if (!Object.assign) {
 
 (function() {
 
-	var getUID = _.object.getUID;
-	var execNamespace = _.namespace.exec;
-	var escapeRegExp = _.regex.escape;
-	var getHash = _.value.getHash;
-	var toString = _.value.toString;
-	var nextTick = _.process.nextTick;
-	var classes = _.Class.classes;
-	var getClassOrError = _.Class.getOrError;
-	var Cleanable = _.Cleanable;
-	var escapeHTML = _.html.escape;
-	var pushMods = _.mods.push;
-	var templates = _.template.templates;
-	var bindDOM = _.domBinding.bind;
+	var getUID = rt.object.getUID;
+	var execNamespace = rt.namespace.exec;
+	var escapeRegExp = rt.regex.escape;
+	var getHash = rt.value.getHash;
+	var toString = rt.value.toString;
+	var nextTick = rt.process.nextTick;
+	var classes = rt.Class.classes;
+	var getClassOrError = rt.Class.getOrError;
+	var Cleanable = rt.Cleanable;
+	var escapeHTML = rt.html.escape;
+	var pushMods = rt.mods.push;
+	var templates = rt.template.templates;
+	var bindDOM = rt.domBinding.bind;
 
 	var reNameClass = /^(.+?)::(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
@@ -5012,16 +5045,16 @@ if (!Object.assign) {
 		}
 	});
 
-	_.BaseView = BaseView;
+	rt.BaseView = BaseView;
 
 })();
 
 (function() {
 
-	var serialize = _.dump.serialize;
-	var deserialize = _.dump.deserialize;
-	var ActiveProperty = _.ActiveProperty;
-	var Cleanable = _.Cleanable;
+	var serialize = rt.dump.serialize;
+	var deserialize = rt.dump.deserialize;
+	var ActiveProperty = rt.ActiveProperty;
+	var Cleanable = rt.Cleanable;
 
 	/**
 	 * @class Rift.ViewState
@@ -5099,15 +5132,15 @@ if (!Object.assign) {
 		}
 	});
 
-	_.ViewState = ViewState;
+	rt.ViewState = ViewState;
 
 })();
 
 (function() {
 
-	var logError = _.logError;
-	var escapeRegExp = _.regex.escape;
-	var nextTick = _.process.nextTick;
+	var logError = rt.logError;
+	var escapeRegExp = rt.regex.escape;
+	var nextTick = rt.process.nextTick;
 
 	var reNotLocal = /^(?:\w+:)?\/\//;
 	var reSlashes = /[\/\\]+/g;
@@ -5725,15 +5758,15 @@ if (!Object.assign) {
 		}
 	});
 
-	_.Router = Router;
+	rt.Router = Router;
 
 })();
 
 (function() {
 
-	var deserialize = _.dump.deserialize;
-	var ViewState = _.ViewState;
-	var Router = _.Router;
+	var deserialize = rt.dump.deserialize;
+	var ViewState = rt.ViewState;
+	var Router = rt.Router;
 
 	/**
 	 * @private
@@ -5762,7 +5795,7 @@ if (!Object.assign) {
 	 */
 	function BaseApp() {}
 
-	BaseApp.extend = _.Class.extend;
+	BaseApp.extend = rt.Class.extend;
 
 	Object.assign(BaseApp.prototype, /** @lends Rift.BaseApp# */{
 		/**
@@ -5812,7 +5845,7 @@ if (!Object.assign) {
 		}
 	});
 
-	_.BaseApp = BaseApp;
+	rt.BaseApp = BaseApp;
 
 })();
 

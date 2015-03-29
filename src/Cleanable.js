@@ -1,11 +1,11 @@
 (function() {
 
-	var getUID = _.object.getUID;
-	var getHash = _.value.getHash;
-	var EventEmitter = _.EventEmitter;
-	var ActiveProperty = _.ActiveProperty;
-	var autoBind = _.ActiveProperty.autoBind;
-	var disposeDataCells = _.ActiveProperty.disposeDataCells;
+	var getUID = rt.object.getUID;
+	var getHash = rt.value.getHash;
+	var EventEmitter = rt.EventEmitter;
+	var ActiveProperty = rt.ActiveProperty;
+	var autoBind = rt.ActiveProperty.autoBind;
+	var disposeDataCells = rt.ActiveProperty.disposeDataCells;
 
 	/**
 	 * @private
@@ -377,6 +377,6 @@
 		}
 	});
 
-	_.Cleanable = Cleanable;
+	rt.Cleanable = Cleanable;
 
 })();

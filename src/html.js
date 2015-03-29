@@ -23,7 +23,7 @@
 	/**
 	 * @namespace Rift.html
 	 */
-	_.html = {
+	rt.html = {
 		escape: escapeHTML
 	};
 

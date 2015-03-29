@@ -48,7 +48,7 @@ function User(name) {
 	this.name(name);
 }
 
-User.prototype.name = Rift.$prop('');
+User.prototype.name = rt.observable('');
 
 var user = new User('Димка');
 
@@ -70,7 +70,7 @@ user.name('Юлька');
  * @param {Object} [context]
  * @returns {Object}
  */
-Rift.ActiveProperty.prototype.subscribe = function(dc, listener, context) {
+rt.ActiveProperty.prototype.subscribe = function(dc, listener, context) {
 	dc.on('change', listener, context || this);
 	return this;
 };
@@ -78,17 +78,15 @@ Rift.ActiveProperty.prototype.subscribe = function(dc, listener, context) {
 
 Активные свойство может быть вычисляемым. Для определения вычисляемого свойства нужно при инициализации передать функцию вместо значения. Функция будет формулой по которой будет происходить вычисление собственного значения:
 ```js
-var $prop = Rift.$prop;
+var User = rt.BaseModel.extend('Model.User', {
+	firstName: rt.observable(''),
+	lastName: rt.observable(''),
 
-var User = Rift.BaseModel.extend('Model.User', {
-	firstName: $prop(''),
-	lastName: $prop(''),
-
-	fullName: $prop(function() {
+	fullName: rt.computable(function() {
 		return (this.firstName() + ' ' + this.lastName()).trim();
 	}),
 
-	name: $prop(function() {
+	name: rt.computable(function() {
 		return this.firstName() || this.lastName();
 	})
 });
@@ -114,13 +112,11 @@ console.log(user.fullName());
 
 Вычисляемое свойство можно научить принимать значения при установке:
 ```js
-var $prop = Rift.$prop;
+var User = rt.BaseModel.extend('Model.User', {
+	firstName: rt.observable(''),
+	lastName: rt.observable(''),
 
-var User = Rift.BaseModel.extend('Model.User', {
-	firstName: $prop(''),
-	lastName: $prop(''),
-
-	fullName: $prop(function() {
+	fullName: rt.computable(function() {
 		return (this.firstName() + ' ' + this.lastName()).trim();
 	}, {
 		set: function(fullName) {
@@ -135,7 +131,7 @@ var User = Rift.BaseModel.extend('Model.User', {
 		}
 	}),
 
-	name: $prop(function() {
+	name: rt.computable(function() {
 		return this.firstName() || this.lastName();
 	}, {
 		set: function(name) {
@@ -162,18 +158,15 @@ console.log(user.fullName());
 При установке [EventEmitter](https://github.com/2gis/RiftJS/blob/master/docs/EventEmitter.ru.md)-а в качестве значения активного свойства, последнее автоматически подписывается на его событие `change` и выдаёт его за своё (по evt.target можно отличить). Таким образом зависимые свойства могут реагировать и на внутренние изменения своих зависимостей. Пример с использованием [Rift.ActiveArray](https://github.com/2gis/RiftJS/blob/master/docs/ActiveArray.ru.md):
 
 ```js
-var $prop = Rift.$prop;
-var $arr = Rift.$arr;
-
-var User = Rift.BaseModel.extend('Model.User', {
-	name: $prop(''),
-	age: $prop(-1),
+var User = rt.BaseModel.extend('Model.User', {
+	name: rt.observable(''),
+	age: rt.observable(-1),
 
 	// массив друзей
-	friends: $prop(null),
+	friends: rt.observable(null),
 
 	// массив за кого не посадят
-	friends18plus: $prop(function() {
+	friends18plus: rt.computable(function() {
 		return this.friends().filter(function(friend) {
 			return friend.age() >= 18;
 		});
@@ -185,7 +178,7 @@ var katya = new User({ name: 'Катя', age: 23 });
 
 var vasya = new User({
 	name: 'Вася',
-	friends: $arr([masha, katya])
+	friends: new rt.ActiveArray([masha, katya])
 });
 
 console.log(vasya.friends18plus().length);

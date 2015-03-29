@@ -31,7 +31,7 @@
 	/**
 	 * @namespace Rift.uid
 	 */
-	_.uid = {
+	rt.uid = {
 		next: nextUID,
 		resetCounter: resetUIDCounter
 	};

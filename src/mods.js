@@ -23,7 +23,7 @@
 	/**
 	 * @namespace Rift.mods
 	 */
-	_.mods = {
+	rt.mods = {
 		push: pushMods
 	};
 

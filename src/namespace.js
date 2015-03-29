@@ -49,7 +49,7 @@
 	/**
 	 * @namespace Rift.namespace
 	 */
-	_.namespace = {
+	rt.namespace = {
 		create: createNamespace,
 		exec: execNamespace
 	};

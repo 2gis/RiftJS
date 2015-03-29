@@ -6,7 +6,7 @@ describe('regex.js', function() {
 		it('Экранирует', function() {
 			var re = 'Hello?!*`~World()[]';
 
-			expect(Rift.regex.escape(re))
+			expect(rt.regex.escape(re))
 				.to.equal('Hello\\?!\\*`~World\\(\\)\\[\\]');
 		});
 
@@ -17,7 +17,7 @@ describe('regex.js', function() {
 		it('Находит 3 совпадения', function() {
 			var cbSpy = sinon.spy();
 
-			Rift.regex.forEach(/([a-z]+)\-(\d+)/g, 'a-1 b-2 c-3', cbSpy);
+			rt.regex.forEach(/([a-z]+)\-(\d+)/g, 'a-1 b-2 c-3', cbSpy);
 
 			expect(cbSpy.calledThrice)
 				.to.be.ok;
@@ -38,7 +38,7 @@ describe('regex.js', function() {
 
 			re.lastIndex = 1;
 
-			Rift.regex.forEach(re, 'a-1', cbSpy);
+			rt.regex.forEach(re, 'a-1', cbSpy);
 
 			expect(cbSpy.calledOnce)
 				.to.be.ok;
@@ -54,7 +54,7 @@ describe('regex.js', function() {
 				}
 			});
 
-			Rift.regex.forEach(/([a-z]+)\-(\d+)/g, 'a-1 b-2 c-3', cbSpy);
+			rt.regex.forEach(/([a-z]+)\-(\d+)/g, 'a-1 b-2 c-3', cbSpy);
 
 			expect(cbSpy.calledTwice)
 				.to.be.ok;

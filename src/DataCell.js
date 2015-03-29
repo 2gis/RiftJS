@@ -1,9 +1,9 @@
 (function() {
 
-	var getUID = _.object.getUID;
-	var nextTick = _.process.nextTick;
-	var Event = _.Event;
-	var EventEmitter = _.EventEmitter;
+	var getUID = rt.object.getUID;
+	var nextTick = rt.process.nextTick;
+	var Event = rt.Event;
+	var EventEmitter = rt.EventEmitter;
 
 	var STATE_CHANGES_ACCUMULATION = 0;
 	var STATE_CHANGES_HANDLING = 1;
@@ -331,6 +331,7 @@
 	 * @param {Object} [opts] - Опции.
 	 * @param {Function} [opts.get] - Будет использоваться при получении значения.
 	 * @param {Function} [opts.set] - Будет использоваться при установке значения.
+	 * @param {boolean} [opts.computable]
 	 * @param {Function} [opts.onchange] - Инлайновый обработчик изменения значения.
 	 */
 	var DataCell = EventEmitter.extend(/** @lends Rift.DataCell# */{
@@ -450,7 +451,12 @@
 
 			this._children = {};
 
-			this.computable = typeof value == 'function' && value.constructor == Function;
+			if (
+				typeof value == 'function' &&
+					(opts.computable !== undef ? opts.computable : value.constructor == Function)
+			) {
+				this.computable = true;
+			}
 
 			if (this.computable) {
 				this._formula = value;
@@ -755,6 +761,6 @@
 		}
 	});
 
-	_.DataCell = DataCell;
+	rt.DataCell = DataCell;
 
 })();

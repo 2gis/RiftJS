@@ -9,7 +9,7 @@ describe('object.js', function() {
 
 	describe('object.mixin', function() {
 
-		var obj = Rift.object.mixin({}, Object.create({
+		var obj = rt.object.mixin({}, Object.create({
 			inheritedProperty: 1
 		}, {
 			simpleProperty: {
@@ -63,7 +63,7 @@ describe('object.js', function() {
 
 		var proto = {};
 		var obj = { __proto__: proto };
-		var copy = Rift.object.clone(obj);
+		var copy = rt.object.clone(obj);
 
 		it('Копирует __proto__', function() {
 			expect(Object.getPrototypeOf(copy))

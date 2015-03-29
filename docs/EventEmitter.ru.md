@@ -5,7 +5,7 @@
 * Кроме основных обработчиков запускает инлайновый (при наличии):
 
 ```js
-var User = Rift.EventEmitter.extend({});
+var User = rt.EventEmitter.extend({});
 
 var user = new User();
 
@@ -29,7 +29,7 @@ user.emit('change');
 Пример:
 
 ```js
-var View = Rift.EventEmitter.extend({});
+var View = rt.EventEmitter.extend({});
 
 var parent = new View();
 var child = new View();
@@ -52,7 +52,7 @@ child.emit('change');
 * При установке свойства `silent` в `true`, пропускает вызов своих обработчиков, но как обычно передаёт дальнейшую обработку по ссылке `parent`. Пример:
 
 ```js
-var View = Rift.EventEmitter.extend({});
+var View = rt.EventEmitter.extend({});
 
 var parent = new View();
 var child = new View();
@@ -77,7 +77,7 @@ child.emit('change');
 Передача данных в обработчики делается через `evt.detail`:
 
 ```js
-var User = Rift.EventEmitter.extend({});
+var User = rt.EventEmitter.extend({});
 
 var user = new User();
 

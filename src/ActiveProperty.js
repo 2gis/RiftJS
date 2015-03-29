@@ -1,8 +1,8 @@
 (function() {
 
-	var getUID = _.object.getUID;
-	var cloneObject = _.object.clone;
-	var DataCell = _.DataCell;
+	var getUID = rt.object.getUID;
+	var cloneObject = rt.object.clone;
+	var DataCell = rt.DataCell;
 
 	/**
 	 * Заменяет активные свойства на геттеры, которые при срабатывании будут подставлять в инстанс исходные свойства,
@@ -228,10 +228,42 @@
 		}
 	});
 
-	_.ActiveProperty = ActiveProperty;
+	rt.ActiveProperty = ActiveProperty;
 
-	_.$prop = function(value, opts) {
+	/**
+	 * @memberOf Rift
+	 *
+	 * @param {Function} value
+	 * @param {Object} [opts]
+	 */
+	rt.observable = function(value, opts) {
+		if (typeof value == 'function' && value.constructor == Function) {
+			if (!opts) {
+				opts = {};
+			}
+
+			opts.computable = false;
+		}
+
 		return new ActiveProperty(value, opts);
+	};
+
+	/**
+	 * @memberOf Rift
+	 *
+	 * @param {Function} formula
+	 * @param {Object} [opts]
+	 */
+	rt.computable = function(formula, opts) {
+		if (formula.constructor != Function) {
+			if (!opts) {
+				opts = {};
+			}
+
+			opts.computable = true;
+		}
+
+		return new ActiveProperty(formula, opts);
 	};
 
 })();

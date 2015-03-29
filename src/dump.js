@@ -1,9 +1,9 @@
 (function() {
 
-	var getUID = _.object.getUID;
-	var toString = _.value.toString;
-	var classes = _.Class.classes;
-	var regClass = _.Class.register;
+	var getUID = rt.object.getUID;
+	var toString = rt.value.toString;
+	var classes = rt.Class.classes;
+	var regClass = rt.Class.register;
 
 	regClass('Array', Array);
 	regClass('Date', Date);
@@ -149,7 +149,10 @@
 		return objects[dump.r].instance;
 	}
 
-	_.dump = {
+	/**
+	 * @namespace Rift.dump
+	 */
+	rt.dump = {
 		serialize: serialize,
 		deserialize: deserialize
 	};

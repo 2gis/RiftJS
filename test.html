@@ -9,14 +9,11 @@
 <script src="build/Rift.js"></script>
 <script>
 
-var $prop = Rift.$prop;
-var $arr = Rift.$arr;
+var User = rt.BaseModel.extend('Model.User', {
+	firstName: rt.observable(''),
+	lastName: rt.observable(''),
 
-var User = Rift.BaseModel.extend('Model.User', {
-	firstName: $prop(''),
-	lastName: $prop(''),
-
-	fullName: $prop(function() {
+	fullName: rt.computable(function() {
 		return (this.firstName() + ' ' + this.lastName()).trim();
 	}, {
 		set: function(fullName) {
@@ -31,7 +28,7 @@ var User = Rift.BaseModel.extend('Model.User', {
 		}
 	}),
 
-	name: $prop(function() {
+	name: rt.computable(function() {
 		return this.firstName() || this.lastName();
 	}, {
 		set: function(name) {
@@ -39,13 +36,13 @@ var User = Rift.BaseModel.extend('Model.User', {
 		}
 	}),
 
-	friends: $prop(null)
+	friends: rt.computable(null)
 });
 
 var viewer = new User({
 	fullName: 'Krutoy Perec',
 
-	friends: $arr([
+	friends: new rt.ActiveArray([
 		new User({ fullName: 'Misha Utkin' }),
 		new User({ fullName: 'Gosha Dudkin' }),
 		new User({ fullName: 'Vasya Pupkin' }),

@@ -1,18 +1,18 @@
 (function() {
 
-	var getUID = _.object.getUID;
-	var execNamespace = _.namespace.exec;
-	var escapeRegExp = _.regex.escape;
-	var getHash = _.value.getHash;
-	var toString = _.value.toString;
-	var nextTick = _.process.nextTick;
-	var classes = _.Class.classes;
-	var getClassOrError = _.Class.getOrError;
-	var Cleanable = _.Cleanable;
-	var escapeHTML = _.html.escape;
-	var pushMods = _.mods.push;
-	var templates = _.template.templates;
-	var bindDOM = _.domBinding.bind;
+	var getUID = rt.object.getUID;
+	var execNamespace = rt.namespace.exec;
+	var escapeRegExp = rt.regex.escape;
+	var getHash = rt.value.getHash;
+	var toString = rt.value.toString;
+	var nextTick = rt.process.nextTick;
+	var classes = rt.Class.classes;
+	var getClassOrError = rt.Class.getOrError;
+	var Cleanable = rt.Cleanable;
+	var escapeHTML = rt.html.escape;
+	var pushMods = rt.mods.push;
+	var templates = rt.template.templates;
+	var bindDOM = rt.domBinding.bind;
 
 	var reNameClass = /^(.+?)::(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
@@ -1027,6 +1027,6 @@
 		}
 	});
 
-	_.BaseView = BaseView;
+	rt.BaseView = BaseView;
 
 })();

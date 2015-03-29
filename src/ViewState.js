@@ -1,9 +1,9 @@
 (function() {
 
-	var serialize = _.dump.serialize;
-	var deserialize = _.dump.deserialize;
-	var ActiveProperty = _.ActiveProperty;
-	var Cleanable = _.Cleanable;
+	var serialize = rt.dump.serialize;
+	var deserialize = rt.dump.deserialize;
+	var ActiveProperty = rt.ActiveProperty;
+	var Cleanable = rt.Cleanable;
 
 	/**
 	 * @class Rift.ViewState
@@ -81,6 +81,6 @@
 		}
 	});
 
-	_.ViewState = ViewState;
+	rt.ViewState = ViewState;
 
 })();

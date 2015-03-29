@@ -4,7 +4,7 @@ describe('ActiveArray.js', function() {
 	describe('ActiveArray', function() {
 
 		it('Генерирует правильный addedValues', function() {
-			var arr = new Rift.ActiveArray([1, 2, 3]);
+			var arr = new rt.ActiveArray([1, 2, 3]);
 			var onChangeSpy = sinon.spy();
 
 			arr.on('change', onChangeSpy);
@@ -25,7 +25,7 @@ describe('ActiveArray.js', function() {
 		});
 
 		it('Понимает дырки при удалении', function() {
-			var arr = new Rift.ActiveArray(new Array(5));
+			var arr = new rt.ActiveArray(new Array(5));
 			var onChangeSpy = sinon.spy();
 
 			arr.on('change', onChangeSpy);
@@ -37,7 +37,7 @@ describe('ActiveArray.js', function() {
 		});
 
 		it('Понимает дырки при уменьшении длинны', function() {
-			var arr = new Rift.ActiveArray(new Array(5));
+			var arr = new rt.ActiveArray(new Array(5));
 			var onChangeSpy = sinon.spy();
 
 			arr.on('change', onChangeSpy);
@@ -49,7 +49,7 @@ describe('ActiveArray.js', function() {
 		});
 
 		it('Понимает дырки при shift и pop', function() {
-			var arr = new Rift.ActiveArray(new Array(5));
+			var arr = new rt.ActiveArray(new Array(5));
 			var onChangeSpy = sinon.spy();
 
 			arr.on('change', onChangeSpy);
@@ -64,7 +64,7 @@ describe('ActiveArray.js', function() {
 		describe('ActiveArray#splice', function() {
 
 			it('Сплайсит и понимает дырки', function() {
-				var arr = new Rift.ActiveArray([1, 2, 3, 4, 5, 6, 7, 8]);
+				var arr = new rt.ActiveArray([1, 2, 3, 4, 5, 6, 7, 8]);
 				var onChangeSpy = sinon.spy();
 
 				arr.delete(3);
@@ -87,7 +87,7 @@ describe('ActiveArray.js', function() {
 			});
 
 			it('Не изменяется при бесполезном splice', function() {
-				var arr = new Rift.ActiveArray([1, 2, 3, 4, 5]);
+				var arr = new rt.ActiveArray([1, 2, 3, 4, 5]);
 				var onChangeSpy = sinon.spy();
 
 				arr.on('change', onChangeSpy);
@@ -99,8 +99,8 @@ describe('ActiveArray.js', function() {
 			});
 
 			it('Не изменяется при бесполезном splice 2', function() {
-				var arr1 = new Rift.ActiveArray([1, 2, , , , , , , 9]);
-				var arr2 = new Rift.ActiveArray([1, 2, , , , , , , ,]);
+				var arr1 = new rt.ActiveArray([1, 2, , , , , , , 9]);
+				var arr2 = new rt.ActiveArray([1, 2, , , , , , , ,]);
 				var onChangeSpy1 = sinon.spy();
 				var onChangeSpy2 = sinon.spy();
 

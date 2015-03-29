@@ -1,8 +1,8 @@
 (function() {
 
-	var logError = _.logError;
-	var escapeRegExp = _.regex.escape;
-	var nextTick = _.process.nextTick;
+	var logError = rt.logError;
+	var escapeRegExp = rt.regex.escape;
+	var nextTick = rt.process.nextTick;
 
 	var reNotLocal = /^(?:\w+:)?\/\//;
 	var reSlashes = /[\/\\]+/g;
@@ -620,6 +620,6 @@
 		}
 	});
 
-	_.Router = Router;
+	rt.Router = Router;
 
 })();

@@ -32,7 +32,7 @@
 					try {
 						q[i]();
 					} catch (err) {
-						_.logError(err);
+						rt.logError(err);
 					}
 				}
 			}
@@ -55,7 +55,7 @@
 	/**
 	 * @namespace Rift.process
 	 */
-	_.process = {
+	rt.process = {
 		nextTick: nextTick
 	};
 

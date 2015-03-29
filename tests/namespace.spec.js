@@ -8,7 +8,7 @@ describe('namespace.js', function() {
 		});
 
 		it('Создаёт в window', function() {
-			var ns = Rift.namespace.create('a.b.c');
+			var ns = rt.namespace.create('a.b.c');
 
 			expect(window)
 				.to.have.deep.property('a.b.c', ns);
@@ -16,7 +16,7 @@ describe('namespace.js', function() {
 
 		it('Создаёт в указанном объекте', function() {
 			var root = {};
-			var ns = Rift.namespace.create('a.b.c', root);
+			var ns = rt.namespace.create('a.b.c', root);
 
 			expect(root)
 				.to.have.deep.property('a.b.c', ns);
@@ -24,10 +24,10 @@ describe('namespace.js', function() {
 
 		it('Возвращает существующее, если уже есть', function() {
 			var root = {};
-			var ns = Rift.namespace.create('a.b.c', root);
+			var ns = rt.namespace.create('a.b.c', root);
 
 			expect(ns)
-				.to.equal(Rift.namespace.create('a.b.c', root));
+				.to.equal(rt.namespace.create('a.b.c', root));
 		});
 
 	});

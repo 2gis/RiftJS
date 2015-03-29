@@ -48,31 +48,31 @@ gulp --dev
 
 Добавьте файл `App/Model/User.js` со следующим содержимым:
 ```js
-var Rift = require('riftjs');
+var rt = require('riftjs');
 
-var User = Rift.BaseModel.extend('User', {
+var User = rt.BaseModel.extend('User', {
     /**
      * Имя пользователя.
      */
-    name: Rift.$prop('')
+    name: rt.observable('')
 });
 
 module.exports = User;
 ```
 
 Первый аргумент метода `extend` — имя класса — используется для разных целей, в первую очередь для передачи состояния с сервера на клиент. Имя может быть с пространством имён, например: `'2gis.ProjectName.User'`.  
-`Rift.$prop` — создаёт активное свойство. Подробнее про активные свойства — [Rift.ActiveProperty](https://github.com/2gis/RiftJS/blob/master/docs/ActiveProperty.ru.md).
+`rt.observable` — создаёт активное свойство. Подробнее про активные свойства — [Rift.ActiveProperty](https://github.com/2gis/RiftJS/blob/master/docs/ActiveProperty.ru.md).
 
 В файл `App/Model/Model.js` добавьте свойство `viewer` — текущий пользователь приложения. Должно получиться так:
 ```js
-var Rift = require('riftjs');
+var rt = require('riftjs');
 
-var Model = Rift.BaseModel.extend('Model', {
+var Model = rt.BaseModel.extend('Model', {
     /**
      * Текущий пользователь приложения.
      * @type {User}
      */
-    viewer: Rift.$prop(null)
+    viewer: rt.observable(null)
 });
 
 module.exports = Model;
@@ -82,9 +82,9 @@ module.exports = Model;
 
 Добавьте файл `App/View/UserCard/UserCard.js` — класс карточки пользователя. Содержимое файла:
 ```js
-var Rift = require('riftjs');
+var rt = require('riftjs');
 
-var UserCard = Rift.BaseView.extend('UserCard', {
+var UserCard = rt.BaseView.extend('UserCard', {
     //
 });
 ```
@@ -98,11 +98,11 @@ var UserCard = Rift.BaseView.extend('UserCard', {
 
 В файле `View/Main/Main.js` наполним модель данными:
 ```js
-var Rift = require('riftjs');
+var rt = require('riftjs');
 
 var User = require('../../Model/User.js');
 
-var Main = Rift.BaseView.extend('View.Main', {
+var Main = rt.BaseView.extend('View.Main', {
     receiveData: function(done) {
         this.model.viewer(new User({ name: 'Петька' }));
         done();
@@ -148,12 +148,10 @@ _app.model.viewer().name('Васька');
 
 В ранее склонированном приложении есть неполный пример использования этого механизма. В файле `App/routes.js` уже содержится несколько путей. Все поля использованные в `App/routes.js` автоматически создаются во вьюстейте со значением `undefined`. Если же нужно задать для поля другое значение по умолчанию, то прийдётся вручную объявить его (поле) в файле `App/viewState.js`, например так:
 ```js
-var Rift = require('riftjs');
-
-var $prop = Rift.$prop;
+var rt = require('riftjs');
 
 var viewState = {
-    'test.value': $prop(5)
+    'test.value': rt.observable(5)
 };
 
 module.exports = viewState;

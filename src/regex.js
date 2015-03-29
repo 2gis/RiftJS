@@ -60,7 +60,7 @@
 	/**
 	 * @namespace Rift.regex
 	 */
-	_.regex = {
+	rt.regex = {
 		escape: escapeRegExp,
 		forEach: forEachMatch
 	};

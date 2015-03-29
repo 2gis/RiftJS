@@ -1,8 +1,8 @@
 (function() {
 
-	var deserialize = _.dump.deserialize;
-	var ViewState = _.ViewState;
-	var Router = _.Router;
+	var deserialize = rt.dump.deserialize;
+	var ViewState = rt.ViewState;
+	var Router = rt.Router;
 
 	/**
 	 * @private
@@ -31,7 +31,7 @@
 	 */
 	function BaseApp() {}
 
-	BaseApp.extend = _.Class.extend;
+	BaseApp.extend = rt.Class.extend;
 
 	Object.assign(BaseApp.prototype, /** @lends Rift.BaseApp# */{
 		/**
@@ -81,6 +81,6 @@
 		}
 	});
 
-	_.BaseApp = BaseApp;
+	rt.BaseApp = BaseApp;
 
 })();

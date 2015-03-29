@@ -4,7 +4,7 @@ describe('ActiveDictionary.js', function() {
 	describe('ActiveDictionary', function() {
 
 		it('Генерирует правильный diff при добавлении нового свойства и изменении существующего', function() {
-			var dict = new Rift.ActiveDictionary({ a: 1 });
+			var dict = new rt.ActiveDictionary({ a: 1 });
 			var onChangeSpy = sinon.spy();
 
 			dict.on('change', onChangeSpy);
@@ -38,7 +38,7 @@ describe('ActiveDictionary.js', function() {
 		});
 
 		it('Генерирует правильный diff при удалении свойства', function() {
-			var dict = new Rift.ActiveDictionary({ a: 1, b: undefined });
+			var dict = new rt.ActiveDictionary({ a: 1, b: undefined });
 			var onChangeSpy = sinon.spy();
 
 			dict.on('change', onChangeSpy);
@@ -67,7 +67,7 @@ describe('ActiveDictionary.js', function() {
 		});
 
 		it('Генерирует правильный addedValues', function() {
-			var dict = new Rift.ActiveDictionary({ a: 1, b: 2, c: 3 });
+			var dict = new rt.ActiveDictionary({ a: 1, b: 2, c: 3 });
 			var onChangeSpy = sinon.spy();
 
 			dict.on('change', onChangeSpy);
@@ -88,7 +88,7 @@ describe('ActiveDictionary.js', function() {
 		});
 
 		it('Генерирует правильный addedValues (2) и removedValues', function() {
-			var dict = new Rift.ActiveDictionary({ a: 1, b: 2, c: 3 });
+			var dict = new rt.ActiveDictionary({ a: 1, b: 2, c: 3 });
 			var onChangeSpy = sinon.spy();
 
 			dict.on('change', onChangeSpy);
@@ -109,8 +109,8 @@ describe('ActiveDictionary.js', function() {
 		});
 
 		it('Рабочий handleItemChanges', function() {
-			var dict1 = new Rift.ActiveDictionary({ a: 1 });
-			var dict2 = new Rift.ActiveDictionary({ a: dict1 }, true);
+			var dict1 = new rt.ActiveDictionary({ a: 1 });
+			var dict2 = new rt.ActiveDictionary({ a: dict1 }, true);
 
 			var onChangeSpy = sinon.spy();
 

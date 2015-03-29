@@ -1,10 +1,10 @@
 (function() {
 
-	var nextUID = _.uid.next;
-	var classes = _.Class.classes;
-	var ActiveDictionary = _.ActiveDictionary;
-	var ActiveArray = _.ActiveArray;
-	var pushMods = _.mods.push;
+	var nextUID = rt.uid.next;
+	var classes = rt.Class.classes;
+	var ActiveDictionary = rt.ActiveDictionary;
+	var ActiveArray = rt.ActiveArray;
+	var pushMods = rt.mods.push;
 
 	/**
 	 * @param {Object|Array|Rift.ActiveDictionary|Rift.ActiveArray} [target]
@@ -91,7 +91,7 @@
 	/**
 	 * @namespace Rift.template
 	 */
-	_.template = {
+	rt.template = {
 		defaults: {
 			include: include,
 			helpers: helpers,

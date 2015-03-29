@@ -6,17 +6,17 @@ describe('ActiveProperty.js', function() {
 		it('ActiveProperty#dataCell', function() {
 			function User() {}
 
-			User.prototype.name = new Rift.ActiveProperty('Мурзик');
+			User.prototype.name = new rt.ActiveProperty('Мурзик');
 
 			User.prototype.dispose = function() {
-				Rift.ActiveProperty.disposeDataCells(this);
+				rt.ActiveProperty.disposeDataCells(this);
 			};
 
 			var user = new User();
 			var dc = user.name('dataCell', 0);
 
 			expect(dc)
-				.to.be.instanceof(Rift.DataCell);
+				.to.be.instanceof(rt.DataCell);
 
 			expect(dc.value)
 				.to.equal('Мурзик');

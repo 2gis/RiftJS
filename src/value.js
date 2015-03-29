@@ -1,6 +1,6 @@
 (function() {
 
-	var getUID = _.object.getUID;
+	var getUID = rt.object.getUID;
 
 	/**
 	 * @memberOf Rift.value
@@ -118,7 +118,7 @@
 	/**
 	 * @namespace Rift.value
 	 */
-	_.value = {
+	rt.value = {
 		getHash: getHash,
 		toString: toString
 	};

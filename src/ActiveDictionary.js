@@ -1,7 +1,7 @@
 (function() {
 
-	var getHash = _.value.getHash;
-	var EventEmitter = _.EventEmitter;
+	var getHash = rt.value.getHash;
+	var EventEmitter = rt.EventEmitter;
 
 	/**
 	 * @class Rift.ActiveDictionary
@@ -298,10 +298,6 @@
 		}
 	});
 
-	_.ActiveDictionary = ActiveDictionary;
-
-	_.$dict = function(obj, opts) {
-		return new ActiveDictionary(obj, opts);
-	};
+	rt.ActiveDictionary = ActiveDictionary;
 
 })();

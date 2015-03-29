@@ -1,9 +1,9 @@
 (function() {
 
-	var getUID = _.object.getUID;
-	var createNamespace = _.namespace.create;
-	var forEachMatch = _.regex.forEach;
-	var DataCell = _.DataCell;
+	var getUID = rt.object.getUID;
+	var createNamespace = rt.namespace.create;
+	var forEachMatch = rt.regex.forEach;
+	var DataCell = rt.DataCell;
 
 	/**
 	 * @namespace Rift.domBinding.helpers
@@ -217,7 +217,7 @@
 	/**
 	 * @namespace Rift.domBinding
 	 */
-	_.domBinding = {
+	rt.domBinding = {
 		helpers: helpers,
 		bindElement: bindElement,
 		unbindElement: unbindElement,

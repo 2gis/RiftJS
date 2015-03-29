@@ -1,7 +1,7 @@
 (function() {
 
-	var getHash = _.value.getHash;
-	var EventEmitter = _.EventEmitter;
+	var getHash = rt.value.getHash;
+	var EventEmitter = rt.EventEmitter;
 
 	var arrayProto = Array.prototype;
 	var push = arrayProto.push;
@@ -740,10 +740,6 @@
 		};
 	}, ActiveArray.prototype);
 
-	_.ActiveArray = ActiveArray;
-
-	_.$arr = function(arr, opts) {
-		return new ActiveArray(arr, opts);
-	};
+	rt.ActiveArray = ActiveArray;
 
 })();

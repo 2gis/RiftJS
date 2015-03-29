@@ -70,7 +70,7 @@ m.dispose();
 
 ```js
 // псевдокод
-var MyModule =  Rift.Cleanable.extend({
+var MyModule =  rt.Cleanable.extend({
 	constructor: function() {
 		this.setTimeout(this._onTimerTick, 1000); // устанавливаем какой-то таймер
 		sendRequest(this.regCallback(this._onRequestComplete)); // посылаем какой-то запрос

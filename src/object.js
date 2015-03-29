@@ -1,6 +1,6 @@
 (function() {
 
-	var nextUID = _.uid.next;
+	var nextUID = rt.uid.next;
 
 	var keyUID = '_rt-uid';
 
@@ -55,7 +55,7 @@
 	/**
 	 * @namespace Rift.object
 	 */
-	_.object = {
+	rt.object = {
 		getUID: getUID,
 		mixin: mixin,
 		clone: cloneObject

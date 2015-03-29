@@ -1,6 +1,6 @@
 (function() {
 
-	var Event = _.Event;
+	var Event = rt.Event;
 
 	var keyUsed = '_emt-used';
 
@@ -34,7 +34,7 @@
 	 */
 	function EventEmitter() {}
 
-	EventEmitter.extend = _.Class.extend;
+	EventEmitter.extend = rt.Class.extend;
 
 	Object.assign(EventEmitter.prototype, /** @lends Rift.EventEmitter# */{
 		_events: null,
@@ -202,10 +202,10 @@
 		 * @param {*} err
 		 */
 		_logError: function(err) {
-			_.logError(err);
+			rt.logError(err);
 		}
 	});
 
-	_.EventEmitter = EventEmitter;
+	rt.EventEmitter = EventEmitter;
 
 })();

@@ -15,7 +15,7 @@
 		}
 	}
 
-	Event.extend = _.Class.extend;
+	Event.extend = rt.Class.extend;
 
 	Object.assign(Event.prototype, /** @lends Rift.Event# */{
 		/**
@@ -84,6 +84,6 @@
 		}
 	});
 
-	_.Event = Event;
+	rt.Event = Event;
 
 })();

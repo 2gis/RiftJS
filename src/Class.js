@@ -1,6 +1,6 @@
 (function() {
 
-	var mixin = _.object.mixin;
+	var mixin = rt.object.mixin;
 
 	/**
 	 * @property {Object<Function>}
@@ -111,7 +111,7 @@
 	/**
 	 * @namespace Rift.Class
 	 */
-	_.Class = {
+	rt.Class = {
 		classes: classes,
 		getOrError: getClassOrError,
 		register: regClass,

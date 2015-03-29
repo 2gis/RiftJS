@@ -1,6 +1,6 @@
 (function() {
 
-	var Cleanable = _.Cleanable;
+	var Cleanable = rt.Cleanable;
 
 	/**
 	 * @class Rift.BaseModel
@@ -44,6 +44,6 @@
 		}
 	});
 
-	_.BaseModel = BaseModel;
+	rt.BaseModel = BaseModel;
 
 })();
