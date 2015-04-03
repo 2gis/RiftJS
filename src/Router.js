@@ -78,7 +78,7 @@
 	 *     rePath: RegExp,
 	 *     properties: { type: int, id: string },
 	 *     requiredProperties: Array<string>,
-	 *     pathMap: { requiredProperties: Array<string>, pathPart: string=, field: string= },
+	 *     pathMap: { requiredProperties: Array<string>, pathPart: string=, prop: string= },
 	 *     callback: Function
 	 * }} Router~Route
 	 */
@@ -244,7 +244,7 @@
 
 							pathMap.push({
 								requiredProperties: pathMapItemRequiredProps,
-								field: id
+								prop: id
 							});
 						} else {
 							if (pathPart[j]) {
@@ -282,7 +282,7 @@
 
 								pathMap.push({
 									requiredProperties: [id],
-									field: id
+									prop: id
 								});
 							} else {
 								if (pathPart[j]) {
@@ -355,11 +355,11 @@
 			}
 
 			var viewState = this.app.viewState;
-			var onViewStateFieldChange = this._onViewStateFieldChange;
+			var onViewStatePropertyChange = this._onViewStatePropertyChange;
 			var props = viewState.properties;
 
 			for (var i = props.length; i;) {
-				viewState[props[--i]]('subscribe', onViewStateFieldChange, this);
+				viewState[props[--i]]('subscribe', onViewStatePropertyChange, this);
 			}
 		},
 
@@ -429,7 +429,7 @@
 		/**
 		 * @protected
 		 */
-		_onViewStateFieldChange: function() {
+		_onViewStatePropertyChange: function() {
 			if (this._isViewStateChangeHandlingRequired) {
 				return;
 			}
@@ -531,8 +531,8 @@
 					return {
 						route: route,
 
-						state: route.properties.reduce(function(state, field, index) {
-							state[field.id] = field.type == 1 ?
+						state: route.properties.reduce(function(state, prop, index) {
+							state[prop.id] = prop.type == 1 ?
 								match[index + 1] !== undef :
 								tryStringAsNumber(decodeURIComponent(match[index + 1]));
 
@@ -611,7 +611,7 @@
 
 				if (j == -1) {
 					path.push(
-						hasOwn.call(pathMapItem, 'pathPart') ? pathMapItem.pathPart : viewState[pathMapItem.field]()
+						hasOwn.call(pathMapItem, 'pathPart') ? pathMapItem.pathPart : viewState[pathMapItem.prop]()
 					);
 				}
 			}
