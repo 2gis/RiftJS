@@ -151,7 +151,7 @@ _app.model.viewer().name('Васька');
 var rt = require('riftjs');
 
 var viewState = {
-    'test.value': rt.observable(5)
+    someProp: rt.observable(5)
 };
 
 module.exports = viewState;
