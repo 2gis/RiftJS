@@ -68,7 +68,7 @@
 	 * @private
 	 */
 	function exec(prop, id, initialValue, opts, args) {
-		var dc = (this._dataCells || (this._dataCells = {}))[id];
+		var dc = (this._dataCells || (this._dataCells = Object.create(null)))[id];
 
 		if (!dc) {
 			if (typeof initialValue == 'function') {

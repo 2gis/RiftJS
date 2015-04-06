@@ -42,7 +42,7 @@
 		']',
 		'g'
 	);
-	var conversionDict = {
+	var conversionDict = Object.assign(Object.create(null), {
 		'\b': '\\b',
 		'\t': '\\t',
 		'\n': '\\n',
@@ -50,7 +50,7 @@
 		'\r': '\\r',
 		'\'': '\\\'',
 		'\\': '\\\\'
-	};
+	});
 
 	/**
 	 * @private
@@ -60,9 +60,7 @@
 	 */
 	function escapeString(str) {
 		return str.replace(reEscapableChars, function(chr) {
-			return hasOwn.call(conversionDict, chr) ?
-				conversionDict[chr] :
-				'\\u' + ('0000' + chr.charCodeAt(0).toString(16)).slice(-4);
+			return conversionDict[chr] || '\\u' + ('0000' + chr.charCodeAt(0).toString(16)).slice(-4);
 		});
 	}
 
@@ -98,7 +96,7 @@
 				js.unshift(--i in value ? toString(value[i]) : '');
 			}
 
-			js = '[' + js + (js[js.length - 1] == '' ? ',]' : ']');
+			js = '[' + js.join(',') + (js[js.length - 1] == '' ? ',]' : ']');
 		} else {
 			for (var name in value) {
 				if (hasOwn.call(value, name)) {

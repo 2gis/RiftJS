@@ -701,7 +701,9 @@
 			var inner = this._inner;
 
 			for (var i = inner.length; i;) {
-				data[--i] = inner[i];
+				if (--i in inner) {
+					data[i] = inner[i];
+				}
 			}
 
 			if (this._handleItemChanges) {
@@ -726,7 +728,7 @@
 				var inner = this._inner;
 
 				for (var i = inner.length; i;) {
-					if (inner[--i] instanceof EventEmitter) {
+					if (--i in inner && inner[i] instanceof EventEmitter) {
 						inner[i].off('change', this._onItemChange);
 					}
 				}

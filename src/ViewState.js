@@ -22,8 +22,8 @@
 
 			this.properties = Object.keys(props);
 
-			for (var id in props) {
-				this[id] = typeof props[id] == 'function' ? props[id] : new ActiveProperty(props[id]);
+			for (var name in props) {
+				this[name] = typeof props[name] == 'function' ? props[name] : new ActiveProperty(props[name]);
 			}
 		},
 
@@ -56,8 +56,8 @@
 		updateFromSerializedData: function(data) {
 			var deserialized = {};
 
-			for (var id in data) {
-				deserialized[id] = deserialize(data[id]).v;
+			for (var name in data) {
+				deserialized[name] = deserialize(data[name]).v;
 			}
 
 			this.update(deserialized);
@@ -73,8 +73,8 @@
 			var props = this.properties;
 
 			for (var i = props.length; i;) {
-				var id = props[--i];
-				this[id](hasOwn.call(data, id) ? data[id] : this[id]('dataCell', 0).initialValue);
+				var name = props[--i];
+				this[name](hasOwn.call(data, name) ? data[name] : this[name]('dataCell', 0).initialValue);
 			}
 
 			return this;

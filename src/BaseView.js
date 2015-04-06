@@ -2,7 +2,6 @@
 
 	var getUID = rt.object.getUID;
 	var execNamespace = rt.namespace.exec;
-	var escapeRegExp = rt.regex.escape;
 	var getHash = rt.value.getHash;
 	var toString = rt.value.toString;
 	var nextTick = rt.process.nextTick;
@@ -16,9 +15,23 @@
 
 	var reNameClass = /^(.+?)::(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
-	var reBlockElement = {};
 	var keyView = '_rt-view';
 	var keyViewElementName = '_rt-viewElementName';
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift.BaseView} view
+	 */
+	function afterDataReceiving(view) {
+		if (view._afterDataReceiving != emptyFn) {
+			try {
+				view._afterDataReceiving();
+			} catch (err) {
+				view._logError(err);
+			}
+		}
+	}
 
 	/**
 	 * @private
@@ -174,7 +187,15 @@
 	 * @param {HTMLElement} el
 	 */
 	function removeElement(view, el) {
-		view.unregElement(el);
+		if (!hasOwn.call(el, keyViewElementName) || !el[keyViewElementName] || el[keyView] != view) {
+			return;
+		}
+
+		el[keyView] = null;
+		el[keyViewElementName] = undef;
+
+		var els = view.elements[el[keyViewElementName]];
+		els.splice(els.indexOf(el), 1);
 
 		if (el.parentNode) {
 			el.parentNode.removeChild(el);
@@ -422,8 +443,6 @@
 				var view = this;
 
 				if (rendered) {
-					this._collectElements();
-
 					this.block
 						.find('[rt-p=' + this._id + ']')
 						.each(function() {
@@ -450,8 +469,6 @@
 						}
 
 						(function _(view) {
-							view._collectElements();
-
 							var children = view.children;
 
 							for (var i = 0, l = children.length; i < l; i++) {
@@ -594,26 +611,37 @@
 				throw new TypeError('Cannot run the rendering when it is in process');
 			}
 
-			if (this.receiveData != emptyFn) {
+			if (this._receiveData != emptyFn) {
 				var view = this;
 
+				if (this._beforeDataReceiving != emptyFn) {
+					try {
+						this._beforeDataReceiving();
+					} catch (err) {
+						this._logError(err);
+					}
+				}
+
 				try {
-					if (this.receiveData.length) {
-						view.receiveData(function(err) {
+					if (this._receiveData.length) {
+						view._receiveData(function(err) {
 							if (err != null) {
 								view.dataReceivingError = err;
 								view._logError(err);
 							}
 
+							afterDataReceiving(view);
 							renderInner(view, cb);
 						});
 					} else {
-						this.receiveData().then(function() {
+						this._receiveData().then(function() {
+							afterDataReceiving(view);
 							renderInner(view, cb);
 						}, function(err) {
 							view.dataReceivingError = err;
 							view._logError(err);
 
+							afterDataReceiving(view);
 							renderInner(view, cb);
 						});
 					}
@@ -621,6 +649,7 @@
 					this.dataReceivingError = err;
 					this._logError(err);
 
+					afterDataReceiving(this);
 					renderInner(this, cb);
 				}
 			} else {
@@ -629,23 +658,20 @@
 		},
 
 		/**
+		 * @protected
+		 */
+		_beforeDataReceiving: emptyFn,
+
+		/**
+		 * @protected
+		 */
+		_afterDataReceiving: emptyFn,
+
+		/**
 		 * @param {Function} [cb]
 		 * @returns {Promise|undefined}
 		 */
-		receiveData: emptyFn,
-
-		_collectElements: function() {
-			var blockName = this.blockName;
-			var reBE = hasOwn.call(reBlockElement, blockName) ?
-				reBlockElement[blockName] :
-				(reBlockElement[blockName] = RegExp('(?:^|\\s)' + escapeRegExp(blockName) + '_([^_\\s]+)(?:\\s|$)'));
-			var els = this.elements;
-
-			this.block.find('.' + this._id + '--').each(function() {
-				var name = this.className.match(reBE)[1];
-				(els[name] || (els[name] = $())).push(this);
-			});
-		},
+		_receiveData: emptyFn,
 
 		/**
 		 * @protected
@@ -668,11 +694,11 @@
 		 */
 		regChild: function(child) {
 			if (child._parent) {
-				if (child._parent != this) {
-					throw new TypeError('View is already registered as a child of other view');
+				if (child._parent == this) {
+					return this;
 				}
 
-				return this;
+				throw new TypeError('View is already used as a child of view');
 			}
 
 			child._parent = this;
@@ -709,71 +735,7 @@
 
 			if (childName) {
 				var namedChildren = children[childName];
-
 				namedChildren.splice(namedChildren.indexOf(child), 1);
-
-				if (!namedChildren.length) {
-					delete children[childName];
-				}
-			}
-
-			return this;
-		},
-
-		/**
-		 * Регистрирует элемент.
-		 *
-		 * @param {string} name
-		 * @param {HTMLElement} el
-		 * @returns {Rift.BaseView}
-		 */
-		regElement: function(name, el) {
-			if (hasOwn.call(el, keyView) && el[keyView]) {
-				if (!hasOwn.call(el, keyViewElementName) || !el[keyViewElementName]) {
-					throw new TypeError('Element can\'t be registered because it is used as a block of view');
-				}
-
-				if (el[keyView] != this || el[keyViewElementName] != name) {
-					throw new TypeError('Element is already registered as an element of other view');
-				}
-
-				return this;
-			}
-
-			el[keyView] = this;
-			el[keyViewElementName] = name;
-
-			(hasOwn.call(this.elements, name) ? this.elements[name] : (this.elements[name] = $())).push(el);
-
-			return this;
-		},
-
-		/**
-		 * Отменяет регистрацию элемента.
-		 *
-		 * @param {HTMLElement} el
-		 * @returns {Rift.BaseView}
-		 */
-		unregElement: function(el) {
-			if (!hasOwn.call(el, keyViewElementName)) {
-				return this;
-			}
-
-			var name = el[keyViewElementName];
-
-			if (!name || el[keyView] != this) {
-				return this;
-			}
-
-			el[keyView] = null;
-			el[keyViewElementName] = undef;
-
-			var els = this.elements[name];
-
-			els.splice(els.indexOf(el), 1);
-
-			if (!els.length) {
-				delete this.elements[name];
 			}
 
 			return this;
@@ -786,8 +748,8 @@
 		 * this.$('btnSend'); // получение элемента(ов) по имени
 		 *
 		 * @example
-		 * // создаёт новый элемент `<li class="Module_item __selected">Hi!</li>`,
-		 * // добавляет его в коллекцию item и возвращает всю коллекцию
+		 * // создаёт новый элемент `<li class="Module_element __selected">Hi!</li>`,
+		 * // добавляет его в коллекцию `element` и возвращает коллекцию с новым элементом
 		 * this.$('item', '<li class="__selected">Hi!</li>');
 		 *
 		 * @example
@@ -795,10 +757,26 @@
 		 * this.$('item', { tagName: 'li', mods: { selected: true }, html: 'Hi!' });
 		 *
 		 * @param {string} name
-		 * @param {...({ tagName: string, mods: Object, attrs: Object<string>, html: string }|string|HTMLElement)} [el]
+		 * @param {...(HTMLElement|string|{ tagName: string, attrs: Object<string>, mods: Object, html: string })} [el]
 		 * @returns {$}
 		 */
 		$: function(name) {
+			var els;
+
+			if (hasOwn.call(this.elements, name)) {
+				els = this.elements[name];
+			} else {
+				els = $('.' + this.blockName + '_' + name, this.block);
+
+				if (this._checkDescendantElements(this.blockName, name)) {
+					els = els.filter(function() {
+						return !hasOwn.call(this, keyView) || !this[keyView];
+					});
+				}
+
+				this.elements[name] = els;
+			}
+
 			var argCount = arguments.length;
 
 			if (argCount > 1) {
@@ -806,50 +784,66 @@
 
 				do {
 					var el = arguments[i];
-					var type = typeof el;
+					var isString = typeof el == 'string';
 
-					if (type == 'string' || el instanceof HTMLElement) {
-						if (type == 'string') {
+					if (isString || el instanceof HTMLElement) {
+						if (isString) {
 							var outer = document.createElement('div');
-
 							outer.innerHTML = el;
+
 							el = outer.childNodes.length == 1 && outer.firstChild.nodeType == 1 ?
-								outer.firstChild : outer;
+								outer.firstChild :
+								outer;
+						} else {
+							if (hasOwn.call(el, keyView) && el[keyView]) {
+								if (!hasOwn.call(el, keyViewElementName) || !el[keyViewElementName]) {
+									throw new TypeError('Element is already used as a block of view');
+								}
+
+								if (el[keyView] != this || el[keyViewElementName] != name) {
+									throw new TypeError('Element is already used as an element of view');
+								}
+
+								continue;
+							}
 						}
 
 						el.className = (this.blockName + '_' + name + ' ' + el.className).trim();
 					} else {
-						var elem = document.createElement(el.tagName || 'div');
+						var elDescr = el;
 						var cls = [this.blockName + '_' + name];
 
-						if (el.mods) {
-							pushMods(cls, el.mods);
+						el = document.createElement(elDescr.tagName || 'div');
+
+						if (elDescr.mods) {
+							pushMods(cls, elDescr.mods);
 						}
 
-						elem.className = cls.join(' ');
+						el.className = cls.join(' ');
 
-						if (el.attrs) {
-							setAttributes(elem, el.attrs);
+						if (elDescr.attrs) {
+							setAttributes(el, elDescr.attrs);
 						}
 
-						if (el.html) {
-							elem.innerHTML = el.html;
+						if (elDescr.html) {
+							el.innerHTML = elDescr.html;
 						}
-
-						el = elem;
 					}
 
-					this.regElement(name, el);
+					el[keyView] = this;
+					el[keyViewElementName] = name;
+
+					els.push(el);
 				} while (++i < argCount);
 			}
 
-			return this.elements[name];
+			return els;
 		},
 
 		/**
 		 * Удаляет элемент(ы) из dom-дерева и отменяет его(их) регистрацию.
 		 *
-		 * @param {...(HTMLElement|string|$)} els
+		 * @param {...($|HTMLElement|string)} els
 		 * @returns {Rift.BaseView}
 		 */
 		$rm: function() {
@@ -879,6 +873,33 @@
 		},
 
 		/**
+		 * @protected
+		 *
+		 * @param {string} blockName
+		 * @param {string} name
+		 * @returns {boolean}
+		 */
+		_checkDescendantElements: function(blockName, name) {
+			var children = this.children;
+			var result = false;
+
+			for (var i = children.length; i;) {
+				var child = children[--i];
+
+				if (child.blockName == blockName) {
+					child.$(name);
+					result = true;
+				} else {
+					if (child._checkDescendantElements(blockName, name)) {
+						result = true;
+					}
+				}
+			}
+
+			return result;
+		},
+
+		/**
 		 * @param {string} children
 		 * @param {string} method
 		 * @param {...*} [args]
@@ -896,7 +917,15 @@
 				cl = '*';
 			}
 
-			children = name == '*' ? this.children : this.children[name];
+			if (name == '*') {
+				children = this.children;
+			} else {
+				if (!hasOwn.call(this.children, name)) {
+					return [];
+				}
+
+				children = this.children[name];
+			}
 
 			if (cl == '*') {
 				children = children.slice(0);
@@ -1016,8 +1045,8 @@
 				parentChildren.splice(parentChildren.indexOf(this), 1);
 
 				if (this.name) {
-					parentChildren = parentChildren[this.name];
-					parentChildren.splice(parentChildren.indexOf(this), 1);
+					var namedParentChildren = parentChildren[this.name];
+					namedParentChildren.splice(namedParentChildren.indexOf(this), 1);
 				}
 			}
 

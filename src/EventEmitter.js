@@ -58,7 +58,7 @@
 		 * @returns {Rift.EventEmitter}
 		 */
 		on: wrapListeningMethod(function(type, listener, context) {
-			var events = this._events || (this._events = {});
+			var events = this._events || (this._events = Object.create(null));
 
 			(events[type] || (events[type] = [])).push({
 				listener: listener,
@@ -73,7 +73,7 @@
 		 * @returns {Rift.EventEmitter}
 		 */
 		off: wrapListeningMethod(function(type, listener, context) {
-			var events = (this._events || (this._events = {}))[type];
+			var events = (this._events || (this._events = Object.create(null)))[type];
 
 			if (!events) {
 				return;
@@ -86,14 +86,10 @@
 			for (var i = events.length; i;) {
 				var evt = events[--i];
 
-				if (
-					evt.context == context && (
-						evt.listener == listener || (
-							hasOwn.call(evt.listener, keyListeningInner) &&
-								evt.listener[keyListeningInner] === listener
-						)
-					)
-				) {
+				if (evt.context == context && (
+					evt.listener == listener ||
+						(hasOwn.call(evt.listener, keyListeningInner) && evt.listener[keyListeningInner] === listener)
+				)) {
 					events.splice(i, 1);
 				}
 			}
@@ -153,7 +149,7 @@
 		_handleEvent: function(evt) {
 			if (!this.silent || evt.target != this) {
 				var type = evt.type;
-				var events = (this._events || (this._events = {}))[type];
+				var events = (this._events || (this._events = Object.create(null)))[type];
 				var eventCount;
 
 				if (typeof this['on' + type] == 'function') {

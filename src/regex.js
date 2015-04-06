@@ -11,7 +11,8 @@
 	 * @example
 	 * var re = 'Hello?!*`~World+()[]';
 	 * re = new RegExp(escapeRegExp(re));
-	 * console.log(re); // /Hello\?!\*`~World\+\(\)\[\]/
+	 * console.log(re);
+	 * // => /Hello\?!\*`~World\+\(\)\[\]/
 	 *
 	 * @param {string} str
 	 * @returns {string}
@@ -31,9 +32,9 @@
 	 * forEachMatch(/(\w+)\-(\d+)/g, 'a-1 b-2 c-3', function(match, name, value) {
 	 *     console.log(name + '=' + value);
 	 * });
-	 * // a=1
-	 * // b=2
-	 * // c=3
+	 * // => a=1
+	 * // => b=2
+	 * // => c=3
 	 *
 	 * @param {RegExp} re - Регулярное выражение.
 	 * @param {string} str - Строка, в которой будет происходить поиск совпадений.

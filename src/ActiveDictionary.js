@@ -110,7 +110,7 @@
 			var valueCount = this._valueCount;
 			var handleItemChanges = this._handleItemChanges;
 			var changed = false;
-			var removedValueDict = Object.create(null);
+			var removedValueDict = {};
 			var removedValues = [];
 			var addedValues = [];
 			var diff = {
@@ -152,7 +152,7 @@
 							value.on('change', this._onItemChange, this);
 						}
 
-						if (valueHash in removedValueDict) {
+						if (hasOwn.call(removedValueDict, valueHash)) {
 							delete removedValueDict[valueHash];
 						} else {
 							addedValues.push(value);

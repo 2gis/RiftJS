@@ -2,25 +2,36 @@
 
 	var nextUID = rt.uid.next;
 
-	var keyUID = '_rt-uid';
-
 	/**
 	 * Получает уникальный идентификатор объекта.
 	 *
+	 * @function
 	 * @memberOf Rift.object
 	 *
 	 * @param {Object} obj
 	 * @param {string} [prefix]
 	 * @returns {string}
 	 */
-	function getUID(obj, prefix) {
-		if (!hasOwn.call(obj, keyUID)) {
-			Object.defineProperty(obj, keyUID, {
-				value: nextUID(prefix)
-			});
-		}
+	var getUID;
 
-		return obj[keyUID];
+	if (typeof Symbol == 'function' && typeof Symbol.iterator == 'symbol') {
+		var smbUID = Symbol('uid');
+
+		getUID = function getUID(obj, prefix) {
+			return obj[smbUID] || (obj[smbUID] = nextUID(prefix));
+		};
+	} else {
+		var keyUID = '_rt-uid';
+
+		getUID = function getUID(obj, prefix) {
+			if (!hasOwn.call(obj, keyUID)) {
+				Object.defineProperty(obj, keyUID, {
+					value: nextUID(prefix)
+				});
+			}
+
+			return obj[keyUID];
+		};
 	}
 
 	/**
@@ -32,7 +43,7 @@
 	 * @returns {Object}
 	 */
 	function mixin(obj, source, skipDontEnum) {
-		var names = Object[skipDontEnum ? 'keys' : 'getOwnPropertyNames'](source);
+		var names = skipDontEnum ? Object.keys(source) : Object.getOwnPropertyNames(source);
 
 		for (var i = names.length; i;) {
 			Object.defineProperty(obj, names[--i], Object.getOwnPropertyDescriptor(source, names[i]));

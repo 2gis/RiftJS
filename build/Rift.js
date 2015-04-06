@@ -138,25 +138,36 @@ if (!Object.assign) {
 
 	var nextUID = rt.uid.next;
 
-	var keyUID = '_rt-uid';
-
 	/**
 	 * Получает уникальный идентификатор объекта.
 	 *
+	 * @function
 	 * @memberOf Rift.object
 	 *
 	 * @param {Object} obj
 	 * @param {string} [prefix]
 	 * @returns {string}
 	 */
-	function getUID(obj, prefix) {
-		if (!hasOwn.call(obj, keyUID)) {
-			Object.defineProperty(obj, keyUID, {
-				value: nextUID(prefix)
-			});
-		}
+	var getUID;
 
-		return obj[keyUID];
+	if (typeof Symbol == 'function' && typeof Symbol.iterator == 'symbol') {
+		var smbUID = Symbol('uid');
+
+		getUID = function getUID(obj, prefix) {
+			return obj[smbUID] || (obj[smbUID] = nextUID(prefix));
+		};
+	} else {
+		var keyUID = '_rt-uid';
+
+		getUID = function getUID(obj, prefix) {
+			if (!hasOwn.call(obj, keyUID)) {
+				Object.defineProperty(obj, keyUID, {
+					value: nextUID(prefix)
+				});
+			}
+
+			return obj[keyUID];
+		};
 	}
 
 	/**
@@ -168,7 +179,7 @@ if (!Object.assign) {
 	 * @returns {Object}
 	 */
 	function mixin(obj, source, skipDontEnum) {
-		var names = Object[skipDontEnum ? 'keys' : 'getOwnPropertyNames'](source);
+		var names = skipDontEnum ? Object.keys(source) : Object.getOwnPropertyNames(source);
 
 		for (var i = names.length; i;) {
 			Object.defineProperty(obj, names[--i], Object.getOwnPropertyDescriptor(source, names[i]));
@@ -270,7 +281,8 @@ if (!Object.assign) {
 	 * @example
 	 * var re = 'Hello?!*`~World+()[]';
 	 * re = new RegExp(escapeRegExp(re));
-	 * console.log(re); // /Hello\?!\*`~World\+\(\)\[\]/
+	 * console.log(re);
+	 * // => /Hello\?!\*`~World\+\(\)\[\]/
 	 *
 	 * @param {string} str
 	 * @returns {string}
@@ -290,9 +302,9 @@ if (!Object.assign) {
 	 * forEachMatch(/(\w+)\-(\d+)/g, 'a-1 b-2 c-3', function(match, name, value) {
 	 *     console.log(name + '=' + value);
 	 * });
-	 * // a=1
-	 * // b=2
-	 * // c=3
+	 * // => a=1
+	 * // => b=2
+	 * // => c=3
 	 *
 	 * @param {RegExp} re - Регулярное выражение.
 	 * @param {string} str - Строка, в которой будет происходить поиск совпадений.
@@ -370,7 +382,7 @@ if (!Object.assign) {
 		']',
 		'g'
 	);
-	var conversionDict = {
+	var conversionDict = Object.assign(Object.create(null), {
 		'\b': '\\b',
 		'\t': '\\t',
 		'\n': '\\n',
@@ -378,7 +390,7 @@ if (!Object.assign) {
 		'\r': '\\r',
 		'\'': '\\\'',
 		'\\': '\\\\'
-	};
+	});
 
 	/**
 	 * @private
@@ -388,9 +400,7 @@ if (!Object.assign) {
 	 */
 	function escapeString(str) {
 		return str.replace(reEscapableChars, function(chr) {
-			return hasOwn.call(conversionDict, chr) ?
-				conversionDict[chr] :
-				'\\u' + ('0000' + chr.charCodeAt(0).toString(16)).slice(-4);
+			return conversionDict[chr] || '\\u' + ('0000' + chr.charCodeAt(0).toString(16)).slice(-4);
 		});
 	}
 
@@ -426,7 +436,7 @@ if (!Object.assign) {
 				js.unshift(--i in value ? toString(value[i]) : '');
 			}
 
-			js = '[' + js + (js[js.length - 1] == '' ? ',]' : ']');
+			js = '[' + js.join(',') + (js[js.length - 1] == '' ? ',]' : ']');
 		} else {
 			for (var name in value) {
 				if (hasOwn.call(value, name)) {
@@ -949,7 +959,7 @@ if (!Object.assign) {
 		 * @returns {Rift.EventEmitter}
 		 */
 		on: wrapListeningMethod(function(type, listener, context) {
-			var events = this._events || (this._events = {});
+			var events = this._events || (this._events = Object.create(null));
 
 			(events[type] || (events[type] = [])).push({
 				listener: listener,
@@ -964,7 +974,7 @@ if (!Object.assign) {
 		 * @returns {Rift.EventEmitter}
 		 */
 		off: wrapListeningMethod(function(type, listener, context) {
-			var events = (this._events || (this._events = {}))[type];
+			var events = (this._events || (this._events = Object.create(null)))[type];
 
 			if (!events) {
 				return;
@@ -977,14 +987,10 @@ if (!Object.assign) {
 			for (var i = events.length; i;) {
 				var evt = events[--i];
 
-				if (
-					evt.context == context && (
-						evt.listener == listener || (
-							hasOwn.call(evt.listener, keyListeningInner) &&
-								evt.listener[keyListeningInner] === listener
-						)
-					)
-				) {
+				if (evt.context == context && (
+					evt.listener == listener ||
+						(hasOwn.call(evt.listener, keyListeningInner) && evt.listener[keyListeningInner] === listener)
+				)) {
 					events.splice(i, 1);
 				}
 			}
@@ -1044,7 +1050,7 @@ if (!Object.assign) {
 		_handleEvent: function(evt) {
 			if (!this.silent || evt.target != this) {
 				var type = evt.type;
-				var events = (this._events || (this._events = {}))[type];
+				var events = (this._events || (this._events = Object.create(null)))[type];
 				var eventCount;
 
 				if (typeof this['on' + type] == 'function') {
@@ -1213,7 +1219,7 @@ if (!Object.assign) {
 			var valueCount = this._valueCount;
 			var handleItemChanges = this._handleItemChanges;
 			var changed = false;
-			var removedValueDict = Object.create(null);
+			var removedValueDict = {};
 			var removedValues = [];
 			var addedValues = [];
 			var diff = {
@@ -1255,7 +1261,7 @@ if (!Object.assign) {
 							value.on('change', this._onItemChange, this);
 						}
 
-						if (valueHash in removedValueDict) {
+						if (hasOwn.call(removedValueDict, valueHash)) {
 							delete removedValueDict[valueHash];
 						} else {
 							addedValues.push(value);
@@ -2108,7 +2114,9 @@ if (!Object.assign) {
 			var inner = this._inner;
 
 			for (var i = inner.length; i;) {
-				data[--i] = inner[i];
+				if (--i in inner) {
+					data[i] = inner[i];
+				}
 			}
 
 			if (this._handleItemChanges) {
@@ -2133,7 +2141,7 @@ if (!Object.assign) {
 				var inner = this._inner;
 
 				for (var i = inner.length; i;) {
-					if (inner[--i] instanceof EventEmitter) {
+					if (--i in inner && inner[i] instanceof EventEmitter) {
 						inner[i].off('change', this._onItemChange);
 					}
 				}
@@ -2175,10 +2183,10 @@ if (!Object.assign) {
 	/**
 	 * @private
 	 */
-	var outdatedDataCells = {
+	var outdatedDataCells = Object.assign(Object.create(null), {
 		first: null,
 		last: null
-	};
+	});
 
 	var circularityDetectionCounter = {};
 
@@ -2473,12 +2481,12 @@ if (!Object.assign) {
 	 *     }
 	 * });
 	 *
-	 * console.log(c.value); // 3
+	 * console.log(c.value);
+	 * // => 3
 	 *
 	 * a.value = 5;
 	 * b.value = 10;
-	 *
-	 * // c.value: 15
+	 * // => 'c.value: 15'
 	 *
 	 * @param {*|Function} [value] - Значение или функция для его вычисления.
 	 * @param {Object} [opts] - Опции.
@@ -2988,7 +2996,7 @@ if (!Object.assign) {
 	 * @private
 	 */
 	function exec(prop, id, initialValue, opts, args) {
-		var dc = (this._dataCells || (this._dataCells = {}))[id];
+		var dc = (this._dataCells || (this._dataCells = Object.create(null)))[id];
 
 		if (!dc) {
 			if (typeof initialValue == 'function') {
@@ -3689,38 +3697,6 @@ if (!Object.assign) {
 	var classes = rt.Class.classes;
 	var ActiveDictionary = rt.ActiveDictionary;
 	var ActiveArray = rt.ActiveArray;
-	var pushMods = rt.mods.push;
-
-	/**
-	 * @param {Object|Array|Rift.ActiveDictionary|Rift.ActiveArray} [target]
-	 * @param {Function} cb
-	 * @param {Object} context
-	 */
-	function each(target, cb, context) {
-		if (!target) {
-			return;
-		}
-
-		if (target instanceof ActiveDictionary) {
-			target = target.toObject();
-		} else if (target instanceof ActiveArray) {
-			target = target.toArray();
-		}
-
-		if (Array.isArray(target)) {
-			for (var i = 0, l = target.length; i < l; i++) {
-				if (i in target) {
-					cb.call(context, target[i], i);
-				}
-			}
-		} else {
-			for (var name in target) {
-				if (hasOwn.call(target, name)) {
-					cb.call(context, target[name], name);
-				}
-			}
-		}
-	}
 
 	/**
 	 * @param {string} viewClass
@@ -3756,22 +3732,36 @@ if (!Object.assign) {
 		return mark;
 	}
 
-	var helpers = {
-		/**
-		 * @param {string} name
-		 * @param {Object} [mods]
-		 * @returns {string}
-		 */
-		el: function(name, mods) {
-			var cls = [this.blockName + '_' + name, this._id + '--'];
-
-			if (mods) {
-				pushMods(cls, mods);
-			}
-
-			return cls.join(' ');
+	/**
+	 * @param {Object|Array|Rift.ActiveDictionary|Rift.ActiveArray} [target]
+	 * @param {Function} cb
+	 * @param {Object} context
+	 */
+	function each(target, cb, context) {
+		if (!target) {
+			return;
 		}
-	};
+
+		if (target instanceof ActiveDictionary) {
+			target = target.toObject();
+		} else if (target instanceof ActiveArray) {
+			target = target.toArray();
+		}
+
+		if (Array.isArray(target)) {
+			for (var i = 0, l = target.length; i < l; i++) {
+				if (i in target) {
+					cb.call(context, target[i], i);
+				}
+			}
+		} else {
+			for (var name in target) {
+				if (hasOwn.call(target, name)) {
+					cb.call(context, target[name], name);
+				}
+			}
+		}
+	}
 
 	/**
 	 * @namespace Rift.template
@@ -3779,7 +3769,6 @@ if (!Object.assign) {
 	rt.template = {
 		defaults: {
 			include: include,
-			helpers: helpers,
 			each: each
 		},
 
@@ -4020,7 +4009,6 @@ if (!Object.assign) {
 
 	var getUID = rt.object.getUID;
 	var execNamespace = rt.namespace.exec;
-	var escapeRegExp = rt.regex.escape;
 	var getHash = rt.value.getHash;
 	var toString = rt.value.toString;
 	var nextTick = rt.process.nextTick;
@@ -4034,9 +4022,23 @@ if (!Object.assign) {
 
 	var reNameClass = /^(.+?)::(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
-	var reBlockElement = {};
 	var keyView = '_rt-view';
 	var keyViewElementName = '_rt-viewElementName';
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift.BaseView} view
+	 */
+	function afterDataReceiving(view) {
+		if (view._afterDataReceiving != emptyFn) {
+			try {
+				view._afterDataReceiving();
+			} catch (err) {
+				view._logError(err);
+			}
+		}
+	}
 
 	/**
 	 * @private
@@ -4192,7 +4194,15 @@ if (!Object.assign) {
 	 * @param {HTMLElement} el
 	 */
 	function removeElement(view, el) {
-		view.unregElement(el);
+		if (!hasOwn.call(el, keyViewElementName) || !el[keyViewElementName] || el[keyView] != view) {
+			return;
+		}
+
+		el[keyView] = null;
+		el[keyViewElementName] = undef;
+
+		var els = view.elements[el[keyViewElementName]];
+		els.splice(els.indexOf(el), 1);
 
 		if (el.parentNode) {
 			el.parentNode.removeChild(el);
@@ -4440,8 +4450,6 @@ if (!Object.assign) {
 				var view = this;
 
 				if (rendered) {
-					this._collectElements();
-
 					this.block
 						.find('[rt-p=' + this._id + ']')
 						.each(function() {
@@ -4468,8 +4476,6 @@ if (!Object.assign) {
 						}
 
 						(function _(view) {
-							view._collectElements();
-
 							var children = view.children;
 
 							for (var i = 0, l = children.length; i < l; i++) {
@@ -4612,26 +4618,37 @@ if (!Object.assign) {
 				throw new TypeError('Cannot run the rendering when it is in process');
 			}
 
-			if (this.receiveData != emptyFn) {
+			if (this._receiveData != emptyFn) {
 				var view = this;
 
+				if (this._beforeDataReceiving != emptyFn) {
+					try {
+						this._beforeDataReceiving();
+					} catch (err) {
+						this._logError(err);
+					}
+				}
+
 				try {
-					if (this.receiveData.length) {
-						view.receiveData(function(err) {
+					if (this._receiveData.length) {
+						view._receiveData(function(err) {
 							if (err != null) {
 								view.dataReceivingError = err;
 								view._logError(err);
 							}
 
+							afterDataReceiving(view);
 							renderInner(view, cb);
 						});
 					} else {
-						this.receiveData().then(function() {
+						this._receiveData().then(function() {
+							afterDataReceiving(view);
 							renderInner(view, cb);
 						}, function(err) {
 							view.dataReceivingError = err;
 							view._logError(err);
 
+							afterDataReceiving(view);
 							renderInner(view, cb);
 						});
 					}
@@ -4639,6 +4656,7 @@ if (!Object.assign) {
 					this.dataReceivingError = err;
 					this._logError(err);
 
+					afterDataReceiving(this);
 					renderInner(this, cb);
 				}
 			} else {
@@ -4647,23 +4665,20 @@ if (!Object.assign) {
 		},
 
 		/**
+		 * @protected
+		 */
+		_beforeDataReceiving: emptyFn,
+
+		/**
+		 * @protected
+		 */
+		_afterDataReceiving: emptyFn,
+
+		/**
 		 * @param {Function} [cb]
 		 * @returns {Promise|undefined}
 		 */
-		receiveData: emptyFn,
-
-		_collectElements: function() {
-			var blockName = this.blockName;
-			var reBE = hasOwn.call(reBlockElement, blockName) ?
-				reBlockElement[blockName] :
-				(reBlockElement[blockName] = RegExp('(?:^|\\s)' + escapeRegExp(blockName) + '_([^_\\s]+)(?:\\s|$)'));
-			var els = this.elements;
-
-			this.block.find('.' + this._id + '--').each(function() {
-				var name = this.className.match(reBE)[1];
-				(els[name] || (els[name] = $())).push(this);
-			});
-		},
+		_receiveData: emptyFn,
 
 		/**
 		 * @protected
@@ -4686,11 +4701,11 @@ if (!Object.assign) {
 		 */
 		regChild: function(child) {
 			if (child._parent) {
-				if (child._parent != this) {
-					throw new TypeError('View is already registered as a child of other view');
+				if (child._parent == this) {
+					return this;
 				}
 
-				return this;
+				throw new TypeError('View is already used as a child of view');
 			}
 
 			child._parent = this;
@@ -4727,71 +4742,7 @@ if (!Object.assign) {
 
 			if (childName) {
 				var namedChildren = children[childName];
-
 				namedChildren.splice(namedChildren.indexOf(child), 1);
-
-				if (!namedChildren.length) {
-					delete children[childName];
-				}
-			}
-
-			return this;
-		},
-
-		/**
-		 * Регистрирует элемент.
-		 *
-		 * @param {string} name
-		 * @param {HTMLElement} el
-		 * @returns {Rift.BaseView}
-		 */
-		regElement: function(name, el) {
-			if (hasOwn.call(el, keyView) && el[keyView]) {
-				if (!hasOwn.call(el, keyViewElementName) || !el[keyViewElementName]) {
-					throw new TypeError('Element can\'t be registered because it is used as a block of view');
-				}
-
-				if (el[keyView] != this || el[keyViewElementName] != name) {
-					throw new TypeError('Element is already registered as an element of other view');
-				}
-
-				return this;
-			}
-
-			el[keyView] = this;
-			el[keyViewElementName] = name;
-
-			(hasOwn.call(this.elements, name) ? this.elements[name] : (this.elements[name] = $())).push(el);
-
-			return this;
-		},
-
-		/**
-		 * Отменяет регистрацию элемента.
-		 *
-		 * @param {HTMLElement} el
-		 * @returns {Rift.BaseView}
-		 */
-		unregElement: function(el) {
-			if (!hasOwn.call(el, keyViewElementName)) {
-				return this;
-			}
-
-			var name = el[keyViewElementName];
-
-			if (!name || el[keyView] != this) {
-				return this;
-			}
-
-			el[keyView] = null;
-			el[keyViewElementName] = undef;
-
-			var els = this.elements[name];
-
-			els.splice(els.indexOf(el), 1);
-
-			if (!els.length) {
-				delete this.elements[name];
 			}
 
 			return this;
@@ -4804,8 +4755,8 @@ if (!Object.assign) {
 		 * this.$('btnSend'); // получение элемента(ов) по имени
 		 *
 		 * @example
-		 * // создаёт новый элемент `<li class="Module_item __selected">Hi!</li>`,
-		 * // добавляет его в коллекцию item и возвращает всю коллекцию
+		 * // создаёт новый элемент `<li class="Module_element __selected">Hi!</li>`,
+		 * // добавляет его в коллекцию `element` и возвращает коллекцию с новым элементом
 		 * this.$('item', '<li class="__selected">Hi!</li>');
 		 *
 		 * @example
@@ -4813,10 +4764,26 @@ if (!Object.assign) {
 		 * this.$('item', { tagName: 'li', mods: { selected: true }, html: 'Hi!' });
 		 *
 		 * @param {string} name
-		 * @param {...({ tagName: string, mods: Object, attrs: Object<string>, html: string }|string|HTMLElement)} [el]
+		 * @param {...(HTMLElement|string|{ tagName: string, attrs: Object<string>, mods: Object, html: string })} [el]
 		 * @returns {$}
 		 */
 		$: function(name) {
+			var els;
+
+			if (hasOwn.call(this.elements, name)) {
+				els = this.elements[name];
+			} else {
+				els = $('.' + this.blockName + '_' + name, this.block);
+
+				if (this._checkDescendantElements(this.blockName, name)) {
+					els = els.filter(function() {
+						return !hasOwn.call(this, keyView) || !this[keyView];
+					});
+				}
+
+				this.elements[name] = els;
+			}
+
 			var argCount = arguments.length;
 
 			if (argCount > 1) {
@@ -4824,50 +4791,66 @@ if (!Object.assign) {
 
 				do {
 					var el = arguments[i];
-					var type = typeof el;
+					var isString = typeof el == 'string';
 
-					if (type == 'string' || el instanceof HTMLElement) {
-						if (type == 'string') {
+					if (isString || el instanceof HTMLElement) {
+						if (isString) {
 							var outer = document.createElement('div');
-
 							outer.innerHTML = el;
+
 							el = outer.childNodes.length == 1 && outer.firstChild.nodeType == 1 ?
-								outer.firstChild : outer;
+								outer.firstChild :
+								outer;
+						} else {
+							if (hasOwn.call(el, keyView) && el[keyView]) {
+								if (!hasOwn.call(el, keyViewElementName) || !el[keyViewElementName]) {
+									throw new TypeError('Element is already used as a block of view');
+								}
+
+								if (el[keyView] != this || el[keyViewElementName] != name) {
+									throw new TypeError('Element is already used as an element of view');
+								}
+
+								continue;
+							}
 						}
 
 						el.className = (this.blockName + '_' + name + ' ' + el.className).trim();
 					} else {
-						var elem = document.createElement(el.tagName || 'div');
+						var elDescr = el;
 						var cls = [this.blockName + '_' + name];
 
-						if (el.mods) {
-							pushMods(cls, el.mods);
+						el = document.createElement(elDescr.tagName || 'div');
+
+						if (elDescr.mods) {
+							pushMods(cls, elDescr.mods);
 						}
 
-						elem.className = cls.join(' ');
+						el.className = cls.join(' ');
 
-						if (el.attrs) {
-							setAttributes(elem, el.attrs);
+						if (elDescr.attrs) {
+							setAttributes(el, elDescr.attrs);
 						}
 
-						if (el.html) {
-							elem.innerHTML = el.html;
+						if (elDescr.html) {
+							el.innerHTML = elDescr.html;
 						}
-
-						el = elem;
 					}
 
-					this.regElement(name, el);
+					el[keyView] = this;
+					el[keyViewElementName] = name;
+
+					els.push(el);
 				} while (++i < argCount);
 			}
 
-			return this.elements[name];
+			return els;
 		},
 
 		/**
 		 * Удаляет элемент(ы) из dom-дерева и отменяет его(их) регистрацию.
 		 *
-		 * @param {...(HTMLElement|string|$)} els
+		 * @param {...($|HTMLElement|string)} els
 		 * @returns {Rift.BaseView}
 		 */
 		$rm: function() {
@@ -4897,6 +4880,33 @@ if (!Object.assign) {
 		},
 
 		/**
+		 * @protected
+		 *
+		 * @param {string} blockName
+		 * @param {string} name
+		 * @returns {boolean}
+		 */
+		_checkDescendantElements: function(blockName, name) {
+			var children = this.children;
+			var result = false;
+
+			for (var i = children.length; i;) {
+				var child = children[--i];
+
+				if (child.blockName == blockName) {
+					child.$(name);
+					result = true;
+				} else {
+					if (child._checkDescendantElements(blockName, name)) {
+						result = true;
+					}
+				}
+			}
+
+			return result;
+		},
+
+		/**
 		 * @param {string} children
 		 * @param {string} method
 		 * @param {...*} [args]
@@ -4914,7 +4924,15 @@ if (!Object.assign) {
 				cl = '*';
 			}
 
-			children = name == '*' ? this.children : this.children[name];
+			if (name == '*') {
+				children = this.children;
+			} else {
+				if (!hasOwn.call(this.children, name)) {
+					return [];
+				}
+
+				children = this.children[name];
+			}
 
 			if (cl == '*') {
 				children = children.slice(0);
@@ -5034,8 +5052,8 @@ if (!Object.assign) {
 				parentChildren.splice(parentChildren.indexOf(this), 1);
 
 				if (this.name) {
-					parentChildren = parentChildren[this.name];
-					parentChildren.splice(parentChildren.indexOf(this), 1);
+					var namedParentChildren = parentChildren[this.name];
+					namedParentChildren.splice(namedParentChildren.indexOf(this), 1);
 				}
 			}
 
@@ -5073,8 +5091,8 @@ if (!Object.assign) {
 
 			this.properties = Object.keys(props);
 
-			for (var id in props) {
-				this[id] = typeof props[id] == 'function' ? props[id] : new ActiveProperty(props[id]);
+			for (var name in props) {
+				this[name] = typeof props[name] == 'function' ? props[name] : new ActiveProperty(props[name]);
 			}
 		},
 
@@ -5107,8 +5125,8 @@ if (!Object.assign) {
 		updateFromSerializedData: function(data) {
 			var deserialized = {};
 
-			for (var id in data) {
-				deserialized[id] = deserialize(data[id]).v;
+			for (var name in data) {
+				deserialized[name] = deserialize(data[name]).v;
 			}
 
 			this.update(deserialized);
@@ -5124,8 +5142,8 @@ if (!Object.assign) {
 			var props = this.properties;
 
 			for (var i = props.length; i;) {
-				var id = props[--i];
-				this[id](hasOwn.call(data, id) ? data[id] : this[id]('dataCell', 0).initialValue);
+				var name = props[--i];
+				this[name](hasOwn.call(data, name) ? data[name] : this[name]('dataCell', 0).initialValue);
 			}
 
 			return this;

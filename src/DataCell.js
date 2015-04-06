@@ -22,10 +22,10 @@
 	/**
 	 * @private
 	 */
-	var outdatedDataCells = {
+	var outdatedDataCells = Object.assign(Object.create(null), {
 		first: null,
 		last: null
-	};
+	});
 
 	var circularityDetectionCounter = {};
 
@@ -320,12 +320,12 @@
 	 *     }
 	 * });
 	 *
-	 * console.log(c.value); // 3
+	 * console.log(c.value);
+	 * // => 3
 	 *
 	 * a.value = 5;
 	 * b.value = 10;
-	 *
-	 * // c.value: 15
+	 * // => 'c.value: 15'
 	 *
 	 * @param {*|Function} [value] - Значение или функция для его вычисления.
 	 * @param {Object} [opts] - Опции.

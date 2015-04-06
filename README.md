@@ -103,7 +103,7 @@ var rt = require('riftjs');
 var User = require('../../Model/User.js');
 
 var Main = rt.BaseView.extend('View.Main', {
-    receiveData: function(done) {
+    _receiveData: function(done) {
         this.model.viewer(new User({ name: 'Петька' }));
         done();
     }
@@ -111,7 +111,7 @@ var Main = rt.BaseView.extend('View.Main', {
 
 module.exports = Main;
 ```
-Так делается только для примера, по хорошему метод `receiveData` должен не записывать данные в модель, а попросить у модели подготовить нужные данные. Если данные уже есть, модель сообщает о готовности, если же нет, запрашивает их у соответствующего провайдера и сообщает о готовности после их получения. Подробнее про метод `receiveData` — [Rift.BaseView#receiveData](???).
+Так делается только для примера, по хорошему метод `_receiveData` должен не записывать данные в модель, а попросить у модели подготовить нужные данные. Если данные уже есть, модель сообщает о готовности, если же нет, запрашивает их у соответствующего провайдера и сообщает о готовности после их получения. Подробнее про метод `_receiveData` — [Rift.BaseView#_receiveData](???).
 
 Теперь используем модуль `UserCard` в шаблоне главного модуля (`App/View/Main/Main.rtt`):
 ```html
