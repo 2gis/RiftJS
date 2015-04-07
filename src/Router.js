@@ -205,6 +205,10 @@
 		 * @returns {Rift.Router}
 		 */
 		addRoute: function(path, callback) {
+			if (this.started) {
+				throw new TypeError('Router is already started');
+			}
+
 			path = path.split(reOption);
 
 			var rePath = [];

@@ -10,10 +10,9 @@
 	var Cleanable = rt.Cleanable;
 	var escapeHTML = rt.html.escape;
 	var pushMods = rt.mods.push;
-	var templates = rt.template.templates;
 	var bindDOM = rt.domBinding.bind;
 
-	var reNameClass = /^(.+?)::(.+)$/;
+	var reNameClass = /^(.+?):(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
 	var keyView = '_rt-view';
 	var keyViewElementName = '_rt-viewElementName';
@@ -207,24 +206,30 @@
 	 * @extends {Rift.Cleanable}
 	 *
 	 * @param {Object} [opts]
+	 * @param {Rift.BaseApp} [opts.app]
+	 * @param {Rift.BaseModel|Rift.ActiveDictionary|Rift.ActiveArray|Rift.ActiveProperty|string} [opts.model]
 	 * @param {string} [opts.name]
 	 * @param {string} [opts.tagName]
 	 * @param {Object<boolean|number|string>} [opts.mods]
 	 * @param {Object<string>} [opts.attrs]
-	 * @param {boolean} [opts.onlyClient=false] - Рендерить только на клиенте.
-	 * @param {Rift.BaseApp} [opts.app]
-	 * @param {Rift.BaseModel|Rift.ActiveDictionary|Rift.ActiveArray|Rift.ActiveProperty|string} [opts.model]
 	 * @param {Rift.BaseView} [opts.parent]
 	 * @param {?(HTMLElement|$)} [opts.block]
+	 * @param {boolean} [opts.onlyClient=false] - Рендерить только на клиенте.
 	 */
 	var BaseView = Cleanable.extend(/** @lends Rift.BaseView# */{
-		static: {
-			_isTemplateInited: false
-		},
+		_options: null,
 
 		_id: undef,
 
-		_options: null,
+		/**
+		 * @type {?Rift.BaseApp}
+		 */
+		app: null,
+
+		/**
+		 * @type {?(Rift.BaseModel|Rift.ActiveDictionary|Rift.ActiveArray|Rift.ActiveProperty)}
+		 */
+		model: null,
 
 		/**
 		 * @type {string|undefined}
@@ -250,21 +255,6 @@
 		 * @type {Object<string>}
 		 */
 		attrs: null,
-
-		/**
-		 * @type {boolean}
-		 */
-		onlyClient: false,
-
-		/**
-		 * @type {?Rift.BaseApp}
-		 */
-		app: null,
-
-		/**
-		 * @type {?(Rift.BaseModel|Rift.ActiveDictionary|Rift.ActiveArray|Rift.ActiveProperty)}
-		 */
-		model: null,
 
 		_parent: null,
 
@@ -307,16 +297,23 @@
 		elements: null,
 
 		/**
+		 * @type {boolean}
+		 */
+		onlyClient: false,
+
+		/**
 		 * @type {*}
 		 */
 		dataReceivingError: null,
 
+		_childRenderings: null,
+
 		/**
 		 * @type {Function}
 		 */
-		template: function() { return ''; },
-
-		_childRenderings: null,
+		template: function() {
+			return '';
+		},
 
 		/**
 		 * @type {Function}
@@ -352,29 +349,7 @@
 					viewClass = viewClass.$super.constructor;
 				}
 
-				var cl = viewClass.__class;
-				var index = cl.lastIndexOf('.');
-
-				viewClass.prototype.blockName = index == -1 ? cl : cl.slice(index + 1);
-			}
-
-			if (!this.constructor._isTemplateInited) {
-				var viewClass = this.constructor;
-
-				do {
-					var cl = viewClass.__class;
-					var index = cl.lastIndexOf('.');
-					var name = index == -1 ? cl : cl.slice(index + 1);
-
-					if (hasOwn.call(templates, name)) {
-						this.constructor.prototype.template = templates[name];
-						break;
-					}
-
-					viewClass = viewClass.$super.constructor;
-				} while (viewClass != BaseView);
-
-				this.constructor._isTemplateInited = true;
+				viewClass.prototype.blockName = viewClass.__class;
 			}
 
 			var block;
@@ -417,8 +392,8 @@
 						);
 					}
 
-					if (block.hasAttribute('rt-v')) {
-						data = block.getAttribute('rt-v').match(reViewData);
+					if (block.hasAttribute('rt-d')) {
+						data = block.getAttribute('rt-d').match(reViewData);
 
 						if (data[2]) {
 							rendered = true;
@@ -446,7 +421,7 @@
 					this.block
 						.find('[rt-p=' + this._id + ']')
 						.each(function() {
-							new classes[this.getAttribute('rt-v').match(reViewData)[1]]({
+							new classes[this.getAttribute('rt-d').match(reViewData)[1]]({
 								parent: view,
 								block: this
 							});
@@ -454,7 +429,7 @@
 
 					initClient(this);
 				} else {
-					block.className = (block.className + ' ' + pushMods([this.blockName], this.mods).join(' ')).trim();
+					block.className = (pushMods([block.className, this.blockName], this.mods).join(' ')).trim();
 
 					setAttributes(block, this.attrs);
 
@@ -465,7 +440,7 @@
 						var blockDict = {};
 
 						for (var i = blocks.length; i;) {
-							blockDict[blocks[--i].getAttribute('rt-v').match(reViewData)[2]] = blocks[i];
+							blockDict[blocks[--i].getAttribute('rt-d').match(reViewData)[2]] = blocks[i];
 						}
 
 						(function _(view) {
@@ -517,10 +492,6 @@
 				delete opts.attrs;
 			}
 
-			if (opts.onlyClient !== undef) {
-				this.onlyClient = opts.onlyClient;
-			}
-
 			if (opts.parent) {
 				this.parent = opts.parent;
 				delete opts.parent;
@@ -549,6 +520,10 @@
 					this.model = parent.model;
 				}
 			}
+
+			if (opts.onlyClient !== undef) {
+				this.onlyClient = opts.onlyClient;
+			}
 		},
 
 		/**
@@ -562,7 +537,7 @@
 			if (isServer && this.onlyClient) {
 				cb(
 					'<' + this.tagName +
-						' rt-v="' + [
+						' rt-d="' + [
 							this.constructor.__class,
 							'',
 							isEmpty(this._options) ? '' : escapeHTML(toString(this._options).slice(1, -1))
@@ -577,22 +552,19 @@
 			var view = this;
 
 			this.renderInner(function(html) {
-				var cls = [view.blockName];
-				var attrs = [];
+				var cls = pushMods([view.blockName], view.mods);
+				var attrs = view.attrs;
+				var attribs = [];
 
-				pushMods(cls, view.mods);
-
-				var attribs = view.attrs;
-
-				for (var name in attribs) {
-					attrs.push(name + '="' + attribs[name] + '"');
+				for (var name in attrs) {
+					attribs.push(name + '="' + attrs[name] + '"');
 				}
 
 				cb(
 					'<' + view.tagName +
 						' class="' + cls.join(' ') + '"' +
-						(attrs.length ? ' ' + attrs.join(' ') : '') +
-						' rt-v="' + [
+						(attribs.length ? ' ' + attribs.join(' ') : '') +
+						' rt-d="' + [
 							view.constructor.__class,
 							view._id,
 							isEmpty(view._options) ? '' : escapeHTML(toString(view._options).slice(1, -1))

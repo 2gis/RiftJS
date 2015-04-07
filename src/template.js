@@ -77,9 +77,7 @@
 		defaults: {
 			include: include,
 			each: each
-		},
-
-		templates: {}
+		}
 	};
 
 })();
