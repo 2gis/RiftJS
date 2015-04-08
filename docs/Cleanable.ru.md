@@ -120,9 +120,9 @@ var AuthForm = rt.BaseView.extend('AuthForm', {
 
 module.exports = AuthForm;
 ```
-Первый аргумент — цель события — может быть инстансом [EventEmitter](https://github.com/2gis/RiftJS/blob/master/docs/EventEmitter.ru.md)-а, dom-элементом, $-коллекцией или массивом. В последних двух случаях `listen` применится к каждому элементу.
+Первый аргумент — цель события — может быть инстансом [EventEmitter](https://github.com/2gis/RiftJS/blob/master/docs/EventEmitter.ru.md)-а, dom-элементом, $-коллекцией или массивом. В последних двух случаях `listen` применяется к каждому элементу.
 
-Второй аргумент — тип события.
+Второй аргумент — тип события.  
 Третий — обработчик — может быть массивом из нескольких обработчиков:
 ```js
 this.listen(this.$('btnSend'), 'click', [this._onBtnSendClick, this._onBtnSendClick2]);
@@ -138,7 +138,7 @@ this.listen(this.$('btnSend'), {
 ```js
 this.listen(this.model.viewer.name, 'change', this._onViewerNameChange);
 ```
-Также возможна запись, при которой третьим аргументом передаётся объект, ключи которого будут именами активных свойств, а значения обработчиками. Цель события (первый аргумент) при этом не само свойство, а содержащий его объект:
+Также возможна запись, при которой третьим аргументом передаётся объект, ключи которого будут именами активных свойств, а значения обработчиками. Цель события (первый аргумент) при этом не сами свойства, а содержащий их объект:
 ```js
 this.listen(this.model.viewer, 'change', {
 	firstName: this._onViewerFirstNameChange,
@@ -148,7 +148,7 @@ this.listen(this.model.viewer, 'change', {
 
 #### Rift.Cleanable#stopListening
 
-Снимает обработчик события. По аргументам всё тоже самое, что и у `listen`. 
+Снимает обработчик события. По аргументам всё то же самое, что и у `listen`. 
 
 #### Rift.Cleanable#stopAllListening
 
