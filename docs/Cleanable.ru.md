@@ -70,7 +70,7 @@ m.dispose();
 
 ```js
 // псевдокод
-var MyModule =  rt.Cleanable.extend({
+var MyModule = rt.Cleanable.extend({
 	constructor: function() {
 		this.setTimeout(this._onTimerTick, 1000); // устанавливаем какой-то таймер
 		sendRequest(this.regCallback(this._onRequestComplete)); // посылаем какой-то запрос
@@ -110,11 +110,45 @@ m.dispose();
 
 #### Rift.Cleanable#listen
 
-???
+Добавляет обработчик события.
+```js
+var AuthForm = rt.BaseView.extend('AuthForm', {
+	_bindEvents: function() {
+		this.listen(this.$('btnSend'), 'click', this._onBtnSendClick);
+	}
+});
+
+module.exports = AuthForm;
+```
+Первый аргумент — цель события — может быть инстансом [EventEmitter](https://github.com/2gis/RiftJS/blob/master/docs/EventEmitter.ru.md)-а, dom-элементом, $-коллекцией или массивом. В последних двух случаях `listen` применится к каждому элементу.
+
+Второй аргумент — тип события.
+Третий — обработчик — может быть массивом из нескольких обработчиков:
+```js
+this.listen(this.$('btnSend'), 'click', [this._onBtnSendClick, this._onBtnSendClick2]);
+```
+Возможна запись, при которой вторым аргументом передаётся объект, ключи которого будут типами событий, а значения обработчиками:
+```js
+this.listen(this.$('btnSend'), {
+	dblclick: this._onBtnSendDblClick,
+	click: [this._onBtnSendClick, this._onBtnSendClick2]
+});
+```
+На изменение [активного свойства](https://github.com/2gis/RiftJS/blob/master/docs/ActiveProperty.ru.md) можно подписаться так:
+```js
+this.listen(this.model.viewer.name, 'change', this._onViewerNameChange);
+```
+Также возможна запись, при которой третьим аргументом передаётся объект, ключи которого будут именами активных свойств, а значения обработчиками. Цель события (первый аргумент) при этом не само свойство, а содержащий его объект:
+```js
+this.listen(this.model.viewer, 'change', {
+	firstName: this._onViewerFirstNameChange,
+	lastName: [this._onViewerLastNameChange, this._onViewerLastNameChange2]
+});
+```
 
 #### Rift.Cleanable#stopListening
 
-???
+Снимает обработчик события. По аргументам всё тоже самое, что и у `listen`. 
 
 #### Rift.Cleanable#stopAllListening
 

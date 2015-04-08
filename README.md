@@ -14,7 +14,7 @@ RiftJS — js-фреймворк для написания изоморфных 
 В отличии от многих современных фреймворков, в RiftJS упор сделан не на изобретение супер удобных синтаксисов на все случаи жизни, а на решение реальных проблем, возникающих при разработке сложных приложений.  
 При написании фреймворка в приоритет всегда ставились максимально простые и прозрачные решения.
 
-## 1. Начало работы
+## Начало работы
 
 Установите gulp и bower:
 ```
@@ -41,7 +41,7 @@ gulp --dev
 
 Откройте в браузере `localhost:8090`
 
-## 2. Пишем `Hello, {name}!`
+## Пишем `Hello, {name}!`
 
 Создадим карточку пользователя, принимающую инстанс пользователя из модели приложения и выводящую приветствие для него.  
 Для начала создадим класс пользователя:
@@ -51,10 +51,10 @@ gulp --dev
 var rt = require('riftjs');
 
 var User = rt.BaseModel.extend('User', {
-    /**
-     * Имя пользователя.
-     */
-    name: rt.observable('')
+	/**
+	 * Имя пользователя.
+	 */
+	name: rt.observable('')
 });
 
 module.exports = User;
@@ -68,11 +68,11 @@ module.exports = User;
 var rt = require('riftjs');
 
 var Model = rt.BaseModel.extend('Model', {
-    /**
-     * Текущий пользователь приложения.
-     * @type {User}
-     */
-    viewer: rt.observable(null)
+	/**
+	 * Текущий пользователь приложения.
+	 * @type {User}
+	 */
+	viewer: rt.observable(null)
 });
 
 module.exports = Model;
@@ -85,7 +85,7 @@ module.exports = Model;
 var rt = require('riftjs');
 
 var UserCard = rt.BaseView.extend('UserCard', {
-    //
+	//
 });
 ```
 
@@ -103,10 +103,10 @@ var rt = require('riftjs');
 var User = require('../../Model/User.js');
 
 var AppView = rt.BaseView.extend('AppView', {
-    _receiveData: function(done) {
-        this.model.viewer(new User({ name: 'Петька' }));
-        done();
-    }
+	_receiveData: function(done) {
+		this.model.viewer(new User({ name: 'Петька' }));
+		done();
+	}
 });
 
 module.exports = AppView;
@@ -134,15 +134,15 @@ _app.model.viewer().name('Васька');
 
 Посмотрите сгенеренный сервером код.
 
-## 3. Использование модулей
+## Использование модулей
 
 ???
 
-## 4. Создание модуля с двунаправленным связыванием данных.
+## Создание модуля с двунаправленным связыванием данных.
 
 ???
 
-## 5. Роутинг и вьюстейт
+## Роутинг и вьюстейт
 
 В классах представления доступен вьюстейт (`this.app.viewState`) — слой описывающий общее состояние представления. С этого слоя происходит маппинг состояния в url. Каждый раз, когда меняется любое свойство во вьюстейте, происходит попытка подобрать более подходящий для него url-путь, и в случае успеха url обновляется. И наоборот, при переходе по локальной ссылке происходит обновление вьюстейта данными из неё. Весь этот механизм также взаимодействует с историей переходов в браузере (HTML5 history API).
 
@@ -151,7 +151,7 @@ _app.model.viewer().name('Васька');
 var rt = require('riftjs');
 
 var viewState = {
-    someProp: rt.observable(5)
+	someProp: rt.observable(5)
 };
 
 module.exports = viewState;
@@ -166,8 +166,12 @@ module.exports = viewState;
 <span>{app.viewState.todoId}</span>
 ```
 
-## 6. Стандартные классы
+## Стандартные классы
 
 [Rift.EventEmitter](https://github.com/2gis/RiftJS/blob/master/docs/EventEmitter.ru.md)  
 [Rift.Cleanable](https://github.com/2gis/RiftJS/blob/master/docs/Cleanable.ru.md)  
 [Rift.ActiveProperty](https://github.com/2gis/RiftJS/blob/master/docs/ActiveProperty.ru.md)
+
+## Всякие мысли
+
+[Наследование стилей](https://github.com/2gis/RiftJS/blob/master/docs/StyleInheritance.ru.md)
