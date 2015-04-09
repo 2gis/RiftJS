@@ -1,7 +1,7 @@
 (function() {
 
 	var nextUID = rt.uid.next;
-	var classes = rt.Class.classes;
+	var getClassOrError = rt.Class.getOrError;
 	var ActiveDictionary = rt.ActiveDictionary;
 	var ActiveArray = rt.ActiveArray;
 
@@ -11,9 +11,7 @@
 	 * @returns {string}
 	 */
 	function include(viewClass, opts) {
-		if (!hasOwn.call(classes, viewClass)) {
-			throw new TypeError('View "' + viewClass + '" is not defined');
-		}
+		viewClass = getClassOrError(viewClass);
 
 		if (opts) {
 			opts.parent = this;
@@ -22,17 +20,15 @@
 			opts = { parent: this, block: null };
 		}
 
-		var view = this;
 		var childRenderings = this._childRenderings;
 		var index = childRenderings.count++;
 		var mark = childRenderings.marks[index] = '{{_' + nextUID() + '}}';
 
-		new classes[viewClass](opts).render(function(html) {
+		new viewClass(opts).render(function(html) {
 			childRenderings.results[index] = html;
 
-			if (childRenderings.count == ++childRenderings.readyCount && childRenderings.onready) {
-				view._childRenderings = null;
-				childRenderings.onready();
+			if (childRenderings.count == ++childRenderings.readyCount && childRenderings.onallready) {
+				childRenderings.onallready();
 			}
 		});
 

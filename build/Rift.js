@@ -3694,7 +3694,7 @@ if (!Object.assign) {
 (function() {
 
 	var nextUID = rt.uid.next;
-	var classes = rt.Class.classes;
+	var getClassOrError = rt.Class.getOrError;
 	var ActiveDictionary = rt.ActiveDictionary;
 	var ActiveArray = rt.ActiveArray;
 
@@ -3704,9 +3704,7 @@ if (!Object.assign) {
 	 * @returns {string}
 	 */
 	function include(viewClass, opts) {
-		if (!hasOwn.call(classes, viewClass)) {
-			throw new TypeError('View "' + viewClass + '" is not defined');
-		}
+		viewClass = getClassOrError(viewClass);
 
 		if (opts) {
 			opts.parent = this;
@@ -3715,17 +3713,15 @@ if (!Object.assign) {
 			opts = { parent: this, block: null };
 		}
 
-		var view = this;
 		var childRenderings = this._childRenderings;
 		var index = childRenderings.count++;
 		var mark = childRenderings.marks[index] = '{{_' + nextUID() + '}}';
 
-		new classes[viewClass](opts).render(function(html) {
+		new viewClass(opts).render(function(html) {
 			childRenderings.results[index] = html;
 
-			if (childRenderings.count == ++childRenderings.readyCount && childRenderings.onready) {
-				view._childRenderings = null;
-				childRenderings.onready();
+			if (childRenderings.count == ++childRenderings.readyCount && childRenderings.onallready) {
+				childRenderings.onallready();
 			}
 		});
 
@@ -4017,10 +4013,92 @@ if (!Object.assign) {
 	var pushMods = rt.mods.push;
 	var bindDOM = rt.domBinding.bind;
 
+	var selfClosingTags = Object.assign(Object.create(null), {
+		area: 1,
+		base: 1,
+		basefont: 1,
+		br: 1,
+		col: 1,
+		command: 1,
+		embed: 1,
+		frame: 1,
+		hr: 1,
+		img: 1,
+		input: 1,
+		isindex: 1,
+		keygen: 1,
+		link: 1,
+		meta: 1,
+		param: 1,
+		source: 1,
+		track: 1,
+		wbr: 1,
+
+		// svg tags
+		circle: 1,
+		ellipse: 1,
+		line: 1,
+		path: 1,
+		polygone: 1,
+		polyline: 1,
+		rect: 1,
+		stop: 1,
+		use: 1
+	});
+
 	var reNameClass = /^(.+?):(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
 	var keyView = '_rt-view';
 	var keyViewElementName = '_rt-viewElementName';
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift.BaseView} view
+	 * @param {Function} cb
+	 */
+	function receiveData(view, cb) {
+		if (view._receiveData != emptyFn) {
+			if (view._beforeDataReceiving != emptyFn) {
+				try {
+					view._beforeDataReceiving();
+				} catch (err) {
+					view._logError(err);
+				}
+			}
+
+			try {
+				if (view._receiveData.length) {
+					view._receiveData(function(err) {
+						if (err != null) {
+							view.dataReceivingError = err;
+							view._logError(err);
+						}
+
+						afterDataReceiving(view);
+						cb.call(view);
+					});
+				} else {
+					view._receiveData()
+						.catch(function(err) {
+							view.dataReceivingError = err;
+							view._logError(err);
+						})
+						.then(function() {
+							afterDataReceiving(view);
+							cb.call(view);
+						});
+				}
+			} catch (err) {
+				view.dataReceivingError = err;
+				view._logError(err);
+				afterDataReceiving(view);
+				cb.call(view);
+			}
+		} else {
+			cb.call(view);
+		}
+	}
 
 	/**
 	 * @private
@@ -4041,67 +4119,22 @@ if (!Object.assign) {
 	 * @private
 	 *
 	 * @param {Rift.BaseView} view
-	 * @param {Function} cb
-	 */
-	function renderInner(view, cb) {
-		var childRenderings = view._childRenderings = {
-			count: 0,
-			readyCount: 0,
-
-			marks: [],
-			results: [],
-
-			onready: null
-		};
-		var html;
-
-		try {
-			html = view.template.call(view);
-		} catch (err) {
-			view._logError(err);
-			cb('');
-			return;
-		}
-
-		childRenderings.onready = function() {
-			var marks = childRenderings.marks;
-			var results = childRenderings.results;
-
-			for (var i = marks.length; i;) {
-				html = html.replace(marks[--i], function() {
-					return results[i];
-				});
-			}
-
-			cb(html);
-		};
-
-		if (childRenderings.count == childRenderings.readyCount) {
-			view._childRenderings = null;
-			childRenderings.onready();
-		}
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.BaseView} view
 	 */
 	function initClient(view) {
-		var dcs = bindDOM(view.block[0], view, {
-			bindRootElement: false,
-			applyValues: false,
-			removeAttr: true
-		});
+		nextTick(function() {
+			var dcs = bindDOM(view.block[0], view, {
+				bindRootElement: true,
+				applyValues: true,
+				removeAttr: true
+			});
 
-		if (view._dataCells) {
-			Object.assign(view._dataCells, dcs);
-		} else {
-			view._dataCells = dcs;
-		}
+			if (view._dataCells) {
+				Object.assign(view._dataCells, dcs);
+			} else {
+				view._dataCells = dcs;
+			}
 
-		if (view._initClient != emptyFn) {
-			nextTick(function() {
+			if (view._initClient != emptyFn) {
 				if (view._initClient.length) {
 					try {
 						view._initClient(function(err) {
@@ -4135,12 +4168,10 @@ if (!Object.assign) {
 						bindEvents(view);
 					}
 				}
-			});
-		} else {
-			nextTick(function() {
+			} else {
 				bindEvents(view);
-			});
-		}
+			}
+		});
 	}
 
 	/**
@@ -4302,15 +4333,27 @@ if (!Object.assign) {
 		elements: null,
 
 		/**
-		 * @type {boolean}
+		 * @param {Function} [cb]
+		 * @returns {Promise|undefined}
 		 */
-		onlyClient: false,
+		_receiveData: emptyFn,
+
+		/**
+		 * @protected
+		 */
+		_beforeDataReceiving: emptyFn,
+
+		/**
+		 * @protected
+		 */
+		_afterDataReceiving: emptyFn,
 
 		/**
 		 * @type {*}
 		 */
 		dataReceivingError: null,
 
+		_currentlyRendering: false,
 		_childRenderings: null,
 
 		/**
@@ -4319,6 +4362,24 @@ if (!Object.assign) {
 		template: function() {
 			return '';
 		},
+
+		/**
+		 * @protected
+		 *
+		 * @param {Function} [cb]
+		 * @returns {Promise|undefined}
+		 */
+		_initClient: emptyFn,
+
+		/**
+		 * @protected
+		 */
+		_bindEvents: emptyFn,
+
+		/**
+		 * @type {boolean}
+		 */
+		onlyClient: false,
 
 		/**
 		 * @type {Function}
@@ -4420,9 +4481,9 @@ if (!Object.assign) {
 				this.block = $(block);
 				block[keyView] = this;
 
-				var view = this;
-
 				if (rendered) {
+					var view = this;
+
 					this.block
 						.find('[rt-p=' + this._id + ']')
 						.each(function() {
@@ -4434,35 +4495,40 @@ if (!Object.assign) {
 
 					initClient(this);
 				} else {
-					block.className = (pushMods([block.className, this.blockName], this.mods).join(' ')).trim();
-
 					setAttributes(block, this.attrs);
+					block.className = (pushMods([this.blockName], this.mods).join(' ') + ' ' + block.className).trim();
 
-					this.renderInner(function(html) {
-						block.innerHTML = html;
+					this._currentlyRendering = true;
 
-						var blocks = block.querySelectorAll('[rt-p]');
-						var blockDict = {};
+					receiveData(this, function() {
+						this._renderInner(function(html) {
+							this._currentlyRendering = true;
 
-						for (var i = blocks.length; i;) {
-							blockDict[blocks[--i].getAttribute('rt-d').match(reViewData)[2]] = blocks[i];
-						}
+							block.innerHTML = html;
 
-						(function _(view) {
-							var children = view.children;
+							var blocks = block.querySelectorAll('[rt-p]');
+							var blockDict = {};
 
-							for (var i = 0, l = children.length; i < l; i++) {
-								var child = children[i];
-								var childBlock = blockDict[child._id];
-
-								child.block = $(childBlock);
-								childBlock[keyView] = child;
-
-								_(child);
+							for (var i = blocks.length; i;) {
+								blockDict[blocks[--i].getAttribute('rt-d').match(reViewData)[2]] = blocks[i];
 							}
 
-							initClient(view);
-						})(view);
+							(function _(view) {
+								var children = view.children;
+
+								for (var i = 0, l = children.length; i < l; i++) {
+									var child = children[i];
+									var childBlock = blockDict[child._id];
+
+									child.block = $(childBlock);
+									childBlock[keyView] = child;
+
+									_(child);
+								}
+
+								initClient(view);
+							})(this);
+						});
 					});
 				}
 			}
@@ -4535,133 +4601,112 @@ if (!Object.assign) {
 		 * @param {Function} cb
 		 */
 		render: function(cb) {
-			if (this._childRenderings) {
+			if (this._currentlyRendering) {
 				throw new TypeError('Cannot run the rendering when it is in process');
 			}
 
 			if (isServer && this.onlyClient) {
-				cb(
-					'<' + this.tagName +
-						' rt-d="' + [
-							this.constructor.__class,
-							'',
-							isEmpty(this._options) ? '' : escapeHTML(toString(this._options).slice(1, -1))
-						] + '"' +
-						(this._parent ? ' rt-p="' + this._parent._id + '"' : '') +
-						'></' + this.tagName + '>'
-				);
-
+				cb(this._renderOpenTag(true) + (this.tagName in selfClosingTags ? '' : '</' + this.tagName + '>'));
 				return;
 			}
 
-			var view = this;
+			this._currentlyRendering = true;
 
-			this.renderInner(function(html) {
-				var cls = pushMods([view.blockName], view.mods);
-				var attrs = view.attrs;
-				var attribs = [];
+			receiveData(this, function() {
+				if (this.tagName in selfClosingTags) {
+					this._currentlyRendering = false;
+					cb(this._renderOpenTag(false));
+				} else {
+					this._renderInner(function(html) {
+						this._currentlyRendering = false;
+						cb(this._renderOpenTag(false) + html + '</' + this.tagName + '>');
+					});
+				}
+			});
+		},
+
+		/**
+		 * @protected
+		 *
+		 * @param {boolean} billet
+		 * @returns {string}
+		 */
+		_renderOpenTag: function(billet) {
+			var attribs;
+
+			if (billet) {
+				attribs = '';
+			} else {
+				var attrs = this.attrs;
+
+				attribs = [
+					'class="' +
+						(pushMods([this.blockName], this.mods).join(' ') + ' ' + (attrs.class || '')).trim() + '"'
+				];
 
 				for (var name in attrs) {
-					attribs.push(name + '="' + attrs[name] + '"');
+					if (name != 'class') {
+						attribs.push(name + '="' + attrs[name] + '"');
+					}
 				}
+			}
 
-				cb(
-					'<' + view.tagName +
-						' class="' + cls.join(' ') + '"' +
-						(attribs.length ? ' ' + attribs.join(' ') : '') +
-						' rt-d="' + [
-							view.constructor.__class,
-							view._id,
-							isEmpty(view._options) ? '' : escapeHTML(toString(view._options).slice(1, -1))
-						] + '"' +
-						(view._parent ? ' rt-p="' + view._parent._id + '"' : '') +
-						'>' + html + '</' + view.tagName + '>'
-				);
-			});
+			return '<' + this.tagName +
+				' ' + attribs.join(' ') +
+				' rt-d="' + [
+					this.constructor.__class,
+					billet ? '' : this._id,
+					isEmpty(this._options) ? '' : escapeHTML(toString(this._options).slice(1, -1))
+				] + '"' +
+				(this._parent ? ' rt-p="' + this._parent._id + '"' : '') +
+				'>';
 		},
 
 		/**
 		 * @param {Function} cb
 		 */
-		renderInner: function(cb) {
-			if (this._childRenderings) {
-				throw new TypeError('Cannot run the rendering when it is in process');
+		_renderInner: function(cb) {
+			var childRenderings = this._childRenderings = {
+				count: 0,
+				readyCount: 0,
+
+				marks: [],
+				results: [],
+
+				onallready: null
+			};
+			var html;
+
+			try {
+				html = this.template.call(this);
+			} catch (err) {
+				this._childRenderings = null;
+				this._logError(err);
+				cb.call(this, '');
+				return;
 			}
 
-			if (this._receiveData != emptyFn) {
-				var view = this;
+			var view = this;
 
-				if (this._beforeDataReceiving != emptyFn) {
-					try {
-						this._beforeDataReceiving();
-					} catch (err) {
-						this._logError(err);
-					}
+			childRenderings.onallready = function() {
+				view._childRenderings = null;
+
+				var marks = childRenderings.marks;
+				var results = childRenderings.results;
+
+				for (var i = marks.length; i;) {
+					html = html.replace(marks[--i], function() {
+						return results[i];
+					});
 				}
 
-				try {
-					if (this._receiveData.length) {
-						view._receiveData(function(err) {
-							if (err != null) {
-								view.dataReceivingError = err;
-								view._logError(err);
-							}
+				cb.call(view, html);
+			};
 
-							afterDataReceiving(view);
-							renderInner(view, cb);
-						});
-					} else {
-						this._receiveData().then(function() {
-							afterDataReceiving(view);
-							renderInner(view, cb);
-						}, function(err) {
-							view.dataReceivingError = err;
-							view._logError(err);
-
-							afterDataReceiving(view);
-							renderInner(view, cb);
-						});
-					}
-				} catch (err) {
-					this.dataReceivingError = err;
-					this._logError(err);
-
-					afterDataReceiving(this);
-					renderInner(this, cb);
-				}
-			} else {
-				renderInner(this, cb);
+			if (childRenderings.count == childRenderings.readyCount) {
+				childRenderings.onallready();
 			}
 		},
-
-		/**
-		 * @protected
-		 */
-		_beforeDataReceiving: emptyFn,
-
-		/**
-		 * @protected
-		 */
-		_afterDataReceiving: emptyFn,
-
-		/**
-		 * @param {Function} [cb]
-		 * @returns {Promise|undefined}
-		 */
-		_receiveData: emptyFn,
-
-		/**
-		 * @protected
-		 *
-		 * @param {Function} [cb]
-		 * @returns {Promise|undefined}
-		 */
-		_initClient: emptyFn,
-
-		/**
-		 * @protected
-		 */
-		_bindEvents: emptyFn,
 
 		/**
 		 * Регистрирует дочернюю вьюшку.
@@ -4734,7 +4779,7 @@ if (!Object.assign) {
 		 * this.$('item', { tagName: 'li', mods: { selected: true }, html: 'Hi!' });
 		 *
 		 * @param {string} name
-		 * @param {...(HTMLElement|string|{ tagName: string, attrs: Object<string>, mods: Object, html: string })} [el]
+		 * @param {...(HTMLElement|string|{ tagName: string, mods: Object, attrs: Object<string>, html: string })} [el]
 		 * @returns {$}
 		 */
 		$: function(name) {
@@ -4787,23 +4832,24 @@ if (!Object.assign) {
 
 						el.className = (this.blockName + '_' + name + ' ' + el.className).trim();
 					} else {
-						var elDescr = el;
+						var elSettings = el;
+
+						el = document.createElement(elSettings.tagName || 'div');
+
+						if (elSettings.attrs) {
+							setAttributes(el, elSettings.attrs);
+						}
+
 						var cls = [this.blockName + '_' + name];
 
-						el = document.createElement(elDescr.tagName || 'div');
-
-						if (elDescr.mods) {
-							pushMods(cls, elDescr.mods);
+						if (elSettings.mods) {
+							pushMods(cls, elSettings.mods);
 						}
 
-						el.className = cls.join(' ');
+						el.className = (cls.join(' ') + ' ' + el.className).trim();
 
-						if (elDescr.attrs) {
-							setAttributes(el, elDescr.attrs);
-						}
-
-						if (elDescr.html) {
-							el.innerHTML = elDescr.html;
+						if (elSettings.html) {
+							el.innerHTML = elSettings.html;
 						}
 					}
 
