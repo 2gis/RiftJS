@@ -19,8 +19,6 @@ function isEmpty(obj) {
 }
 /* eslint-enable no-unused-vars */
 
-function emptyFn() {}
-
 var hasOwn = Object.prototype.hasOwnProperty;
 var slice = Array.prototype.slice;
 
@@ -359,7 +357,7 @@ if (!Object.assign) {
 		switch (typeof value) {
 			case 'boolean': { return '?' + value; }
 			case 'number': { return '+' + value; }
-			case 'string': { return ';' + value; }
+			case 'string': { return ',' + value; }
 		}
 
 		return '#' + getUID(value);
@@ -3662,37 +3660,6 @@ if (!Object.assign) {
 
 (function() {
 
-	/**
-	 * @function push
-	 * @memberOf Rift.mods
-	 *
-	 * @param {Array<string>} cls
-	 * @param {Object} mods
-	 * @returns {Array<string>}
-	 */
-	function pushMods(cls, mods) {
-		for (var name in mods) {
-			var value = mods[name];
-
-			if (value != null && value !== false) {
-				cls.push('__' + name + (value === true ? '' : '_' + value));
-			}
-		}
-
-		return cls;
-	}
-
-	/**
-	 * @namespace Rift.mods
-	 */
-	rt.mods = {
-		push: pushMods
-	};
-
-})();
-
-(function() {
-
 	var nextUID = rt.uid.next;
 	var getClassOrError = rt.Class.getOrError;
 	var ActiveDictionary = rt.ActiveDictionary;
@@ -3864,6 +3831,12 @@ if (!Object.assign) {
 			}
 		},
 
+		checked: function(el, value) {
+			if (el.checked != value) {
+				el.checked = value;
+			}
+		},
+
 		css: function(el, value, name) {
 			el.style[name || 'cssText'] = value;
 		},
@@ -4010,7 +3983,6 @@ if (!Object.assign) {
 	var getClassOrError = rt.Class.getOrError;
 	var Cleanable = rt.Cleanable;
 	var escapeHTML = rt.html.escape;
-	var pushMods = rt.mods.push;
 	var bindDOM = rt.domBinding.bind;
 
 	var selfClosingTags = Object.assign(Object.create(null), {
@@ -4050,6 +4022,8 @@ if (!Object.assign) {
 	var reViewData = /([^,]*),([^,]*),(.*)/;
 	var keyView = '_rt-view';
 	var keyViewElementName = '_rt-viewElementName';
+
+	function emptyFn() {}
 
 	/**
 	 * @private
@@ -4201,6 +4175,25 @@ if (!Object.assign) {
 	function handleClientInitError(view, err) {
 		view._logError(err);
 		view.emit('clientiniterror', { error: err });
+	}
+
+	/**
+	 * @private
+	 *
+	 * @param {Array<string>} cls
+	 * @param {Object} mods
+	 * @returns {Array<string>}
+	 */
+	function pushMods(cls, mods) {
+		for (var name in mods) {
+			var value = mods[name];
+
+			if (value != null && value !== false) {
+				cls.push('__' + name + (value === true ? '' : '_' + value));
+			}
+		}
+
+		return cls;
 	}
 
 	/**

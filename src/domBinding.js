@@ -91,6 +91,12 @@
 			}
 		},
 
+		checked: function(el, value) {
+			if (el.checked != value) {
+				el.checked = value;
+			}
+		},
+
 		css: function(el, value, name) {
 			el.style[name || 'cssText'] = value;
 		},

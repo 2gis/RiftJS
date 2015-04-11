@@ -28,10 +28,9 @@ var bodyFiles = exports.bodyFiles = [
 	'src/BaseModel.js', // 3
 
 	'src/html.js', // 3
-	'src/mods.js', // 3
 	'src/template.js', // 2
 	'src/domBinding.js', // 2
-	'src/BaseView.js', // 1
+	'src/BaseView.js', // 2
 
 	'src/ViewState.js', // 2
 	'src/Router.js', // 2

@@ -9,7 +9,6 @@
 	var getClassOrError = rt.Class.getOrError;
 	var Cleanable = rt.Cleanable;
 	var escapeHTML = rt.html.escape;
-	var pushMods = rt.mods.push;
 	var bindDOM = rt.domBinding.bind;
 
 	var selfClosingTags = Object.assign(Object.create(null), {
@@ -49,6 +48,8 @@
 	var reViewData = /([^,]*),([^,]*),(.*)/;
 	var keyView = '_rt-view';
 	var keyViewElementName = '_rt-viewElementName';
+
+	function emptyFn() {}
 
 	/**
 	 * @private
@@ -200,6 +201,25 @@
 	function handleClientInitError(view, err) {
 		view._logError(err);
 		view.emit('clientiniterror', { error: err });
+	}
+
+	/**
+	 * @private
+	 *
+	 * @param {Array<string>} cls
+	 * @param {Object} mods
+	 * @returns {Array<string>}
+	 */
+	function pushMods(cls, mods) {
+		for (var name in mods) {
+			var value = mods[name];
+
+			if (value != null && value !== false) {
+				cls.push('__' + name + (value === true ? '' : '_' + value));
+			}
+		}
+
+		return cls;
 	}
 
 	/**

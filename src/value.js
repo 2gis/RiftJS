@@ -19,7 +19,7 @@
 		switch (typeof value) {
 			case 'boolean': { return '?' + value; }
 			case 'number': { return '+' + value; }
-			case 'string': { return ';' + value; }
+			case 'string': { return ',' + value; }
 		}
 
 		return '#' + getUID(value);

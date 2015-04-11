@@ -19,8 +19,6 @@ function isEmpty(obj) {
 }
 /* eslint-enable no-unused-vars */
 
-function emptyFn() {}
-
 var hasOwn = Object.prototype.hasOwnProperty;
 var slice = Array.prototype.slice;
 
