@@ -234,6 +234,34 @@
 	 * @private
 	 *
 	 * @param {Rift.BaseView} view
+	 * @param {string} blockName
+	 * @param {string} name
+	 * @returns {boolean}
+	 */
+	function initSimilarDescendantElements(view, blockName, name) {
+		var children = view.children;
+		var result = false;
+
+		for (var i = children.length; i;) {
+			var child = children[--i];
+
+			if (child.blockName == blockName) {
+				child.$(name);
+				result = true;
+			} else {
+				if (initSimilarDescendantElements(child, blockName, name)) {
+					result = true;
+				}
+			}
+		}
+
+		return result;
+	}
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift.BaseView} view
 	 * @param {HTMLElement} el
 	 */
 	function removeElement(view, el) {
@@ -805,7 +833,7 @@
 			} else {
 				els = $('.' + this.blockName + '_' + name, this.block);
 
-				if (this._checkDescendantElements(this.blockName, name)) {
+				if (initSimilarDescendantElements(this, this.blockName, name)) {
 					els = els.filter(function() {
 						return !hasOwn.call(this, keyView) || !this[keyView];
 					});
@@ -908,33 +936,6 @@
 			}
 
 			return this;
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {string} blockName
-		 * @param {string} name
-		 * @returns {boolean}
-		 */
-		_checkDescendantElements: function(blockName, name) {
-			var children = this.children;
-			var result = false;
-
-			for (var i = children.length; i;) {
-				var child = children[--i];
-
-				if (child.blockName == blockName) {
-					child.$(name);
-					result = true;
-				} else {
-					if (child._checkDescendantElements(blockName, name)) {
-						result = true;
-					}
-				}
-			}
-
-			return result;
 		},
 
 		/**
