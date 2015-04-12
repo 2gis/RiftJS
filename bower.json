@@ -1,23 +1,18 @@
 {
   "name": "riftjs",
-  "version": "0.23.5",
+  "version": "0.23.7",
   "homepage": "https://github.com/2gis/RiftJS",
   "authors": [
     "Dmitry Vibe <riim@yandex.ru>"
   ],
   "description": "The experimental javascript framework",
   "main": "build/Rift.js",
-  "keywords": [
-    "framework"
-  ],
   "license": "MPL",
-  "private": false,
   "ignore": [
     "**/.*",
     "node_modules",
     "bower_components",
     "test",
-    "tests",
-    "docs"
+    "tests"
   ]
 }

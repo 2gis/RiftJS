@@ -284,19 +284,19 @@
 	 * @class Rift.BaseView
 	 * @extends {Rift.Cleanable}
 	 *
-	 * @param {Object} [opts]
-	 * @param {Rift.BaseApp} [opts.app]
-	 * @param {Rift.BaseModel|Rift.ActiveDictionary|Rift.ActiveArray|Rift.ActiveProperty|string} [opts.model]
-	 * @param {string} [opts.name]
-	 * @param {string} [opts.tagName]
-	 * @param {Object<boolean|number|string>} [opts.mods]
-	 * @param {Object<string>} [opts.attrs]
-	 * @param {Rift.BaseView} [opts.parent]
-	 * @param {?(HTMLElement|$)} [opts.block]
-	 * @param {boolean} [opts.onlyClient=false] - Рендерить только на клиенте.
+	 * @param {Object} [params]
+	 * @param {Rift.BaseApp} [params.app]
+	 * @param {Rift.BaseModel|Rift.ActiveDictionary|Rift.ActiveArray|Rift.ActiveProperty|string} [params.model]
+	 * @param {string} [params.name]
+	 * @param {string} [params.tagName]
+	 * @param {Object<boolean|number|string>} [params.mods]
+	 * @param {Object<string>} [params.attrs]
+	 * @param {Rift.BaseView} [params.parent]
+	 * @param {?(HTMLElement|$)} [params.block]
+	 * @param {boolean} [params.onlyClient=false] - Рендерить только на клиенте.
 	 */
 	var BaseView = Cleanable.extend(/** @lends Rift.BaseView# */{
-		_options: null,
+		_params: null,
 
 		_id: undef,
 
@@ -436,14 +436,14 @@
 		 */
 		onclientiniterror: null,
 
-		constructor: function(opts) {
+		constructor: function(params) {
 			Cleanable.call(this);
 
-			if (!opts) {
-				opts = {};
+			if (!params) {
+				params = {};
 			}
 
-			this._options = opts;
+			this._params = params;
 
 			this.mods = Object.create(this.mods);
 			this.attrs = Object.create(this.attrs);
@@ -464,25 +464,25 @@
 			var block;
 
 			if (isServer) {
-				if (opts.block) {
-					throw new TypeError('Option "block" can\'t be used on the server side');
+				if (params.block) {
+					throw new TypeError('Parameter "block" can\'t be used on the server side');
 				}
 
 				block = null;
 
-				if (opts.block === null) {
-					delete opts.block;
+				if (params.block === null) {
+					delete params.block;
 				}
 			} else {
-				if (opts.block !== undef) {
-					block = opts.block;
-					delete opts.block;
+				if (params.block !== undef) {
+					block = params.block;
+					delete params.block;
 				}
 			}
 
 			if (block === null) {
 				this._id = getUID(this, isServer ? 's' : 'c');
-				this._parseOptions();
+				this._parseParams();
 			} else {
 				var data;
 				var rendered = false;
@@ -509,13 +509,13 @@
 						}
 
 						if (data[3]) {
-							Object.assign(opts, Function('return {' + data[3] + '};')());
+							Object.assign(params, Function('return {' + data[3] + '};')());
 						}
 					}
 				}
 
 				this._id = rendered ? data[2] : getUID(this, 'c');
-				this._parseOptions();
+				this._parseParams();
 
 				if (!block) {
 					block = document.createElement(this.tagName);
@@ -580,52 +580,52 @@
 		/**
 		 * @protected
 		 */
-		_parseOptions: function() {
-			var opts = this._options;
+		_parseParams: function() {
+			var params = this._params;
 
-			if (opts.name) {
-				this.name = opts.name;
+			if (params.name) {
+				this.name = params.name;
 			}
 
-			if (opts.tagName) {
-				this.tagName = opts.tagName;
-				delete opts.tagName;
+			if (params.tagName) {
+				this.tagName = params.tagName;
+				delete params.tagName;
 			}
 
-			if (opts.blockName) {
-				this.blockName = opts.blockName;
+			if (params.blockName) {
+				this.blockName = params.blockName;
 			}
 
-			if (opts.mods) {
-				Object.assign(this.mods, opts.mods);
-				delete opts.mods;
+			if (params.mods) {
+				Object.assign(this.mods, params.mods);
+				delete params.mods;
 			}
 
-			if (opts.attrs) {
-				Object.assign(this.attrs, opts.attrs);
-				delete opts.attrs;
+			if (params.attrs) {
+				Object.assign(this.attrs, params.attrs);
+				delete params.attrs;
 			}
 
-			if (opts.parent) {
-				this.parent = opts.parent;
-				delete opts.parent;
+			if (params.parent) {
+				this.parent = params.parent;
+				delete params.parent;
 			}
 
-			if (opts.app) {
-				this.app = opts.app;
-				delete opts.app;
+			if (params.app) {
+				this.app = params.app;
+				delete params.app;
 
 				this.model = this.app.model;
 			}
 
-			var model = opts.model;
+			var model = params.model;
 
 			if (model) {
 				if (typeof model == 'string') {
 					this.model = execNamespace(model, this._parent || this);
 				} else {
 					this.model = model;
-					delete opts.model;
+					delete params.model;
 				}
 			} else {
 				var parent = this._parent;
@@ -635,8 +635,8 @@
 				}
 			}
 
-			if (opts.onlyClient !== undef) {
-				this.onlyClient = opts.onlyClient;
+			if (params.onlyClient !== undef) {
+				this.onlyClient = params.onlyClient;
 			}
 		},
 
@@ -699,7 +699,7 @@
 				' rt-d="' + [
 					this.constructor.__class,
 					billet ? '' : this._id,
-					isEmpty(this._options) ? '' : escapeHTML(toString(this._options).slice(1, -1))
+					isEmpty(this._params) ? '' : escapeHTML(toString(this._params).slice(1, -1))
 				] + '"' +
 				(this._parent ? ' rt-p="' + this._parent._id + '"' : '') +
 				'>';
