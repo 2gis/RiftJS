@@ -241,11 +241,11 @@
 			return;
 		}
 
-		el[keyView] = null;
-		el[keyViewElementName] = undef;
-
 		var els = view.elements[el[keyViewElementName]];
 		els.splice(els.indexOf(el), 1);
+
+		el[keyView] = null;
+		el[keyViewElementName] = undef;
 
 		if (el.parentNode) {
 			el.parentNode.removeChild(el);
