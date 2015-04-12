@@ -17,7 +17,10 @@
 			opts.parent = this;
 			opts.block = null;
 		} else {
-			opts = { parent: this, block: null };
+			opts = {
+				parent: this,
+				block: null
+			};
 		}
 
 		var childRenderings = this._childRenderings;

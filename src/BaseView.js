@@ -122,11 +122,7 @@
 	 */
 	function initClient(view) {
 		nextTick(function() {
-			var dcs = bindDOM(view.block[0], view, {
-				bindRootElement: true,
-				applyValues: true,
-				removeAttr: true
-			});
+			var dcs = bindDOM(view.block[0], view, { removeAttr: true });
 
 			if (view._dataCells) {
 				Object.assign(view._dataCells, dcs);

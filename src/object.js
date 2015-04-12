@@ -39,11 +39,11 @@
 	 *
 	 * @param {Object} obj
 	 * @param {Object} source
-	 * @param {boolean} [skipDontEnum=false]
+	 * @param {boolean} [skipDontEnums=false]
 	 * @returns {Object}
 	 */
-	function mixin(obj, source, skipDontEnum) {
-		var names = skipDontEnum ? Object.keys(source) : Object.getOwnPropertyNames(source);
+	function mixin(obj, source, skipDontEnums) {
+		var names = skipDontEnums ? Object.keys(source) : Object.getOwnPropertyNames(source);
 
 		for (var i = names.length; i;) {
 			Object.defineProperty(obj, names[--i], Object.getOwnPropertyDescriptor(source, names[i]));

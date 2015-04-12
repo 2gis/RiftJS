@@ -16,7 +16,8 @@
 		'no-use-before-define': 0,
 		'new-cap': 0,
 		'no-underscore-dangle': 0,
-		'quotes': 'single'
+		'quotes': 'single',
+		'semi-spacing': 0
 	},
 	globals: {
 		undef: true,

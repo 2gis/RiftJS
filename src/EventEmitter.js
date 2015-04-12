@@ -10,7 +10,7 @@
 	 * @param {Function} method
 	 * @returns {Function}
 	 */
-	function wrapListeningMethod(method) {
+	function wrapOnOff(method) {
 		return function _(type, listener, context) {
 			if (typeof type == 'object') {
 				context = listener;
@@ -57,7 +57,7 @@
 		 * @param {Object} [context=this]
 		 * @returns {Rift.EventEmitter}
 		 */
-		on: wrapListeningMethod(function(type, listener, context) {
+		on: wrapOnOff(function(type, listener, context) {
 			var events = this._events || (this._events = Object.create(null));
 
 			(events[type] || (events[type] = [])).push({
@@ -72,7 +72,7 @@
 		 * @param {Object} [context=this]
 		 * @returns {Rift.EventEmitter}
 		 */
-		off: wrapListeningMethod(function(type, listener, context) {
+		off: wrapOnOff(function(type, listener, context) {
 			var events = (this._events || (this._events = Object.create(null)))[type];
 
 			if (!events) {

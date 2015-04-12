@@ -173,11 +173,11 @@ if (!Object.assign) {
 	 *
 	 * @param {Object} obj
 	 * @param {Object} source
-	 * @param {boolean} [skipDontEnum=false]
+	 * @param {boolean} [skipDontEnums=false]
 	 * @returns {Object}
 	 */
-	function mixin(obj, source, skipDontEnum) {
-		var names = skipDontEnum ? Object.keys(source) : Object.getOwnPropertyNames(source);
+	function mixin(obj, source, skipDontEnums) {
+		var names = skipDontEnums ? Object.keys(source) : Object.getOwnPropertyNames(source);
 
 		for (var i = names.length; i;) {
 			Object.defineProperty(obj, names[--i], Object.getOwnPropertyDescriptor(source, names[i]));
@@ -909,7 +909,7 @@ if (!Object.assign) {
 	 * @param {Function} method
 	 * @returns {Function}
 	 */
-	function wrapListeningMethod(method) {
+	function wrapOnOff(method) {
 		return function _(type, listener, context) {
 			if (typeof type == 'object') {
 				context = listener;
@@ -956,7 +956,7 @@ if (!Object.assign) {
 		 * @param {Object} [context=this]
 		 * @returns {Rift.EventEmitter}
 		 */
-		on: wrapListeningMethod(function(type, listener, context) {
+		on: wrapOnOff(function(type, listener, context) {
 			var events = this._events || (this._events = Object.create(null));
 
 			(events[type] || (events[type] = [])).push({
@@ -971,7 +971,7 @@ if (!Object.assign) {
 		 * @param {Object} [context=this]
 		 * @returns {Rift.EventEmitter}
 		 */
-		off: wrapListeningMethod(function(type, listener, context) {
+		off: wrapOnOff(function(type, listener, context) {
 			var events = (this._events || (this._events = Object.create(null)))[type];
 
 			if (!events) {
@@ -3677,7 +3677,10 @@ if (!Object.assign) {
 			opts.parent = this;
 			opts.block = null;
 		} else {
-			opts = { parent: this, block: null };
+			opts = {
+				parent: this,
+				block: null
+			};
 		}
 
 		var childRenderings = this._childRenderings;
@@ -4096,11 +4099,7 @@ if (!Object.assign) {
 	 */
 	function initClient(view) {
 		nextTick(function() {
-			var dcs = bindDOM(view.block[0], view, {
-				bindRootElement: true,
-				applyValues: true,
-				removeAttr: true
-			});
+			var dcs = bindDOM(view.block[0], view, { removeAttr: true });
 
 			if (view._dataCells) {
 				Object.assign(view._dataCells, dcs);
