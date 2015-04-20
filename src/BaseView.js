@@ -4,7 +4,6 @@
 	var execNamespace = rt.namespace.exec;
 	var getHash = rt.value.getHash;
 	var toString = rt.value.toString;
-	var nextTick = rt.process.nextTick;
 	var classes = rt.Class.classes;
 	var getClassOrError = rt.Class.getOrError;
 	var Cleanable = rt.Cleanable;
@@ -113,90 +112,6 @@
 				view._logError(err);
 			}
 		}
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.BaseView} view
-	 */
-	function initClient(view) {
-		nextTick(function() {
-			var dcs = bindDOM(view.block[0], view, { removeAttr: true });
-
-			if (view._dataCells) {
-				Object.assign(view._dataCells, dcs);
-			} else {
-				view._dataCells = dcs;
-			}
-
-			if (view._initClient != emptyFn) {
-				if (view._initClient.length) {
-					try {
-						view._initClient(function(err) {
-							if (err != null) {
-								handleClientInitError(view, err);
-								return;
-							}
-
-							bindEvents(view);
-						});
-					} catch (err) {
-						handleClientInitError(view, err);
-					}
-				} else {
-					var result;
-
-					try {
-						result = view._initClient();
-					} catch (err) {
-						handleClientInitError(view, err);
-						return;
-					}
-
-					if (result) {
-						result.then(function() {
-							bindEvents(view);
-						}, function(err) {
-							handleClientInitError(view, err);
-						});
-					} else {
-						bindEvents(view);
-					}
-				}
-			} else {
-				bindEvents(view);
-			}
-		});
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.BaseView} view
-	 */
-	function bindEvents(view) {
-		if (view._bindEvents != emptyFn) {
-			try {
-				view._bindEvents();
-			} catch (err) {
-				handleClientInitError(view, err);
-				return;
-			}
-		}
-
-		view.emit('clientinited');
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.BaseView} view
-	 * @param {*} err
-	 */
-	function handleClientInitError(view, err) {
-		view._logError(err);
-		view.emit('clientiniterror', { error: err });
 	}
 
 	/**
@@ -376,22 +291,6 @@
 		elements: null,
 
 		/**
-		 * @param {Function} [cb]
-		 * @returns {Promise|undefined}
-		 */
-		_receiveData: emptyFn,
-
-		/**
-		 * @protected
-		 */
-		_beforeDataReceiving: emptyFn,
-
-		/**
-		 * @protected
-		 */
-		_afterDataReceiving: emptyFn,
-
-		/**
 		 * @type {*}
 		 */
 		dataReceivingError: null,
@@ -407,34 +306,11 @@
 		},
 
 		/**
-		 * @protected
-		 *
-		 * @param {Function} [cb]
-		 * @returns {Promise|undefined}
-		 */
-		_initClient: emptyFn,
-
-		/**
-		 * @protected
-		 */
-		_bindEvents: emptyFn,
-
-		/**
 		 * @type {boolean}
 		 */
 		onlyClient: false,
 
-		/**
-		 * @type {Function}
-		 * @writable
-		 */
-		onclientinited: null,
-
-		/**
-		 * @type {Function}
-		 * @writable
-		 */
-		onclientiniterror: null,
+		isClientInited: false,
 
 		constructor: function(params) {
 			Cleanable.call(this);
@@ -535,8 +411,6 @@
 								block: this
 							});
 						});
-
-					initClient(this);
 				} else {
 					setAttributes(block, this.attrs);
 					block.className = (pushMods([this.blockName], this.mods).join(' ') + ' ' + block.className).trim();
@@ -559,8 +433,8 @@
 							(function _(view) {
 								var children = view.children;
 
-								for (var i = 0, l = children.length; i < l; i++) {
-									var child = children[i];
+								for (var i = children.length; i;) {
+									var child = children[--i];
 									var childBlock = blockDict[child._id];
 
 									child.block = $(childBlock);
@@ -568,8 +442,6 @@
 
 									_(child);
 								}
-
-								initClient(view);
 							})(this);
 						});
 					});
@@ -750,6 +622,70 @@
 				childRenderings.onallready();
 			}
 		},
+
+		/**
+		 * @protected
+		 *
+		 * @param {Function} [cb]
+		 * @returns {Promise|undefined}
+		 */
+		_receiveData: emptyFn,
+
+		/**
+		 * @protected
+		 */
+		_beforeDataReceiving: emptyFn,
+
+		/**
+		 * @protected
+		 */
+		_afterDataReceiving: emptyFn,
+
+		/**
+		 * //
+		 */
+		initClient: function() {
+			if (this.isClientInited) {
+				throw new TypeError('Client is already initialized');
+			}
+
+			this.isClientInited = true;
+
+			var children = this.children.slice(0);
+
+			for (var i = 0, l = children.length; i < l; i++) {
+				children[i].initClient();
+			}
+
+			try {
+				var dcs = bindDOM(this.block[0], this, { removeAttr: true });
+
+				if (this._dataCells) {
+					Object.assign(this._dataCells, dcs);
+				} else {
+					this._dataCells = dcs;
+				}
+
+				if (this._initClient != emptyFn) {
+					this._initClient();
+				}
+				if (this._bindEvents != emptyFn) {
+					this._bindEvents();
+				}
+			} catch (err) {
+				this._logError(err);
+			}
+		},
+
+		/**
+		 * @protected
+		 */
+		_initClient: emptyFn,
+
+		/**
+		 * @protected
+		 */
+		_bindEvents: emptyFn,
 
 		/**
 		 * Регистрирует дочернюю вьюшку.

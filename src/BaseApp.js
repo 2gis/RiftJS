@@ -67,17 +67,21 @@
 			this.model = typeof model == 'function' ? new model() : deserialize(model);
 
 			var router = this.router = new Router(this, routes);
-
-			this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
+			var viewState = this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
 
 			router.route(path);
 
 			if (isClient) {
-				this.viewState.updateFromSerializedData(viewStateData);
+				viewState.updateFromSerializedData(viewStateData);
 			}
 
-			this.view = new viewClass({ app: this, block: viewBlock });
+			var view = this.view = new viewClass({ app: this, block: viewBlock });
+
 			router.start();
+
+			if (isClient) {
+				view.initClient();
+			}
 		}
 	});
 
