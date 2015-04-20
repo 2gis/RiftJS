@@ -86,19 +86,31 @@
 		},
 
 		value: function(el, value) {
+			value = String(value);
+
 			if (el.value != value) {
 				el.value = value;
 			}
 		},
 
 		checked: function(el, value) {
+			value = Boolean(value);
+
 			if (el.checked != value) {
 				el.checked = value;
 			}
 		},
 
 		css: function(el, value, name) {
-			el.style[name || 'cssText'] = value;
+			value = String(value);
+
+			if (!name) {
+				name = 'cssText';
+			}
+
+			if (el.style[name] != value) {
+				el.style[name] = value;
+			}
 		},
 
 		show: function(el, value) {

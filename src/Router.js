@@ -85,6 +85,120 @@
 
 	/**
 	 * @private
+	 *
+	 * @param {Rift#Router} router
+	 * @param {string} path
+	 * @returns {?{ route: Router~Route, state: Object }}
+	 */
+	function tryPath(router, path) {
+		var routes = router.routes;
+
+		for (var i = 0, l = routes.length; i < l; i++) {
+			var route = routes[i];
+			var match = path.match(route.rePath);
+
+			if (match) {
+				return {
+					route: route,
+
+					state: route.properties.reduce(function(state, prop, index) {
+						state[prop.id] = prop.type == 1 ?
+							match[index + 1] !== undef :
+							tryStringAsNumber(decodeURIComponent(match[index + 1]));
+
+						return state;
+					}, {})
+				};
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift#Router} router
+	 * @param {Router~Route} [preferredRoute]
+	 * @returns {?{ route: Router~Route, path: string }}
+	 */
+	function tryViewState(router, preferredRoute) {
+		var viewState = router.app.viewState;
+		var routes = router.routes;
+		var resultRoute = null;
+
+		for (var i = 0, l = routes.length; i < l; i++) {
+			var route = routes[i];
+			var requiredProps = route.requiredProperties;
+			var j = requiredProps.length;
+
+			while (j--) {
+				var value = viewState[requiredProps[j]]();
+
+				if (value == null || value === false || value === '') {
+					break;
+				}
+			}
+
+			if (j == -1) {
+				if (requiredProps.length) {
+					resultRoute = route;
+					break;
+				} else if (!resultRoute || route === preferredRoute) {
+					resultRoute = route;
+				}
+			}
+		}
+
+		return resultRoute && {
+			route: resultRoute,
+			path: buildPath(router, resultRoute)
+		};
+	}
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift#Router} router
+	 * @param {Router~Route} route
+	 * @returns {string}
+	 */
+	function buildPath(router, route) {
+		var viewState = router.app.viewState;
+		var pathMap = route.pathMap;
+		var path = [];
+
+		for (var i = 0, l = pathMap.length; i < l; i++) {
+			var pathMapItem = pathMap[i];
+			var requiredProps = pathMapItem.requiredProperties;
+			var j = requiredProps.length;
+
+			while (j--) {
+				var value = viewState[requiredProps[j]]();
+
+				if (value == null || value === false || value === '') {
+					break;
+				}
+			}
+
+			if (j == -1) {
+				path.push(
+					hasOwn.call(pathMapItem, 'pathPart') ? pathMapItem.pathPart : viewState[pathMapItem.prop]()
+				);
+			}
+		}
+
+		return slashifyPath(path.join(''));
+	}
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift#Router} router
+	 * @param {Router~Route} route
+	 * @param {string} path
+	 * @param {Object} viewStateData
+	 * @param {int} [mode=0]
 	 */
 	function setState(router, route, path, viewStateData, mode) {
 		router.currentRoute = route;
@@ -92,7 +206,7 @@
 
 		if (isClient) {
 			if (mode) {
-				history[mode == 1 ? 'pushState' : 'replaceState']({
+				history[mode == 1 ? 'replaceState' : 'pushState']({
 					'_rt-state': {
 						routeIndex: router.routes.indexOf(route),
 						path: path,
@@ -113,15 +227,7 @@
 		}
 
 		if (route.callback) {
-			router._isHistoryPositionFrozen = true;
-
-			try {
-				route.callback.call(router.app, path);
-			} catch (err) {
-				logError(err);
-			} finally {
-				router._isHistoryPositionFrozen = false;
-			}
+			route.callback.call(router.app, path);
 		}
 	}
 
@@ -181,7 +287,6 @@
 		started: false,
 
 		_isViewStateChangeHandlingRequired: false,
-		_isHistoryPositionFrozen: false,
 
 		/**
 		 * @param {Array<{ path: string, callback: Function }|string>} routes
@@ -332,17 +437,13 @@
 				this.viewBlock = this.app.view.block[0];
 			}
 
-			this.viewState = this.app.viewState;
-
 			this._bindEvents();
 
-			var match = this._tryViewState();
+			if (isServer) {
+				var match = tryViewState(this, this.currentPath == '/' ? null : this.currentRoute);
 
-			if (match) {
-				setState(this, match.route, match.path, this.app.viewState.serializeData());
-			} else {
-				if (isClient) {
-					history.replaceState(history.state || {}, null, '/');
+				if (match) {
+					setState(this, match.route, match.path, this.app.viewState.serializeData());
 				}
 			}
 
@@ -380,23 +481,15 @@
 				this.app.viewState.updateFromSerializedData(state.viewStateData);
 
 				if (route.callback) {
-					this._isHistoryPositionFrozen = true;
-
-					try {
-						route.callback.call(this.app, path);
-					} catch (err) {
-						logError(err);
-					} finally {
-						this._isHistoryPositionFrozen = false;
-					}
+					route.callback.call(this.app, path);
 				}
 			} else {
 				this.app.viewState.update({});
 
-				var match = this._tryViewState();
+				var match = tryViewState(this);
 
 				if (match) {
-					setState(this, match.route, match.path, {});
+					setState(this, match.route, match.path, {}, 1);
 				} else {
 					this.currentRoute = null;
 					this.currentPath = undef;
@@ -425,7 +518,7 @@
 
 			var href = el.getAttribute('href');
 
-			if (!reNotLocal.test(href) && this.route(href)) {
+			if (!reNotLocal.test(href) && this.route(href, true)) {
 				evt.preventDefault();
 			}
 		},
@@ -455,7 +548,7 @@
 
 			this._isViewStateChangeHandlingRequired = false;
 
-			var match = this._tryViewState(this.currentRoute);
+			var match = tryViewState(this, this.currentRoute);
 
 			if (!match) {
 				return;
@@ -479,7 +572,7 @@
 					history.replaceState(state, null, path);
 				}
 			} else {
-				setState(this, match.route, path, this.app.viewState.serializeData(), 1);
+				setState(this, match.route, path, this.app.viewState.serializeData(), 2);
 			}
 		},
 
@@ -488,9 +581,10 @@
 		 * Если нет подходящего маршрута - возвращает false, редиректа не происходит.
 		 *
 		 * @param {string} path
+		 * @param {boolean} [pushHistory=false]
 		 * @returns {boolean}
 		 */
-		route: function(path) {
+		route: function(path, pushHistory) {
 			path = encodePath(path.replace(reSlashes, '/'));
 
 			if (path[0] != '/') {
@@ -506,121 +600,16 @@
 				return true;
 			}
 
-			var match = this._tryPath(path);
+			var match = tryPath(this, path);
 
 			if (!match) {
 				return false;
 			}
 
 			this.app.viewState.update(match.state);
-			setState(this, match.route, path, this.app.viewState.serializeData(), !this._isHistoryPositionFrozen, 2);
+			setState(this, match.route, path, this.app.viewState.serializeData(), pushHistory ? 2 : 1);
 
 			return true;
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {string} path
-		 * @returns {?{ route: Router~Route, state: Object }}
-		 */
-		_tryPath: function(path) {
-			var routes = this.routes;
-
-			for (var i = 0, l = routes.length; i < l; i++) {
-				var route = routes[i];
-				var match = path.match(route.rePath);
-
-				if (match) {
-					return {
-						route: route,
-
-						state: route.properties.reduce(function(state, prop, index) {
-							state[prop.id] = prop.type == 1 ?
-								match[index + 1] !== undef :
-								tryStringAsNumber(decodeURIComponent(match[index + 1]));
-
-							return state;
-						}, {})
-					};
-				}
-			}
-
-			return null;
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Router~Route} [preferredRoute]
-		 * @returns {?{ route: Router~Route, path: string }}
-		 */
-		_tryViewState: function(preferredRoute) {
-			var viewState = this.app.viewState;
-			var routes = this.routes;
-			var resultRoute = null;
-
-			for (var i = 0, l = routes.length; i < l; i++) {
-				var route = routes[i];
-				var requiredProps = route.requiredProperties;
-				var j = requiredProps.length;
-
-				while (j--) {
-					var value = viewState[requiredProps[j]]();
-
-					if (value == null || value === false || value === '') {
-						break;
-					}
-				}
-
-				if (j == -1) {
-					if (requiredProps.length) {
-						resultRoute = route;
-						break;
-					} else if (!resultRoute || route === preferredRoute) {
-						resultRoute = route;
-					}
-				}
-			}
-
-			return resultRoute && {
-				route: resultRoute,
-				path: this._buildPath(resultRoute)
-			};
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Route} route
-		 * @returns {string}
-		 */
-		_buildPath: function(route) {
-			var viewState = this.app.viewState;
-			var pathMap = route.pathMap;
-			var path = [];
-
-			for (var i = 0, l = pathMap.length; i < l; i++) {
-				var pathMapItem = pathMap[i];
-				var requiredProps = pathMapItem.requiredProperties;
-				var j = requiredProps.length;
-
-				while (j--) {
-					var value = viewState[requiredProps[j]]();
-
-					if (value == null || value === false || value === '') {
-						break;
-					}
-				}
-
-				if (j == -1) {
-					path.push(
-						hasOwn.call(pathMapItem, 'pathPart') ? pathMapItem.pathPart : viewState[pathMapItem.prop]()
-					);
-				}
-			}
-
-			return slashifyPath(path.join(''));
 		}
 	});
 

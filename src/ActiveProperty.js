@@ -67,36 +67,24 @@
 	/**
 	 * @private
 	 */
-	function exec(prop, id, initialValue, opts, args) {
+	function exec(id, value, opts, args) {
 		var dc = (this._dataCells || (this._dataCells = Object.create(null)))[id];
 
 		if (!dc) {
-			if (typeof initialValue == 'function') {
-				initialValue = initialValue.bind(this);
-			} else if (initialValue === Object(initialValue)) {
-				if (typeof initialValue.clone == 'function') {
-					initialValue = initialValue.clone();
-				} else if (Array.isArray(initialValue)) {
-					initialValue = initialValue.slice(0);
+			if (value !== null && typeof value == 'object') {
+				if (typeof value.clone == 'function') {
+					value = value.clone();
+				} else if (Array.isArray(value)) {
+					value = value.slice(0);
 				} else {
-					var copy = new initialValue.constructor(initialValue);
-					initialValue = copy != initialValue ? copy : cloneObject(initialValue);
+					var copy = new value.constructor(value);
+					value = copy != value ? copy : cloneObject(value);
 				}
 			}
 
-			if (opts) {
-				var owner = this;
-
-				opts = ['get', 'set', 'onchange', 'onerror'].reduce(function(options, name) {
-					if (opts[name]) {
-						options[name] = opts[name].bind(owner);
-					}
-
-					return options;
-				}, {});
-			}
-
-			dc = this._dataCells[id] = new DataCell(initialValue, opts);
+			opts = Object.create(opts);
+			opts.owner = this;
+			dc = this._dataCells[id] = new DataCell(value, opts);
 		}
 
 		switch (args.length) {
@@ -175,14 +163,21 @@
 	 * @param {Function} [opts.get] - Будет использоваться при получении значения.
 	 * @param {Function} [opts.set] - Будет использоваться при установке значения.
 	 * @param {Function} [opts.onchange] - Инлайновый обработчик изменения значения.
+	 * @param {Function} [opts.onerror] - Инлайновый обработчик ошибки.
 	 * @returns {Function}
 	 */
 	function ActiveProperty(value, opts) {
-		function prop() {
-			return exec.call(this, prop, id, value, opts, arguments);
+		if (!opts) {
+			opts = {};
 		}
 
-		var id = getUID(prop);
+		var id;
+
+		function prop() {
+			return exec.call(this, id, value, opts, arguments);
+		}
+
+		id = getUID(prop);
 
 		Object.defineProperty(prop, 'constructor', {
 			configurable: true,

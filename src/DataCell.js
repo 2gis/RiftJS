@@ -331,8 +331,10 @@
 	 * @param {Object} [opts] - Опции.
 	 * @param {Function} [opts.get] - Будет использоваться при получении значения.
 	 * @param {Function} [opts.set] - Будет использоваться при установке значения.
+	 * @param {Object} [opts.owner]
 	 * @param {boolean} [opts.computable]
 	 * @param {Function} [opts.onchange] - Инлайновый обработчик изменения значения.
+	 * @param {Function} [opts.onerror] - Инлайновый обработчик ошибки.
 	 */
 	var DataCell = EventEmitter.extend(/** @lends Rift.DataCell# */{
 		/**
@@ -342,9 +344,16 @@
 
 		_value: undef,
 		_fixedValue: undef,
+
 		_formula: null,
+
 		_get: null,
 		_set: null,
+
+		/**
+		 * @type {?Object}
+		 */
+		owner: null,
 
 		/**
 		 * Родительские ячейки.
@@ -446,8 +455,15 @@
 
 			if (opts.get) { this._get = opts.get; }
 			if (opts.set) { this._set = opts.set; }
-			if (opts.onchange) { this._onChange = opts.onchange.bind(this); }
-			if (opts.onerror) { this._onError = opts.onerror.bind(this); }
+
+			if (opts.owner) { this.owner = opts.owner; }
+
+			if (opts.onchange) {
+				this._onChange = this.owner ? opts.onchange.bind(this.owner) : opts.onchange;
+			}
+			if (opts.onerror) {
+				this._onError = this.owner ? opts.onerror.bind(this.owner) : opts.onerror;
+			}
 
 			this._children = {};
 
@@ -464,7 +480,7 @@
 				detectedParents.unshift({});
 
 				try {
-					this._value = this._fixedValue = this._formula();
+					this._value = this._fixedValue = this._formula.call(this.owner || this);
 				} catch (err) {
 					this._handleError(err);
 				}
@@ -505,7 +521,11 @@
 				releaseChanges();
 			}
 
-			return this._get ? this._get(this._value) : this._value;
+			if (this._get) {
+				return this.computable ? this._get.call(this.owner || this, this._value) : this._get(this._value);
+			}
+
+			return this._value;
 		},
 		set value(value) {
 			if (this.computable) {
@@ -513,7 +533,7 @@
 					throw new TypeError('Cannot write to read-only dataСell');
 				}
 
-				this._set(value);
+				this._set.call(this.owner || this, value);
 			} else {
 				var oldValue = this._value;
 
@@ -607,14 +627,14 @@
 			var oldValue = this._value;
 			var oldParents = this._parents;
 
-			var error;
+			var err;
 
 			detectedParents.unshift({});
 
 			try {
-				var value = this._formula();
-			} catch (err) {
-				error = err;
+				var value = this._formula.call(this.owner || this);
+			} catch (error) {
+				err = error;
 			}
 
 			if (state != STATE_CHILDREN_RECALCULATION) {
@@ -654,8 +674,8 @@
 				}
 			}
 
-			if (error) {
-				this._handleError(error);
+			if (err) {
+				this._handleError(err);
 			} else if (!svz(oldValue, value)) {
 				this._value = value;
 

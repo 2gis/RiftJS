@@ -13,18 +13,18 @@ if (!Object.assign) {
 			obj = Object(obj);
 
 			for (var i = 1, l = arguments.length; i < l; i++) {
-				source = arguments[i];
+				var nextSource = arguments[i];
 
-				if (source == null) {
-					throw new TypeError('Can\'t convert ' + source + ' to an object');
+				if (nextSource == null) {
+					throw new TypeError('Can\'t convert ' + nextSource + ' to an object');
 				}
 
-				source = Object(source);
+				nextSource = Object(nextSource);
 
-				var keys = Object.keys(source);
+				var keys = Object.keys(nextSource);
 
 				for (var j = 0, m = keys.length; j < m; j++) {
-					obj[keys[j]] = source[keys[j]];
+					obj[keys[j]] = nextSource[keys[j]];
 				}
 			}
 

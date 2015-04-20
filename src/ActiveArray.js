@@ -13,6 +13,61 @@
 	var reduce = arrayProto.reduce;
 
 	/**
+	 * @private
+	 *
+	 * @param {Rift.ActiveArray} arr
+	 * @param {Arguments} values
+	 * @returns {Array}
+	 */
+	function addValues(arr, values) {
+		var valueCount = arr._valueCount;
+		var handleItemChanges = arr._handleItemChanges;
+		var addedValues = [];
+
+		for (var i = 0, l = values.length; i < l; i++) {
+			var value = values[i];
+			var valueHash = getHash(value);
+
+			if (hasOwn.call(valueCount, valueHash)) {
+				valueCount[valueHash]++;
+			} else {
+				valueCount[valueHash] = 1;
+
+				if (handleItemChanges && value instanceof EventEmitter) {
+					value.on('change', arr._onItemChange, arr);
+				}
+
+				addedValues.push(value);
+			}
+		}
+
+		return addedValues;
+	}
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift.ActiveArray} arr
+	 * @param {*} value
+	 * @returns {Array}
+	 */
+	function removeValue(arr, value) {
+		var valueHash = getHash(value);
+
+		if (!--arr._valueCount[valueHash]) {
+			delete arr._valueCount[valueHash];
+
+			if (arr._handleItemChanges && value instanceof EventEmitter) {
+				value.off('change', arr._onItemChange);
+			}
+
+			return [value];
+		}
+
+		return [];
+	}
+
+	/**
 	 * @class Rift.ActiveArray
 	 * @extends {Rift.EventEmitter}
 	 *
@@ -290,7 +345,7 @@
 			this.emit('change', {
 				diff: {
 					$removedValues: [],
-					$addedValues: this._addValues(arguments)
+					$addedValues: addValues(this, arguments)
 				}
 			});
 
@@ -345,7 +400,7 @@
 
 			this.emit('change', {
 				diff: {
-					$removedValues: hasFirst ? this._removeValue(value) : [],
+					$removedValues: hasFirst ? removeValue(this, value) : [],
 					$addedValues: []
 				}
 			});
@@ -380,7 +435,7 @@
 			this.emit('change', {
 				diff: {
 					$removedValues: [],
-					$addedValues: this._addValues(arguments)
+					$addedValues: addValues(this, arguments)
 				}
 			});
 
@@ -408,65 +463,12 @@
 
 			this.emit('change', {
 				diff: {
-					$removedValues: this._removeValue(value),
+					$removedValues: removeValue(this, value),
 					$addedValues: []
 				}
 			});
 
 			return value;
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Arguments} values
-		 * @returns {Array}
-		 */
-		_addValues: function(values) {
-			var valueCount = this._valueCount;
-			var handleItemChanges = this._handleItemChanges;
-			var addedValues = [];
-
-			for (var i = 0, l = values.length; i < l; i++) {
-				var value = values[i];
-				var valueHash = getHash(value);
-
-				if (hasOwn.call(valueCount, valueHash)) {
-					valueCount[valueHash]++;
-				} else {
-					valueCount[valueHash] = 1;
-
-					if (handleItemChanges && value instanceof EventEmitter) {
-						value.on('change', this._onItemChange, this);
-					}
-
-					addedValues.push(value);
-				}
-			}
-
-			return addedValues;
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {*} value
-		 * @returns {Array}
-		 */
-		_removeValue: function(value) {
-			var valueHash = getHash(value);
-
-			if (!--this._valueCount[valueHash]) {
-				delete this._valueCount[valueHash];
-
-				if (this._handleItemChanges && value instanceof EventEmitter) {
-					value.off('change', this._onItemChange);
-				}
-
-				return [value];
-			}
-
-			return [];
 		},
 
 		/**

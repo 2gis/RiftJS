@@ -72,18 +72,18 @@ if (!Object.assign) {
 			obj = Object(obj);
 
 			for (var i = 1, l = arguments.length; i < l; i++) {
-				source = arguments[i];
+				var nextSource = arguments[i];
 
-				if (source == null) {
-					throw new TypeError('Can\'t convert ' + source + ' to an object');
+				if (nextSource == null) {
+					throw new TypeError('Can\'t convert ' + nextSource + ' to an object');
 				}
 
-				source = Object(source);
+				nextSource = Object(nextSource);
 
-				var keys = Object.keys(source);
+				var keys = Object.keys(nextSource);
 
 				for (var j = 0, m = keys.length; j < m; j++) {
-					obj[keys[j]] = source[keys[j]];
+					obj[keys[j]] = nextSource[keys[j]];
 				}
 			}
 
@@ -94,7 +94,11 @@ if (!Object.assign) {
 
 (function() {
 
-	var uidCounter = 0;
+	var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+	var charCount = chars.length;
+	var uidCounter = [];
+	var uid = [];
+	var uidLength = 0;
 
 	/**
 	 * Генерирует уникальный идентификатор.
@@ -103,31 +107,48 @@ if (!Object.assign) {
 	 * @memberOf Rift.uid
 	 *
 	 * @example
+	 * nextUID(); // '0'
 	 * nextUID(); // '1'
 	 * nextUID(); // '2'
-	 * nextUID(); // '3'
 	 *
 	 * @param {string} [prefix='']
 	 * @returns {string}
 	 */
 	function nextUID(prefix) {
-		return (prefix === undef ? '' : prefix) + (++uidCounter);
-	}
+		var i = uidLength;
 
-	/**
-	 * @function resetCounter
-	 * @memberOf Rift.uid
-	 */
-	function resetUIDCounter() {
-		uidCounter = 0;
+		while (i) {
+			var code = uidCounter[--i] + 1;
+
+			if (code == charCount) {
+				uidCounter[i] = 0;
+				uid[i] = chars[0];
+			} else {
+				uidCounter[i] = code;
+				uid[i] = chars[code];
+
+				return (prefix || '') + uid.join('');
+			}
+		}
+
+		uidCounter.unshift(0);
+		uid.unshift(chars[0]);
+		uidLength++;
+
+		if (uidLength == 6) {
+			uidCounter = [0];
+			uid = [chars[0]];
+			uidLength = 1;
+		}
+
+		return (prefix || '') + uid.join('');
 	}
 
 	/**
 	 * @namespace Rift.uid
 	 */
 	rt.uid = {
-		next: nextUID,
-		resetCounter: resetUIDCounter
+		next: nextUID
 	};
 
 })();
@@ -1053,7 +1074,7 @@ if (!Object.assign) {
 
 				if (typeof this['on' + type] == 'function') {
 					events = events ? events.slice(0) : [];
-					events.push({ listener: this['on' + type] });
+					events.push({ listener: this['on' + type], context: this });
 
 					eventCount = events.length;
 				} else {
@@ -1228,10 +1249,9 @@ if (!Object.assign) {
 			for (name in values) {
 				var hasName = name in inner;
 				var oldValue = inner[name];
+				var val = values[name];
 
-				value = values[name];
-
-				if (!hasName || !svz(oldValue, value)) {
+				if (!hasName || !svz(oldValue, val)) {
 					changed = true;
 
 					if (hasName) {
@@ -1248,31 +1268,31 @@ if (!Object.assign) {
 						}
 					}
 
-					var valueHash = getHash(value);
+					var valueHash = getHash(val);
 
 					if (hasOwn.call(valueCount, valueHash)) {
 						valueCount[valueHash]++;
 					} else {
 						valueCount[valueHash] = 1;
 
-						if (handleItemChanges && value instanceof EventEmitter) {
-							value.on('change', this._onItemChange, this);
+						if (handleItemChanges && val instanceof EventEmitter) {
+							val.on('change', this._onItemChange, this);
 						}
 
 						if (hasOwn.call(removedValueDict, valueHash)) {
 							delete removedValueDict[valueHash];
 						} else {
-							addedValues.push(value);
+							addedValues.push(val);
 						}
 					}
 
 					diff[name] = {
 						type: hasName ? 'update' : 'add',
 						oldValue: oldValue,
-						value: value
+						value: val
 					};
 
-					inner[name] = value;
+					inner[name] = val;
 				}
 			}
 
@@ -1422,6 +1442,61 @@ if (!Object.assign) {
 	var splice = arrayProto.splice;
 	var map = arrayProto.map;
 	var reduce = arrayProto.reduce;
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift.ActiveArray} arr
+	 * @param {Arguments} values
+	 * @returns {Array}
+	 */
+	function addValues(arr, values) {
+		var valueCount = arr._valueCount;
+		var handleItemChanges = arr._handleItemChanges;
+		var addedValues = [];
+
+		for (var i = 0, l = values.length; i < l; i++) {
+			var value = values[i];
+			var valueHash = getHash(value);
+
+			if (hasOwn.call(valueCount, valueHash)) {
+				valueCount[valueHash]++;
+			} else {
+				valueCount[valueHash] = 1;
+
+				if (handleItemChanges && value instanceof EventEmitter) {
+					value.on('change', arr._onItemChange, arr);
+				}
+
+				addedValues.push(value);
+			}
+		}
+
+		return addedValues;
+	}
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift.ActiveArray} arr
+	 * @param {*} value
+	 * @returns {Array}
+	 */
+	function removeValue(arr, value) {
+		var valueHash = getHash(value);
+
+		if (!--arr._valueCount[valueHash]) {
+			delete arr._valueCount[valueHash];
+
+			if (arr._handleItemChanges && value instanceof EventEmitter) {
+				value.off('change', arr._onItemChange);
+			}
+
+			return [value];
+		}
+
+		return [];
+	}
 
 	/**
 	 * @class Rift.ActiveArray
@@ -1701,7 +1776,7 @@ if (!Object.assign) {
 			this.emit('change', {
 				diff: {
 					$removedValues: [],
-					$addedValues: this._addValues(arguments)
+					$addedValues: addValues(this, arguments)
 				}
 			});
 
@@ -1756,7 +1831,7 @@ if (!Object.assign) {
 
 			this.emit('change', {
 				diff: {
-					$removedValues: hasFirst ? this._removeValue(value) : [],
+					$removedValues: hasFirst ? removeValue(this, value) : [],
 					$addedValues: []
 				}
 			});
@@ -1791,7 +1866,7 @@ if (!Object.assign) {
 			this.emit('change', {
 				diff: {
 					$removedValues: [],
-					$addedValues: this._addValues(arguments)
+					$addedValues: addValues(this, arguments)
 				}
 			});
 
@@ -1819,65 +1894,12 @@ if (!Object.assign) {
 
 			this.emit('change', {
 				diff: {
-					$removedValues: this._removeValue(value),
+					$removedValues: removeValue(this, value),
 					$addedValues: []
 				}
 			});
 
 			return value;
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Arguments} values
-		 * @returns {Array}
-		 */
-		_addValues: function(values) {
-			var valueCount = this._valueCount;
-			var handleItemChanges = this._handleItemChanges;
-			var addedValues = [];
-
-			for (var i = 0, l = values.length; i < l; i++) {
-				var value = values[i];
-				var valueHash = getHash(value);
-
-				if (hasOwn.call(valueCount, valueHash)) {
-					valueCount[valueHash]++;
-				} else {
-					valueCount[valueHash] = 1;
-
-					if (handleItemChanges && value instanceof EventEmitter) {
-						value.on('change', this._onItemChange, this);
-					}
-
-					addedValues.push(value);
-				}
-			}
-
-			return addedValues;
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {*} value
-		 * @returns {Array}
-		 */
-		_removeValue: function(value) {
-			var valueHash = getHash(value);
-
-			if (!--this._valueCount[valueHash]) {
-				delete this._valueCount[valueHash];
-
-				if (this._handleItemChanges && value instanceof EventEmitter) {
-					value.off('change', this._onItemChange);
-				}
-
-				return [value];
-			}
-
-			return [];
 		},
 
 		/**
@@ -2490,8 +2512,10 @@ if (!Object.assign) {
 	 * @param {Object} [opts] - Опции.
 	 * @param {Function} [opts.get] - Будет использоваться при получении значения.
 	 * @param {Function} [opts.set] - Будет использоваться при установке значения.
+	 * @param {Object} [opts.owner]
 	 * @param {boolean} [opts.computable]
 	 * @param {Function} [opts.onchange] - Инлайновый обработчик изменения значения.
+	 * @param {Function} [opts.onerror] - Инлайновый обработчик ошибки.
 	 */
 	var DataCell = EventEmitter.extend(/** @lends Rift.DataCell# */{
 		/**
@@ -2501,9 +2525,16 @@ if (!Object.assign) {
 
 		_value: undef,
 		_fixedValue: undef,
+
 		_formula: null,
+
 		_get: null,
 		_set: null,
+
+		/**
+		 * @type {?Object}
+		 */
+		owner: null,
 
 		/**
 		 * Родительские ячейки.
@@ -2605,8 +2636,15 @@ if (!Object.assign) {
 
 			if (opts.get) { this._get = opts.get; }
 			if (opts.set) { this._set = opts.set; }
-			if (opts.onchange) { this._onChange = opts.onchange.bind(this); }
-			if (opts.onerror) { this._onError = opts.onerror.bind(this); }
+
+			if (opts.owner) { this.owner = opts.owner; }
+
+			if (opts.onchange) {
+				this._onChange = this.owner ? opts.onchange.bind(this.owner) : opts.onchange;
+			}
+			if (opts.onerror) {
+				this._onError = this.owner ? opts.onerror.bind(this.owner) : opts.onerror;
+			}
 
 			this._children = {};
 
@@ -2623,7 +2661,7 @@ if (!Object.assign) {
 				detectedParents.unshift({});
 
 				try {
-					this._value = this._fixedValue = this._formula();
+					this._value = this._fixedValue = this._formula.call(this.owner || this);
 				} catch (err) {
 					this._handleError(err);
 				}
@@ -2664,7 +2702,11 @@ if (!Object.assign) {
 				releaseChanges();
 			}
 
-			return this._get ? this._get(this._value) : this._value;
+			if (this._get) {
+				return this.computable ? this._get.call(this.owner || this, this._value) : this._get(this._value);
+			}
+
+			return this._value;
 		},
 		set value(value) {
 			if (this.computable) {
@@ -2672,7 +2714,7 @@ if (!Object.assign) {
 					throw new TypeError('Cannot write to read-only dataСell');
 				}
 
-				this._set(value);
+				this._set.call(this.owner || this, value);
 			} else {
 				var oldValue = this._value;
 
@@ -2766,14 +2808,14 @@ if (!Object.assign) {
 			var oldValue = this._value;
 			var oldParents = this._parents;
 
-			var error;
+			var err;
 
 			detectedParents.unshift({});
 
 			try {
-				var value = this._formula();
-			} catch (err) {
-				error = err;
+				var value = this._formula.call(this.owner || this);
+			} catch (error) {
+				err = error;
 			}
 
 			if (state != STATE_CHILDREN_RECALCULATION) {
@@ -2813,8 +2855,8 @@ if (!Object.assign) {
 				}
 			}
 
-			if (error) {
-				this._handleError(error);
+			if (err) {
+				this._handleError(err);
 			} else if (!svz(oldValue, value)) {
 				this._value = value;
 
@@ -2993,36 +3035,24 @@ if (!Object.assign) {
 	/**
 	 * @private
 	 */
-	function exec(prop, id, initialValue, opts, args) {
+	function exec(id, value, opts, args) {
 		var dc = (this._dataCells || (this._dataCells = Object.create(null)))[id];
 
 		if (!dc) {
-			if (typeof initialValue == 'function') {
-				initialValue = initialValue.bind(this);
-			} else if (initialValue === Object(initialValue)) {
-				if (typeof initialValue.clone == 'function') {
-					initialValue = initialValue.clone();
-				} else if (Array.isArray(initialValue)) {
-					initialValue = initialValue.slice(0);
+			if (value !== null && typeof value == 'object') {
+				if (typeof value.clone == 'function') {
+					value = value.clone();
+				} else if (Array.isArray(value)) {
+					value = value.slice(0);
 				} else {
-					var copy = new initialValue.constructor(initialValue);
-					initialValue = copy != initialValue ? copy : cloneObject(initialValue);
+					var copy = new value.constructor(value);
+					value = copy != value ? copy : cloneObject(value);
 				}
 			}
 
-			if (opts) {
-				var owner = this;
-
-				opts = ['get', 'set', 'onchange', 'onerror'].reduce(function(options, name) {
-					if (opts[name]) {
-						options[name] = opts[name].bind(owner);
-					}
-
-					return options;
-				}, {});
-			}
-
-			dc = this._dataCells[id] = new DataCell(initialValue, opts);
+			opts = Object.create(opts);
+			opts.owner = this;
+			dc = this._dataCells[id] = new DataCell(value, opts);
 		}
 
 		switch (args.length) {
@@ -3101,14 +3131,21 @@ if (!Object.assign) {
 	 * @param {Function} [opts.get] - Будет использоваться при получении значения.
 	 * @param {Function} [opts.set] - Будет использоваться при установке значения.
 	 * @param {Function} [opts.onchange] - Инлайновый обработчик изменения значения.
+	 * @param {Function} [opts.onerror] - Инлайновый обработчик ошибки.
 	 * @returns {Function}
 	 */
 	function ActiveProperty(value, opts) {
-		function prop() {
-			return exec.call(this, prop, id, value, opts, arguments);
+		if (!opts) {
+			opts = {};
 		}
 
-		var id = getUID(prop);
+		var id;
+
+		function prop() {
+			return exec.call(this, id, value, opts, arguments);
+		}
+
+		id = getUID(prop);
 
 		Object.defineProperty(prop, 'constructor', {
 			configurable: true,
@@ -3829,19 +3866,31 @@ if (!Object.assign) {
 		},
 
 		value: function(el, value) {
+			value = String(value);
+
 			if (el.value != value) {
 				el.value = value;
 			}
 		},
 
 		checked: function(el, value) {
+			value = Boolean(value);
+
 			if (el.checked != value) {
 				el.checked = value;
 			}
 		},
 
 		css: function(el, value, name) {
-			el.style[name || 'cssText'] = value;
+			value = String(value);
+
+			if (!name) {
+				name = 'cssText';
+			}
+
+			if (el.style[name] != value) {
+				el.style[name] = value;
+			}
 		},
 
 		show: function(el, value) {
@@ -5250,6 +5299,120 @@ if (!Object.assign) {
 
 	/**
 	 * @private
+	 *
+	 * @param {Rift#Router} router
+	 * @param {string} path
+	 * @returns {?{ route: Router~Route, state: Object }}
+	 */
+	function tryPath(router, path) {
+		var routes = router.routes;
+
+		for (var i = 0, l = routes.length; i < l; i++) {
+			var route = routes[i];
+			var match = path.match(route.rePath);
+
+			if (match) {
+				return {
+					route: route,
+
+					state: route.properties.reduce(function(state, prop, index) {
+						state[prop.id] = prop.type == 1 ?
+							match[index + 1] !== undef :
+							tryStringAsNumber(decodeURIComponent(match[index + 1]));
+
+						return state;
+					}, {})
+				};
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift#Router} router
+	 * @param {Router~Route} [preferredRoute]
+	 * @returns {?{ route: Router~Route, path: string }}
+	 */
+	function tryViewState(router, preferredRoute) {
+		var viewState = router.app.viewState;
+		var routes = router.routes;
+		var resultRoute = null;
+
+		for (var i = 0, l = routes.length; i < l; i++) {
+			var route = routes[i];
+			var requiredProps = route.requiredProperties;
+			var j = requiredProps.length;
+
+			while (j--) {
+				var value = viewState[requiredProps[j]]();
+
+				if (value == null || value === false || value === '') {
+					break;
+				}
+			}
+
+			if (j == -1) {
+				if (requiredProps.length) {
+					resultRoute = route;
+					break;
+				} else if (!resultRoute || route === preferredRoute) {
+					resultRoute = route;
+				}
+			}
+		}
+
+		return resultRoute && {
+			route: resultRoute,
+			path: buildPath(router, resultRoute)
+		};
+	}
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift#Router} router
+	 * @param {Router~Route} route
+	 * @returns {string}
+	 */
+	function buildPath(router, route) {
+		var viewState = router.app.viewState;
+		var pathMap = route.pathMap;
+		var path = [];
+
+		for (var i = 0, l = pathMap.length; i < l; i++) {
+			var pathMapItem = pathMap[i];
+			var requiredProps = pathMapItem.requiredProperties;
+			var j = requiredProps.length;
+
+			while (j--) {
+				var value = viewState[requiredProps[j]]();
+
+				if (value == null || value === false || value === '') {
+					break;
+				}
+			}
+
+			if (j == -1) {
+				path.push(
+					hasOwn.call(pathMapItem, 'pathPart') ? pathMapItem.pathPart : viewState[pathMapItem.prop]()
+				);
+			}
+		}
+
+		return slashifyPath(path.join(''));
+	}
+
+	/**
+	 * @private
+	 *
+	 * @param {Rift#Router} router
+	 * @param {Router~Route} route
+	 * @param {string} path
+	 * @param {Object} viewStateData
+	 * @param {int} [mode=0]
 	 */
 	function setState(router, route, path, viewStateData, mode) {
 		router.currentRoute = route;
@@ -5257,7 +5420,7 @@ if (!Object.assign) {
 
 		if (isClient) {
 			if (mode) {
-				history[mode == 1 ? 'pushState' : 'replaceState']({
+				history[mode == 1 ? 'replaceState' : 'pushState']({
 					'_rt-state': {
 						routeIndex: router.routes.indexOf(route),
 						path: path,
@@ -5278,15 +5441,7 @@ if (!Object.assign) {
 		}
 
 		if (route.callback) {
-			router._isHistoryPositionFrozen = true;
-
-			try {
-				route.callback.call(router.app, path);
-			} catch (err) {
-				logError(err);
-			} finally {
-				router._isHistoryPositionFrozen = false;
-			}
+			route.callback.call(router.app, path);
 		}
 	}
 
@@ -5346,7 +5501,6 @@ if (!Object.assign) {
 		started: false,
 
 		_isViewStateChangeHandlingRequired: false,
-		_isHistoryPositionFrozen: false,
 
 		/**
 		 * @param {Array<{ path: string, callback: Function }|string>} routes
@@ -5497,17 +5651,13 @@ if (!Object.assign) {
 				this.viewBlock = this.app.view.block[0];
 			}
 
-			this.viewState = this.app.viewState;
-
 			this._bindEvents();
 
-			var match = this._tryViewState();
+			if (isServer) {
+				var match = tryViewState(this, this.currentPath == '/' ? null : this.currentRoute);
 
-			if (match) {
-				setState(this, match.route, match.path, this.app.viewState.serializeData());
-			} else {
-				if (isClient) {
-					history.replaceState(history.state || {}, null, '/');
+				if (match) {
+					setState(this, match.route, match.path, this.app.viewState.serializeData());
 				}
 			}
 
@@ -5545,23 +5695,15 @@ if (!Object.assign) {
 				this.app.viewState.updateFromSerializedData(state.viewStateData);
 
 				if (route.callback) {
-					this._isHistoryPositionFrozen = true;
-
-					try {
-						route.callback.call(this.app, path);
-					} catch (err) {
-						logError(err);
-					} finally {
-						this._isHistoryPositionFrozen = false;
-					}
+					route.callback.call(this.app, path);
 				}
 			} else {
 				this.app.viewState.update({});
 
-				var match = this._tryViewState();
+				var match = tryViewState(this);
 
 				if (match) {
-					setState(this, match.route, match.path, {});
+					setState(this, match.route, match.path, {}, 1);
 				} else {
 					this.currentRoute = null;
 					this.currentPath = undef;
@@ -5590,7 +5732,7 @@ if (!Object.assign) {
 
 			var href = el.getAttribute('href');
 
-			if (!reNotLocal.test(href) && this.route(href)) {
+			if (!reNotLocal.test(href) && this.route(href, true)) {
 				evt.preventDefault();
 			}
 		},
@@ -5620,7 +5762,7 @@ if (!Object.assign) {
 
 			this._isViewStateChangeHandlingRequired = false;
 
-			var match = this._tryViewState(this.currentRoute);
+			var match = tryViewState(this, this.currentRoute);
 
 			if (!match) {
 				return;
@@ -5644,7 +5786,7 @@ if (!Object.assign) {
 					history.replaceState(state, null, path);
 				}
 			} else {
-				setState(this, match.route, path, this.app.viewState.serializeData(), 1);
+				setState(this, match.route, path, this.app.viewState.serializeData(), 2);
 			}
 		},
 
@@ -5653,9 +5795,10 @@ if (!Object.assign) {
 		 * Если нет подходящего маршрута - возвращает false, редиректа не происходит.
 		 *
 		 * @param {string} path
+		 * @param {boolean} [pushHistory=false]
 		 * @returns {boolean}
 		 */
-		route: function(path) {
+		route: function(path, pushHistory) {
 			path = encodePath(path.replace(reSlashes, '/'));
 
 			if (path[0] != '/') {
@@ -5671,121 +5814,16 @@ if (!Object.assign) {
 				return true;
 			}
 
-			var match = this._tryPath(path);
+			var match = tryPath(this, path);
 
 			if (!match) {
 				return false;
 			}
 
 			this.app.viewState.update(match.state);
-			setState(this, match.route, path, this.app.viewState.serializeData(), !this._isHistoryPositionFrozen, 2);
+			setState(this, match.route, path, this.app.viewState.serializeData(), pushHistory ? 2 : 1);
 
 			return true;
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {string} path
-		 * @returns {?{ route: Router~Route, state: Object }}
-		 */
-		_tryPath: function(path) {
-			var routes = this.routes;
-
-			for (var i = 0, l = routes.length; i < l; i++) {
-				var route = routes[i];
-				var match = path.match(route.rePath);
-
-				if (match) {
-					return {
-						route: route,
-
-						state: route.properties.reduce(function(state, prop, index) {
-							state[prop.id] = prop.type == 1 ?
-								match[index + 1] !== undef :
-								tryStringAsNumber(decodeURIComponent(match[index + 1]));
-
-							return state;
-						}, {})
-					};
-				}
-			}
-
-			return null;
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Router~Route} [preferredRoute]
-		 * @returns {?{ route: Router~Route, path: string }}
-		 */
-		_tryViewState: function(preferredRoute) {
-			var viewState = this.app.viewState;
-			var routes = this.routes;
-			var resultRoute = null;
-
-			for (var i = 0, l = routes.length; i < l; i++) {
-				var route = routes[i];
-				var requiredProps = route.requiredProperties;
-				var j = requiredProps.length;
-
-				while (j--) {
-					var value = viewState[requiredProps[j]]();
-
-					if (value == null || value === false || value === '') {
-						break;
-					}
-				}
-
-				if (j == -1) {
-					if (requiredProps.length) {
-						resultRoute = route;
-						break;
-					} else if (!resultRoute || route === preferredRoute) {
-						resultRoute = route;
-					}
-				}
-			}
-
-			return resultRoute && {
-				route: resultRoute,
-				path: this._buildPath(resultRoute)
-			};
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Route} route
-		 * @returns {string}
-		 */
-		_buildPath: function(route) {
-			var viewState = this.app.viewState;
-			var pathMap = route.pathMap;
-			var path = [];
-
-			for (var i = 0, l = pathMap.length; i < l; i++) {
-				var pathMapItem = pathMap[i];
-				var requiredProps = pathMapItem.requiredProperties;
-				var j = requiredProps.length;
-
-				while (j--) {
-					var value = viewState[requiredProps[j]]();
-
-					if (value == null || value === false || value === '') {
-						break;
-					}
-				}
-
-				if (j == -1) {
-					path.push(
-						hasOwn.call(pathMapItem, 'pathPart') ? pathMapItem.pathPart : viewState[pathMapItem.prop]()
-					);
-				}
-			}
-
-			return slashifyPath(path.join(''));
 		}
 	});
 
@@ -5856,7 +5894,7 @@ if (!Object.assign) {
 		 * @param {Object} viewState
 		 * @param {?Object} viewStateData
 		 * @param {Rift.Router} routes
-		 * @param {string|undefined} [path='/']
+		 * @param {string} path
 		 */
 		_init: function(model, viewClass, viewBlock, viewState, viewStateData, routes, path) {
 			this.model = typeof model == 'function' ? new model() : deserialize(model);
@@ -5865,9 +5903,9 @@ if (!Object.assign) {
 
 			this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
 
-			if (isServer) {
-				router.route(path || '/');
-			} else {
+			router.route(path);
+
+			if (isClient) {
 				this.viewState.updateFromSerializedData(viewStateData);
 			}
 

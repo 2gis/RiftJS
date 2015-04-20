@@ -154,7 +154,7 @@
 
 				if (typeof this['on' + type] == 'function') {
 					events = events ? events.slice(0) : [];
-					events.push({ listener: this['on' + type] });
+					events.push({ listener: this['on' + type], context: this });
 
 					eventCount = events.length;
 				} else {

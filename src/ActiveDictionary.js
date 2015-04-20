@@ -121,10 +121,9 @@
 			for (name in values) {
 				var hasName = name in inner;
 				var oldValue = inner[name];
+				var val = values[name];
 
-				value = values[name];
-
-				if (!hasName || !svz(oldValue, value)) {
+				if (!hasName || !svz(oldValue, val)) {
 					changed = true;
 
 					if (hasName) {
@@ -141,31 +140,31 @@
 						}
 					}
 
-					var valueHash = getHash(value);
+					var valueHash = getHash(val);
 
 					if (hasOwn.call(valueCount, valueHash)) {
 						valueCount[valueHash]++;
 					} else {
 						valueCount[valueHash] = 1;
 
-						if (handleItemChanges && value instanceof EventEmitter) {
-							value.on('change', this._onItemChange, this);
+						if (handleItemChanges && val instanceof EventEmitter) {
+							val.on('change', this._onItemChange, this);
 						}
 
 						if (hasOwn.call(removedValueDict, valueHash)) {
 							delete removedValueDict[valueHash];
 						} else {
-							addedValues.push(value);
+							addedValues.push(val);
 						}
 					}
 
 					diff[name] = {
 						type: hasName ? 'update' : 'add',
 						oldValue: oldValue,
-						value: value
+						value: val
 					};
 
-					inner[name] = value;
+					inner[name] = val;
 				}
 			}
 

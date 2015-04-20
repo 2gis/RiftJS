@@ -61,7 +61,7 @@
 		 * @param {Object} viewState
 		 * @param {?Object} viewStateData
 		 * @param {Rift.Router} routes
-		 * @param {string|undefined} [path='/']
+		 * @param {string} path
 		 */
 		_init: function(model, viewClass, viewBlock, viewState, viewStateData, routes, path) {
 			this.model = typeof model == 'function' ? new model() : deserialize(model);
@@ -70,9 +70,9 @@
 
 			this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
 
-			if (isServer) {
-				router.route(path || '/');
-			} else {
+			router.route(path);
+
+			if (isClient) {
 				this.viewState.updateFromSerializedData(viewStateData);
 			}
 
