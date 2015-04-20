@@ -5214,7 +5214,6 @@ if (!Object.assign) {
 
 (function() {
 
-	var logError = rt.logError;
 	var escapeRegExp = rt.regex.escape;
 	var nextTick = rt.process.nextTick;
 
