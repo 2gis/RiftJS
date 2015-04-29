@@ -7,6 +7,7 @@
 		'eqeqeq': 0,
 		'no-extend-native': 0,
 		'no-loop-func': 0,
+		'no-native-reassign': 0,
 		'no-new': 0,
 		'no-redeclare': 0,
 		'no-return-assign': 0,
@@ -32,7 +33,7 @@
 		isClient: true,
 		logError: true,
 		$: true,
-		keyListeningInner: true
+		keyListenerInner: true
 	},
 	env: {
 		node: true,

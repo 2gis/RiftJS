@@ -7,7 +7,7 @@ var global = Function('return this;')();
  * https://people.mozilla.org/~jorendorff/es6-draft.html#sec-samevaluezero
  */
 function svz(a, b) {
-	return a === b || a != a && b != b;
+	return a === b || (a != a && b != b);
 }
 
 /* eslint-disable no-unused-vars */
@@ -55,4 +55,4 @@ if (isClient) {
 	$ = rt.$ = global.jQuery || global.Zepto || global.ender || global.$;
 }
 
-var keyListeningInner = '_rt-listeningInner';
+var keyListenerInner = '_rt-listenerInner';

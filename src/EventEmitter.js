@@ -88,7 +88,7 @@
 
 				if (evt.context == context && (
 					evt.listener == listener ||
-						(hasOwn.call(evt.listener, keyListeningInner) && evt.listener[keyListeningInner] === listener)
+						(hasOwn.call(evt.listener, keyListenerInner) && evt.listener[keyListenerInner] == listener)
 				)) {
 					events.splice(i, 1);
 				}
@@ -110,7 +110,7 @@
 				this.off(type, outer);
 				listener.apply(this, arguments);
 			}
-			outer[keyListeningInner] = listener;
+			outer[keyListenerInner] = listener;
 
 			return this.on(type, outer, context);
 		},

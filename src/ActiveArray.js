@@ -1,6 +1,7 @@
 (function() {
 
-	var getHash = rt.value.getHash;
+	var Map = rt.Map;
+	var Set = rt.Set;
 	var EventEmitter = rt.EventEmitter;
 
 	var arrayProto = Array.prototype;
@@ -20,18 +21,17 @@
 	 * @returns {Array}
 	 */
 	function addValues(arr, values) {
-		var valueCount = arr._valueCount;
+		var valueCounts = arr._valueCounts;
 		var handleItemChanges = arr._handleItemChanges;
 		var addedValues = [];
 
 		for (var i = 0, l = values.length; i < l; i++) {
 			var value = values[i];
-			var valueHash = getHash(value);
 
-			if (hasOwn.call(valueCount, valueHash)) {
-				valueCount[valueHash]++;
+			if (valueCounts.has(value)) {
+				valueCounts.set(value, valueCounts.get(value) + 1);
 			} else {
-				valueCount[valueHash] = 1;
+				valueCounts.set(value, 1);
 
 				if (handleItemChanges && value instanceof EventEmitter) {
 					value.on('change', arr._onItemChange, arr);
@@ -52,10 +52,12 @@
 	 * @returns {Array}
 	 */
 	function removeValue(arr, value) {
-		var valueHash = getHash(value);
+		var valueCount = arr._valueCounts.get(value) - 1;
 
-		if (!--arr._valueCount[valueHash]) {
-			delete arr._valueCount[valueHash];
+		if (valueCount) {
+			arr._valueCounts.set(value, valueCount);
+		} else {
+			arr._valueCounts.delete(value);
 
 			if (arr._handleItemChanges && value instanceof EventEmitter) {
 				value.off('change', arr._onItemChange);
@@ -77,14 +79,14 @@
 	 */
 	var ActiveArray = EventEmitter.extend('Rift.ActiveArray', /** @lends Rift.ActiveArray# */{
 		_inner: null,
-		_valueCount: null,
+		_valueCounts: null,
 
 		_handleItemChanges: false,
 
 		constructor: function(data, opts) {
 			EventEmitter.call(this);
 
-			this._valueCount = {};
+			this._valueCounts = new Map();
 
 			if (typeof opts == 'boolean') {
 				opts = { handleItemChanges: opts };
@@ -100,17 +102,16 @@
 
 			if (data) {
 				var inner = this._inner = (data instanceof ActiveArray ? data._inner : data).slice(0);
-				var valueCount = this._valueCount;
+				var valueCounts = this._valueCounts;
 
 				for (var i = inner.length; i;) {
 					if (--i in inner) {
 						var value = inner[i];
-						var valueHash = getHash(value);
 
-						if (hasOwn.call(valueCount, valueHash)) {
-							valueCount[valueHash]++;
+						if (valueCounts.has(value)) {
+							valueCounts.set(value, valueCounts.get(value) + 1);
 						} else {
-							valueCount[valueHash] = 1;
+							valueCounts.set(value, 1);
 
 							if (handleItemChanges && value instanceof EventEmitter) {
 								value.on('change', this._onItemChange, this);
@@ -155,15 +156,17 @@
 			var oldValue = inner[index];
 
 			if (!hasIndex || !svz(oldValue, value)) {
-				var valueCount = this._valueCount;
+				var valueCounts = this._valueCounts;
 				var removedValues;
 				var addedValues;
 
 				if (hasIndex) {
-					var oldValueHash = getHash(oldValue);
+					var oldValueCount = valueCounts.get(oldValue) - 1;
 
-					if (!--valueCount[oldValueHash]) {
-						delete valueCount[oldValueHash];
+					if (oldValueCount) {
+						valueCounts.set(oldValue, oldValueCount);
+					} else {
+						valueCounts.delete(oldValue);
 
 						if (this._handleItemChanges && oldValue instanceof EventEmitter) {
 							oldValue.off('change', this._onItemChange);
@@ -173,12 +176,10 @@
 					}
 				}
 
-				var valueHash = getHash(value);
-
-				if (hasOwn.call(valueCount, valueHash)) {
-					valueCount[valueHash]++;
+				if (valueCounts.has(value)) {
+					valueCounts.set(value, valueCounts.get(value) + 1);
 				} else {
-					valueCount[valueHash] = 1;
+					valueCounts.set(value, 1);
 
 					if (this._handleItemChanges && value instanceof EventEmitter) {
 						value.on('change', this._onItemChange, this);
@@ -208,7 +209,7 @@
 		 */
 		delete: function() {
 			var inner = this._inner;
-			var valueCount = this._valueCount;
+			var valueCounts = this._valueCounts;
 			var handleItemChanges = this._handleItemChanges;
 			var changed = false;
 			var removedValues = [];
@@ -220,10 +221,12 @@
 					changed = true;
 
 					var value = inner[index];
-					var valueHash = getHash(value);
+					var valueCount = valueCounts.get(value) - 1;
 
-					if (!--valueCount[valueHash]) {
-						delete valueCount[valueHash];
+					if (valueCount) {
+						valueCounts.set(value, valueCount);
+					} else {
+						valueCounts.delete(value);
 
 						if (handleItemChanges && value instanceof EventEmitter) {
 							value.off('change', this._onItemChange);
@@ -266,7 +269,7 @@
 				var removedValues = [];
 
 				if (len < oldLen) {
-					var valueCount = this._valueCount;
+					var valueCounts = this._valueCounts;
 					var handleItemChanges = this._handleItemChanges;
 					var i = len;
 
@@ -275,10 +278,12 @@
 							changed = true;
 
 							var value = inner[i];
-							var valueHash = getHash(value);
+							var valueCount = valueCounts.get(value) - 1;
 
-							if (!--valueCount[valueHash]) {
-								delete valueCount[valueHash];
+							if (valueCount) {
+								valueCounts.set(value, valueCount);
+							} else {
+								valueCounts.delete(value);
 
 								if (handleItemChanges && value instanceof EventEmitter) {
 									value.off('change', this._onItemChange);
@@ -308,7 +313,7 @@
 		 * @returns {boolean}
 		 */
 		contains: function(value) {
-			return hasOwn.call(this._valueCount, getHash(value));
+			return this._valueCounts.has(value);
 		},
 
 		/**
@@ -361,10 +366,10 @@
 		 * @returns {int}
 		 */
 		pushUnique: function() {
-			var valueCount = this._valueCount;
+			var valueCounts = this._valueCounts;
 
 			return this.push.apply(this, reduce.call(arguments, function(values, value) {
-				if (!hasOwn.call(valueCount, getHash(value)) && values.indexOf(value) == -1) {
+				if (!valueCounts.has(value) && values.indexOf(value) == -1) {
 					values.push(value);
 				}
 
@@ -384,7 +389,7 @@
 				return;
 			}
 
-			if (isEmpty(this._valueCount)) {
+			if (!this._valueCounts.size) {
 				inner.length--;
 				return;
 			}
@@ -395,7 +400,7 @@
 			if (hasFirst) {
 				value = inner.shift();
 			} else {
-				inner.length--;
+				inner.shift();
 			}
 
 			this.emit('change', {
@@ -523,10 +528,10 @@
 				return removedSlice;
 			}
 
-			var valueCount = this._valueCount;
+			var valueCounts = this._valueCounts;
 			var handleItemChanges = this._handleItemChanges;
 			var changed = false;
-			var removedValueDict = {};
+			var removedValueSet = new Set();
 			var addedValues = [];
 
 			for (var i = 0, l = Math.max(removedSliceLen, addedSliceLen); i < l; i++) {
@@ -544,34 +549,32 @@
 					changed = true;
 
 					if (iInRemovedSlice) {
-						var removedValueHash = getHash(removedValue);
+						var removedValueCount = valueCounts.get(removedValue) - 1;
 
-						if (!--valueCount[removedValueHash]) {
-							delete valueCount[removedValueHash];
+						if (removedValueCount) {
+							valueCounts.set(removedValue, removedValueCount);
+						} else {
+							valueCounts.delete(removedValue);
 
 							if (handleItemChanges && removedValue instanceof EventEmitter) {
 								removedValue.off('change', this._onItemChange);
 							}
 
-							removedValueDict[removedValueHash] = removedValue;
+							removedValueSet.add(removedValue);
 						}
 					}
 
 					if (iInAddedSlice) {
-						var addedValueHash = getHash(addedValue);
-
-						if (hasOwn.call(valueCount, addedValueHash)) {
-							valueCount[addedValueHash]++;
+						if (valueCounts.has(addedValue)) {
+							valueCounts.set(addedValue, valueCounts.get(addedValue) + 1);
 						} else {
-							valueCount[addedValueHash] = 1;
+							valueCounts.set(addedValue, 1);
 
 							if (handleItemChanges && addedValue instanceof EventEmitter) {
 								addedValue.on('change', this._onItemChange, this);
 							}
 
-							if (hasOwn.call(removedValueDict, addedValueHash)) {
-								delete removedValueDict[addedValueHash];
-							} else {
+							if (!removedValueSet.delete(addedValue)) {
 								addedValues.push(addedValue);
 							}
 						}
@@ -591,9 +594,9 @@
 			if (changed) {
 				var removedValues = [];
 
-				for (var valueHash in removedValueDict) {
-					removedValues.push(removedValueDict[valueHash]);
-				}
+				removedValueSet.forEach(function(value) {
+					removedValues.push(value);
+				});
 
 				this.emit('change', {
 					diff: {
@@ -727,13 +730,13 @@
 		 */
 		dispose: function() {
 			if (this._handleItemChanges) {
-				var inner = this._inner;
+				var onItemChange = this._onItemChange;
 
-				for (var i = inner.length; i;) {
-					if (--i in inner && inner[i] instanceof EventEmitter) {
-						inner[i].off('change', this._onItemChange);
+				this._valueCounts.forEach(function(value) {
+					if (value instanceof EventEmitter) {
+						value.off('change', onItemChange);
 					}
-				}
+				});
 			}
 		}
 	});

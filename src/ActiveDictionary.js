@@ -1,6 +1,7 @@
 (function() {
 
-	var getHash = rt.value.getHash;
+	var Map = rt.Map;
+	var Set = rt.Set;
 	var EventEmitter = rt.EventEmitter;
 
 	/**
@@ -13,14 +14,14 @@
 	 */
 	var ActiveDictionary = EventEmitter.extend('Rift.ActiveDictionary', /** @lends Rift.ActiveDictionary# */{
 		_inner: null,
-		_valueCount: null,
+		_valueCounts: null,
 
 		_handleItemChanges: false,
 
 		constructor: function(data, opts) {
 			EventEmitter.call(this);
 
-			this._valueCount = {};
+			this._valueCounts = new Map();
 
 			if (typeof opts == 'boolean') {
 				opts = { handleItemChanges: opts };
@@ -39,16 +40,15 @@
 					Object.create(null),
 					data instanceof ActiveDictionary ? data._inner : data
 				);
-				var valueCount = this._valueCount;
+				var valueCounts = this._valueCounts;
 
 				for (var name in inner) {
 					var value = inner[name];
-					var valueHash = getHash(value);
 
-					if (hasOwn.call(valueCount, valueHash)) {
-						valueCount[valueHash]++;
+					if (valueCounts.has(value)) {
+						valueCounts.set(value, valueCounts.get(value) + 1);
 					} else {
-						valueCount[valueHash] = 1;
+						valueCounts.set(value, 1);
 
 						if (handleItemChanges && value instanceof EventEmitter) {
 							value.on('change', this._onItemChange, this);
@@ -107,10 +107,10 @@
 			}
 
 			var inner = this._inner;
-			var valueCount = this._valueCount;
+			var valueCounts = this._valueCounts;
 			var handleItemChanges = this._handleItemChanges;
 			var changed = false;
-			var removedValueDict = {};
+			var removedValueSet = new Set();
 			var removedValues = [];
 			var addedValues = [];
 			var diff = {
@@ -127,33 +127,31 @@
 					changed = true;
 
 					if (hasName) {
-						var oldValueHash = getHash(oldValue);
+						var oldValueCount = valueCounts.get(oldValue) - 1;
 
-						if (!--valueCount[oldValueHash]) {
-							delete valueCount[oldValueHash];
+						if (oldValueCount) {
+							valueCounts.set(oldValue, oldValueCount);
+						} else {
+							valueCounts.delete(oldValue);
 
 							if (handleItemChanges && oldValue instanceof EventEmitter) {
 								oldValue.off('change', this._onItemChange);
 							}
 
-							removedValueDict[oldValueHash] = oldValue;
+							removedValueSet.add(oldValue);
 						}
 					}
 
-					var valueHash = getHash(val);
-
-					if (hasOwn.call(valueCount, valueHash)) {
-						valueCount[valueHash]++;
+					if (valueCounts.has(val)) {
+						valueCounts.set(val, valueCounts.get(val) + 1);
 					} else {
-						valueCount[valueHash] = 1;
+						valueCounts.set(val, 1);
 
 						if (handleItemChanges && val instanceof EventEmitter) {
 							val.on('change', this._onItemChange, this);
 						}
 
-						if (hasOwn.call(removedValueDict, valueHash)) {
-							delete removedValueDict[valueHash];
-						} else {
+						if (!removedValueSet.delete(val)) {
 							addedValues.push(val);
 						}
 					}
@@ -169,9 +167,9 @@
 			}
 
 			if (changed) {
-				for (var valueHash in removedValueDict) {
-					removedValues.push(removedValueDict[valueHash]);
-				}
+				removedValueSet.forEach(function(value) {
+					removedValues.push(value);
+				});
 
 				this.emit('change', { diff: diff });
 			}
@@ -187,7 +185,7 @@
 		 */
 		delete: function() {
 			var inner = this._inner;
-			var valueCount = this._valueCount;
+			var valueCounts = this._valueCounts;
 			var handleItemChanges = this._handleItemChanges;
 			var changed = false;
 			var removedValues = [];
@@ -203,10 +201,12 @@
 					changed = true;
 
 					var value = inner[name];
-					var valueHash = getHash(value);
+					var valueCount = valueCounts.get(value) - 1;
 
-					if (!--valueCount[valueHash]) {
-						delete valueCount[valueHash];
+					if (valueCount) {
+						valueCounts.set(value, valueCount);
+					} else {
+						valueCounts.delete(value);
 
 						if (handleItemChanges && value instanceof EventEmitter) {
 							value.off('change', this._onItemChange);
@@ -237,7 +237,7 @@
 		 * @returns {boolean}
 		 */
 		contains: function(value) {
-			return hasOwn.call(this._valueCount, getHash(value));
+			return this._valueCounts.has(value);
 		},
 
 		/**
@@ -286,13 +286,13 @@
 		 */
 		dispose: function() {
 			if (this._handleItemChanges) {
-				var inner = this._inner;
+				var onItemChange = this._onItemChange;
 
-				for (var name in inner) {
-					if (inner[name] instanceof EventEmitter) {
-						inner[name].off('change', this._onItemChange);
+				this._valueCounts.forEach(function(value) {
+					if (value instanceof EventEmitter) {
+						value.off('change', onItemChange);
 					}
-				}
+				});
 			}
 		}
 	});

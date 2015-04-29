@@ -61,6 +61,18 @@ describe('ActiveArray.js', function() {
 				.to.not.be.ok;
 		});
 
+		it('Понимает дырки при shift (2)', function() {
+			var arr = new rt.ActiveArray([, 1]);
+
+			arr.shift();
+
+			expect(arr.length == 1)
+				.to.be.ok;
+
+			expect(arr.get(0) == 1)
+				.to.be.ok;
+		});
+
 		describe('ActiveArray#splice', function() {
 
 			it('Сплайсит и понимает дырки', function() {

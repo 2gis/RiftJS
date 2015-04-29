@@ -9,14 +9,17 @@
 	 * @returns {string}
 	 */
 	function getHash(value) {
-		if (value === undef) {
-			return 'undefined';
-		}
-		if (value === null) {
-			return 'null';
-		}
-
 		switch (typeof value) {
+			case 'undefined': {
+				return 'undefined';
+			}
+			case 'object': {
+				if (value === null) {
+					return 'null';
+				}
+
+				break;
+			}
 			case 'boolean': { return '?' + value; }
 			case 'number': { return '+' + value; }
 			case 'string': { return ',' + value; }

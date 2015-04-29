@@ -110,7 +110,7 @@
 
 			var listening = this._listening || (this._listening = {});
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(hasOwn.call(listener, keyListeningInner) ? listener[keyListeningInner] : listener) + '-' +
+				getUID(hasOwn.call(listener, keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
 				getUID(context) + '-' + (meta !== undef ? getHash(meta) : '');
 
 			if (hasOwn.call(listening, id)) {
@@ -167,7 +167,7 @@
 			}
 
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(hasOwn.call(listener, keyListeningInner) ? listener[keyListeningInner] : listener) + '-' +
+				getUID(hasOwn.call(listener, keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
 				getUID(context) + '-' + (meta !== undef ? getHash(meta) : '');
 
 			if (hasOwn.call(listening, id)) {

@@ -7,7 +7,7 @@ var global = Function('return this;')();
  * https://people.mozilla.org/~jorendorff/es6-draft.html#sec-samevaluezero
  */
 function svz(a, b) {
-	return a === b || a != a && b != b;
+	return a === b || (a != a && b != b);
 }
 
 /* eslint-disable no-unused-vars */
@@ -55,7 +55,7 @@ if (isClient) {
 	$ = rt.$ = global.jQuery || global.Zepto || global.ender || global.$;
 }
 
-var keyListeningInner = '_rt-listeningInner';
+var keyListenerInner = '_rt-listenerInner';
 
 /*!
  * https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Object/assign
@@ -94,11 +94,7 @@ if (!Object.assign) {
 
 (function() {
 
-	var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-	var charCount = chars.length;
-	var uidCounter = [];
-	var uid = [];
-	var uidLength = 0;
+	var uidCounter = 0;
 
 	/**
 	 * Генерирует уникальный идентификатор.
@@ -107,41 +103,19 @@ if (!Object.assign) {
 	 * @memberOf Rift.uid
 	 *
 	 * @example
-	 * nextUID(); // '0'
 	 * nextUID(); // '1'
 	 * nextUID(); // '2'
+	 * nextUID(); // '3'
 	 *
 	 * @param {string} [prefix='']
 	 * @returns {string}
 	 */
 	function nextUID(prefix) {
-		var i = uidLength;
-
-		while (i) {
-			var code = uidCounter[--i] + 1;
-
-			if (code == charCount) {
-				uidCounter[i] = 0;
-				uid[i] = chars[0];
-			} else {
-				uidCounter[i] = code;
-				uid[i] = chars[code];
-
-				return (prefix || '') + uid.join('');
-			}
+		if (uidCounter == 2176782335) {
+			uidCounter = 0;
 		}
 
-		uidCounter.unshift(0);
-		uid.unshift(chars[0]);
-		uidLength++;
-
-		if (uidLength == 6) {
-			uidCounter = [0];
-			uid = [chars[0]];
-			uidLength = 1;
-		}
-
-		return (prefix || '') + uid.join('');
+		return (prefix || '') + (++uidCounter).toString(36);
 	}
 
 	/**
@@ -368,14 +342,17 @@ if (!Object.assign) {
 	 * @returns {string}
 	 */
 	function getHash(value) {
-		if (value === undef) {
-			return 'undefined';
-		}
-		if (value === null) {
-			return 'null';
-		}
-
 		switch (typeof value) {
+			case 'undefined': {
+				return 'undefined';
+			}
+			case 'object': {
+				if (value === null) {
+					return 'null';
+				}
+
+				break;
+			}
 			case 'boolean': { return '?' + value; }
 			case 'number': { return '+' + value; }
 			case 'string': { return ',' + value; }
@@ -830,6 +807,179 @@ if (!Object.assign) {
 
 (function() {
 
+	var Map = global.Map;
+
+	if (!Map || Map.toString().indexOf('[native code]') == -1) {
+		var getHash = rt.value.getHash;
+
+		var entryStub = {
+			key: undef,
+			value: undef,
+			prev: null,
+			next: null
+		};
+
+		Map = function Map() {
+			this._inner = Object.create(null);
+		};
+
+		rt.object.mixin(Map.prototype, {
+			_inner: null,
+			_first: null,
+			_last: null,
+
+			_size: 0,
+			get size() {
+				return this._size;
+			},
+
+			has: function(key) {
+				return getHash(key) in this._inner;
+			},
+
+			get: function(key) {
+				return (this._inner[getHash(key)] || entryStub).value;
+			},
+
+			set: function(key, value) {
+				var hash = getHash(key);
+
+				if (hash in this._inner) {
+					this._inner[hash].value = value;
+				} else {
+					var entry = this._inner[hash] = {
+						key: key,
+						value: value,
+						prev: this._last,
+						next: null
+					};
+
+					if (this._size++) {
+						this._last.next = entry;
+					} else {
+						this._first = entry;
+					}
+
+					this._last = entry;
+				}
+
+				return this;
+			},
+
+			delete: function(key) {
+				var inner = this._inner;
+				var hash = getHash(key);
+
+				if (!(hash in inner)) {
+					return false;
+				}
+
+				if (--this._size) {
+					var prev = inner[hash].prev;
+					var next = inner[hash].next;
+
+					if (prev) {
+						prev.next = next;
+					} else {
+						this._first = next;
+					}
+
+					if (next) {
+						next.prev = prev;
+					} else {
+						this._last = prev;
+					}
+				} else {
+					this._first = null;
+					this._last = null;
+				}
+
+				delete inner[hash];
+
+				return true;
+			},
+
+			forEach: function(cb, context) {
+				if (context == null) {
+					context = global;
+				}
+
+				var entry = this._first;
+
+				while (entry) {
+					cb.call(context, entry.value, entry.key, this);
+					entry = entry.next;
+				}
+			},
+
+			clear: function() {
+				this._inner = Object.create(null);
+				this._first = null;
+				this._last = null;
+				this._size = 0;
+			}
+		});
+	}
+
+	rt.Map = Map;
+
+})();
+
+(function() {
+
+	var Set = global.Set;
+
+	if (!Set || Set.toString().indexOf('[native code]') == -1) {
+		var Map = rt.Map;
+
+		Set = function Set() {
+			this._inner = new Map();
+		};
+
+		rt.object.mixin(Set.prototype, {
+			_inner: null,
+
+			get size() {
+				return this._inner.size;
+			},
+
+			has: function(value) {
+				return this._inner.has(value);
+			},
+
+			add: function(value) {
+				this._inner.delete(value);
+				this._inner.set(value, null);
+
+				return this;
+			},
+
+			delete: function(value) {
+				return this._inner.delete(value);
+			},
+
+			forEach: function(cb, context) {
+				if (context == null) {
+					context = global;
+				}
+
+				this._inner.forEach(function(value, key) {
+					cb.call(context, key, key, this);
+				}, this);
+			},
+
+			clear: function() {
+				this._inner = new Map();
+			}
+		});
+	}
+
+	rt.Set = Set;
+
+})();
+
+(function() {
+
 	/**
 	 * @class Rift.Event
 	 * @extends {Object}
@@ -1008,7 +1158,7 @@ if (!Object.assign) {
 
 				if (evt.context == context && (
 					evt.listener == listener ||
-						(hasOwn.call(evt.listener, keyListeningInner) && evt.listener[keyListeningInner] === listener)
+						(hasOwn.call(evt.listener, keyListenerInner) && evt.listener[keyListenerInner] == listener)
 				)) {
 					events.splice(i, 1);
 				}
@@ -1030,7 +1180,7 @@ if (!Object.assign) {
 				this.off(type, outer);
 				listener.apply(this, arguments);
 			}
-			outer[keyListeningInner] = listener;
+			outer[keyListenerInner] = listener;
 
 			return this.on(type, outer, context);
 		},
@@ -1128,7 +1278,8 @@ if (!Object.assign) {
 
 (function() {
 
-	var getHash = rt.value.getHash;
+	var Map = rt.Map;
+	var Set = rt.Set;
 	var EventEmitter = rt.EventEmitter;
 
 	/**
@@ -1141,14 +1292,14 @@ if (!Object.assign) {
 	 */
 	var ActiveDictionary = EventEmitter.extend('Rift.ActiveDictionary', /** @lends Rift.ActiveDictionary# */{
 		_inner: null,
-		_valueCount: null,
+		_valueCounts: null,
 
 		_handleItemChanges: false,
 
 		constructor: function(data, opts) {
 			EventEmitter.call(this);
 
-			this._valueCount = {};
+			this._valueCounts = new Map();
 
 			if (typeof opts == 'boolean') {
 				opts = { handleItemChanges: opts };
@@ -1167,16 +1318,15 @@ if (!Object.assign) {
 					Object.create(null),
 					data instanceof ActiveDictionary ? data._inner : data
 				);
-				var valueCount = this._valueCount;
+				var valueCounts = this._valueCounts;
 
 				for (var name in inner) {
 					var value = inner[name];
-					var valueHash = getHash(value);
 
-					if (hasOwn.call(valueCount, valueHash)) {
-						valueCount[valueHash]++;
+					if (valueCounts.has(value)) {
+						valueCounts.set(value, valueCounts.get(value) + 1);
 					} else {
-						valueCount[valueHash] = 1;
+						valueCounts.set(value, 1);
 
 						if (handleItemChanges && value instanceof EventEmitter) {
 							value.on('change', this._onItemChange, this);
@@ -1235,10 +1385,10 @@ if (!Object.assign) {
 			}
 
 			var inner = this._inner;
-			var valueCount = this._valueCount;
+			var valueCounts = this._valueCounts;
 			var handleItemChanges = this._handleItemChanges;
 			var changed = false;
-			var removedValueDict = {};
+			var removedValueSet = new Set();
 			var removedValues = [];
 			var addedValues = [];
 			var diff = {
@@ -1255,33 +1405,31 @@ if (!Object.assign) {
 					changed = true;
 
 					if (hasName) {
-						var oldValueHash = getHash(oldValue);
+						var oldValueCount = valueCounts.get(oldValue) - 1;
 
-						if (!--valueCount[oldValueHash]) {
-							delete valueCount[oldValueHash];
+						if (oldValueCount) {
+							valueCounts.set(oldValue, oldValueCount);
+						} else {
+							valueCounts.delete(oldValue);
 
 							if (handleItemChanges && oldValue instanceof EventEmitter) {
 								oldValue.off('change', this._onItemChange);
 							}
 
-							removedValueDict[oldValueHash] = oldValue;
+							removedValueSet.add(oldValue);
 						}
 					}
 
-					var valueHash = getHash(val);
-
-					if (hasOwn.call(valueCount, valueHash)) {
-						valueCount[valueHash]++;
+					if (valueCounts.has(val)) {
+						valueCounts.set(val, valueCounts.get(val) + 1);
 					} else {
-						valueCount[valueHash] = 1;
+						valueCounts.set(val, 1);
 
 						if (handleItemChanges && val instanceof EventEmitter) {
 							val.on('change', this._onItemChange, this);
 						}
 
-						if (hasOwn.call(removedValueDict, valueHash)) {
-							delete removedValueDict[valueHash];
-						} else {
+						if (!removedValueSet.delete(val)) {
 							addedValues.push(val);
 						}
 					}
@@ -1297,9 +1445,9 @@ if (!Object.assign) {
 			}
 
 			if (changed) {
-				for (var valueHash in removedValueDict) {
-					removedValues.push(removedValueDict[valueHash]);
-				}
+				removedValueSet.forEach(function(value) {
+					removedValues.push(value);
+				});
 
 				this.emit('change', { diff: diff });
 			}
@@ -1315,7 +1463,7 @@ if (!Object.assign) {
 		 */
 		delete: function() {
 			var inner = this._inner;
-			var valueCount = this._valueCount;
+			var valueCounts = this._valueCounts;
 			var handleItemChanges = this._handleItemChanges;
 			var changed = false;
 			var removedValues = [];
@@ -1331,10 +1479,12 @@ if (!Object.assign) {
 					changed = true;
 
 					var value = inner[name];
-					var valueHash = getHash(value);
+					var valueCount = valueCounts.get(value) - 1;
 
-					if (!--valueCount[valueHash]) {
-						delete valueCount[valueHash];
+					if (valueCount) {
+						valueCounts.set(value, valueCount);
+					} else {
+						valueCounts.delete(value);
 
 						if (handleItemChanges && value instanceof EventEmitter) {
 							value.off('change', this._onItemChange);
@@ -1365,7 +1515,7 @@ if (!Object.assign) {
 		 * @returns {boolean}
 		 */
 		contains: function(value) {
-			return hasOwn.call(this._valueCount, getHash(value));
+			return this._valueCounts.has(value);
 		},
 
 		/**
@@ -1414,13 +1564,13 @@ if (!Object.assign) {
 		 */
 		dispose: function() {
 			if (this._handleItemChanges) {
-				var inner = this._inner;
+				var onItemChange = this._onItemChange;
 
-				for (var name in inner) {
-					if (inner[name] instanceof EventEmitter) {
-						inner[name].off('change', this._onItemChange);
+				this._valueCounts.forEach(function(value) {
+					if (value instanceof EventEmitter) {
+						value.off('change', onItemChange);
 					}
-				}
+				});
 			}
 		}
 	});
@@ -1431,7 +1581,8 @@ if (!Object.assign) {
 
 (function() {
 
-	var getHash = rt.value.getHash;
+	var Map = rt.Map;
+	var Set = rt.Set;
 	var EventEmitter = rt.EventEmitter;
 
 	var arrayProto = Array.prototype;
@@ -1451,18 +1602,17 @@ if (!Object.assign) {
 	 * @returns {Array}
 	 */
 	function addValues(arr, values) {
-		var valueCount = arr._valueCount;
+		var valueCounts = arr._valueCounts;
 		var handleItemChanges = arr._handleItemChanges;
 		var addedValues = [];
 
 		for (var i = 0, l = values.length; i < l; i++) {
 			var value = values[i];
-			var valueHash = getHash(value);
 
-			if (hasOwn.call(valueCount, valueHash)) {
-				valueCount[valueHash]++;
+			if (valueCounts.has(value)) {
+				valueCounts.set(value, valueCounts.get(value) + 1);
 			} else {
-				valueCount[valueHash] = 1;
+				valueCounts.set(value, 1);
 
 				if (handleItemChanges && value instanceof EventEmitter) {
 					value.on('change', arr._onItemChange, arr);
@@ -1483,10 +1633,12 @@ if (!Object.assign) {
 	 * @returns {Array}
 	 */
 	function removeValue(arr, value) {
-		var valueHash = getHash(value);
+		var valueCount = arr._valueCounts.get(value) - 1;
 
-		if (!--arr._valueCount[valueHash]) {
-			delete arr._valueCount[valueHash];
+		if (valueCount) {
+			arr._valueCounts.set(value, valueCount);
+		} else {
+			arr._valueCounts.delete(value);
 
 			if (arr._handleItemChanges && value instanceof EventEmitter) {
 				value.off('change', arr._onItemChange);
@@ -1508,14 +1660,14 @@ if (!Object.assign) {
 	 */
 	var ActiveArray = EventEmitter.extend('Rift.ActiveArray', /** @lends Rift.ActiveArray# */{
 		_inner: null,
-		_valueCount: null,
+		_valueCounts: null,
 
 		_handleItemChanges: false,
 
 		constructor: function(data, opts) {
 			EventEmitter.call(this);
 
-			this._valueCount = {};
+			this._valueCounts = new Map();
 
 			if (typeof opts == 'boolean') {
 				opts = { handleItemChanges: opts };
@@ -1531,17 +1683,16 @@ if (!Object.assign) {
 
 			if (data) {
 				var inner = this._inner = (data instanceof ActiveArray ? data._inner : data).slice(0);
-				var valueCount = this._valueCount;
+				var valueCounts = this._valueCounts;
 
 				for (var i = inner.length; i;) {
 					if (--i in inner) {
 						var value = inner[i];
-						var valueHash = getHash(value);
 
-						if (hasOwn.call(valueCount, valueHash)) {
-							valueCount[valueHash]++;
+						if (valueCounts.has(value)) {
+							valueCounts.set(value, valueCounts.get(value) + 1);
 						} else {
-							valueCount[valueHash] = 1;
+							valueCounts.set(value, 1);
 
 							if (handleItemChanges && value instanceof EventEmitter) {
 								value.on('change', this._onItemChange, this);
@@ -1586,15 +1737,17 @@ if (!Object.assign) {
 			var oldValue = inner[index];
 
 			if (!hasIndex || !svz(oldValue, value)) {
-				var valueCount = this._valueCount;
+				var valueCounts = this._valueCounts;
 				var removedValues;
 				var addedValues;
 
 				if (hasIndex) {
-					var oldValueHash = getHash(oldValue);
+					var oldValueCount = valueCounts.get(oldValue) - 1;
 
-					if (!--valueCount[oldValueHash]) {
-						delete valueCount[oldValueHash];
+					if (oldValueCount) {
+						valueCounts.set(oldValue, oldValueCount);
+					} else {
+						valueCounts.delete(oldValue);
 
 						if (this._handleItemChanges && oldValue instanceof EventEmitter) {
 							oldValue.off('change', this._onItemChange);
@@ -1604,12 +1757,10 @@ if (!Object.assign) {
 					}
 				}
 
-				var valueHash = getHash(value);
-
-				if (hasOwn.call(valueCount, valueHash)) {
-					valueCount[valueHash]++;
+				if (valueCounts.has(value)) {
+					valueCounts.set(value, valueCounts.get(value) + 1);
 				} else {
-					valueCount[valueHash] = 1;
+					valueCounts.set(value, 1);
 
 					if (this._handleItemChanges && value instanceof EventEmitter) {
 						value.on('change', this._onItemChange, this);
@@ -1639,7 +1790,7 @@ if (!Object.assign) {
 		 */
 		delete: function() {
 			var inner = this._inner;
-			var valueCount = this._valueCount;
+			var valueCounts = this._valueCounts;
 			var handleItemChanges = this._handleItemChanges;
 			var changed = false;
 			var removedValues = [];
@@ -1651,10 +1802,12 @@ if (!Object.assign) {
 					changed = true;
 
 					var value = inner[index];
-					var valueHash = getHash(value);
+					var valueCount = valueCounts.get(value) - 1;
 
-					if (!--valueCount[valueHash]) {
-						delete valueCount[valueHash];
+					if (valueCount) {
+						valueCounts.set(value, valueCount);
+					} else {
+						valueCounts.delete(value);
 
 						if (handleItemChanges && value instanceof EventEmitter) {
 							value.off('change', this._onItemChange);
@@ -1697,7 +1850,7 @@ if (!Object.assign) {
 				var removedValues = [];
 
 				if (len < oldLen) {
-					var valueCount = this._valueCount;
+					var valueCounts = this._valueCounts;
 					var handleItemChanges = this._handleItemChanges;
 					var i = len;
 
@@ -1706,10 +1859,12 @@ if (!Object.assign) {
 							changed = true;
 
 							var value = inner[i];
-							var valueHash = getHash(value);
+							var valueCount = valueCounts.get(value) - 1;
 
-							if (!--valueCount[valueHash]) {
-								delete valueCount[valueHash];
+							if (valueCount) {
+								valueCounts.set(value, valueCount);
+							} else {
+								valueCounts.delete(value);
 
 								if (handleItemChanges && value instanceof EventEmitter) {
 									value.off('change', this._onItemChange);
@@ -1739,7 +1894,7 @@ if (!Object.assign) {
 		 * @returns {boolean}
 		 */
 		contains: function(value) {
-			return hasOwn.call(this._valueCount, getHash(value));
+			return this._valueCounts.has(value);
 		},
 
 		/**
@@ -1792,10 +1947,10 @@ if (!Object.assign) {
 		 * @returns {int}
 		 */
 		pushUnique: function() {
-			var valueCount = this._valueCount;
+			var valueCounts = this._valueCounts;
 
 			return this.push.apply(this, reduce.call(arguments, function(values, value) {
-				if (!hasOwn.call(valueCount, getHash(value)) && values.indexOf(value) == -1) {
+				if (!valueCounts.has(value) && values.indexOf(value) == -1) {
 					values.push(value);
 				}
 
@@ -1815,7 +1970,7 @@ if (!Object.assign) {
 				return;
 			}
 
-			if (isEmpty(this._valueCount)) {
+			if (!this._valueCounts.size) {
 				inner.length--;
 				return;
 			}
@@ -1826,7 +1981,7 @@ if (!Object.assign) {
 			if (hasFirst) {
 				value = inner.shift();
 			} else {
-				inner.length--;
+				inner.shift();
 			}
 
 			this.emit('change', {
@@ -1954,10 +2109,10 @@ if (!Object.assign) {
 				return removedSlice;
 			}
 
-			var valueCount = this._valueCount;
+			var valueCounts = this._valueCounts;
 			var handleItemChanges = this._handleItemChanges;
 			var changed = false;
-			var removedValueDict = {};
+			var removedValueSet = new Set();
 			var addedValues = [];
 
 			for (var i = 0, l = Math.max(removedSliceLen, addedSliceLen); i < l; i++) {
@@ -1975,34 +2130,32 @@ if (!Object.assign) {
 					changed = true;
 
 					if (iInRemovedSlice) {
-						var removedValueHash = getHash(removedValue);
+						var removedValueCount = valueCounts.get(removedValue) - 1;
 
-						if (!--valueCount[removedValueHash]) {
-							delete valueCount[removedValueHash];
+						if (removedValueCount) {
+							valueCounts.set(removedValue, removedValueCount);
+						} else {
+							valueCounts.delete(removedValue);
 
 							if (handleItemChanges && removedValue instanceof EventEmitter) {
 								removedValue.off('change', this._onItemChange);
 							}
 
-							removedValueDict[removedValueHash] = removedValue;
+							removedValueSet.add(removedValue);
 						}
 					}
 
 					if (iInAddedSlice) {
-						var addedValueHash = getHash(addedValue);
-
-						if (hasOwn.call(valueCount, addedValueHash)) {
-							valueCount[addedValueHash]++;
+						if (valueCounts.has(addedValue)) {
+							valueCounts.set(addedValue, valueCounts.get(addedValue) + 1);
 						} else {
-							valueCount[addedValueHash] = 1;
+							valueCounts.set(addedValue, 1);
 
 							if (handleItemChanges && addedValue instanceof EventEmitter) {
 								addedValue.on('change', this._onItemChange, this);
 							}
 
-							if (hasOwn.call(removedValueDict, addedValueHash)) {
-								delete removedValueDict[addedValueHash];
-							} else {
+							if (!removedValueSet.delete(addedValue)) {
 								addedValues.push(addedValue);
 							}
 						}
@@ -2022,9 +2175,9 @@ if (!Object.assign) {
 			if (changed) {
 				var removedValues = [];
 
-				for (var valueHash in removedValueDict) {
-					removedValues.push(removedValueDict[valueHash]);
-				}
+				removedValueSet.forEach(function(value) {
+					removedValues.push(value);
+				});
 
 				this.emit('change', {
 					diff: {
@@ -2158,13 +2311,13 @@ if (!Object.assign) {
 		 */
 		dispose: function() {
 			if (this._handleItemChanges) {
-				var inner = this._inner;
+				var onItemChange = this._onItemChange;
 
-				for (var i = inner.length; i;) {
-					if (--i in inner && inner[i] instanceof EventEmitter) {
-						inner[i].off('change', this._onItemChange);
+				this._valueCounts.forEach(function(value) {
+					if (value instanceof EventEmitter) {
+						value.off('change', onItemChange);
 					}
-				}
+				});
 			}
 		}
 	});
@@ -3343,7 +3496,7 @@ if (!Object.assign) {
 
 			var listening = this._listening || (this._listening = {});
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(hasOwn.call(listener, keyListeningInner) ? listener[keyListeningInner] : listener) + '-' +
+				getUID(hasOwn.call(listener, keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
 				getUID(context) + '-' + (meta !== undef ? getHash(meta) : '');
 
 			if (hasOwn.call(listening, id)) {
@@ -3400,7 +3553,7 @@ if (!Object.assign) {
 			}
 
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(hasOwn.call(listener, keyListeningInner) ? listener[keyListeningInner] : listener) + '-' +
+				getUID(hasOwn.call(listener, keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
 				getUID(context) + '-' + (meta !== undef ? getHash(meta) : '');
 
 			if (hasOwn.call(listening, id)) {
@@ -4036,7 +4189,7 @@ if (!Object.assign) {
 	var escapeHTML = rt.html.escape;
 	var bindDOM = rt.domBinding.bind;
 
-	var selfClosingTags = Object.assign(Object.create(null), {
+	var selfClosingTags = {
 		area: 1,
 		base: 1,
 		basefont: 1,
@@ -4067,7 +4220,7 @@ if (!Object.assign) {
 		rect: 1,
 		stop: 1,
 		use: 1
-	});
+	};
 
 	var reNameClass = /^(.+?):(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
@@ -4547,14 +4700,18 @@ if (!Object.assign) {
 			}
 
 			if (isServer && this.onlyClient) {
-				cb(this._renderOpenTag(true) + (this.tagName in selfClosingTags ? '' : '</' + this.tagName + '>'));
+				cb(
+					this._renderOpenTag(true) +
+						(hasOwn.call(selfClosingTags, this.tagName) ? '' : '</' + this.tagName + '>')
+				);
+
 				return;
 			}
 
 			this._currentlyRendering = true;
 
 			receiveData(this, function() {
-				if (this.tagName in selfClosingTags) {
+				if (hasOwn.call(selfClosingTags, this.tagName)) {
 					this._currentlyRendering = false;
 					cb(this._renderOpenTag(false));
 				} else {
@@ -4963,7 +5120,7 @@ if (!Object.assign) {
 								return inner.call(this, evt);
 							}
 						};
-						outer[keyListeningInner] = inner;
+						outer[keyListenerInner] = inner;
 
 						listener = outer;
 					}
@@ -4977,7 +5134,7 @@ if (!Object.assign) {
 							return inner.call(this, evt);
 						}
 					};
-					outer[keyListeningInner] = inner;
+					outer[keyListenerInner] = inner;
 
 					listener = outer;
 				}
@@ -5252,7 +5409,7 @@ if (!Object.assign) {
 
 					state: route.properties.reduce(function(state, prop, index) {
 						state[prop.id] = prop.type == 1 ?
-							match[index + 1] !== undef :
+							Boolean(match[index + 1]) :
 							tryStringAsNumber(decodeURIComponent(match[index + 1]));
 
 						return state;

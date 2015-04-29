@@ -5,7 +5,7 @@ var $ = require('gulp-load-plugins')();
 var helpers = require('./helpers');
 
 var bodyFiles = exports.bodyFiles = [
-	'src/shim.js', // 3
+	'src/es6-object-assign.js', // 3
 	'src/uid.js', // 3
 	'src/object.js', // 3
 	'src/namespace.js', // 3
@@ -17,8 +17,10 @@ var bodyFiles = exports.bodyFiles = [
 
 	'src/dump.js', // 3
 
+	'src/Map.js', // 0
+	'src/Set.js', // 0
 	'src/Event.js', // 3
-	'src/EventEmitter.js', // 3
+	'src/EventEmitter.js', // 4
 	'src/ActiveDictionary.js', // 3
 	'src/ActiveArray.js', // 3
 	'src/DataCell.js', // 3

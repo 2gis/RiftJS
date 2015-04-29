@@ -10,7 +10,7 @@
 	var escapeHTML = rt.html.escape;
 	var bindDOM = rt.domBinding.bind;
 
-	var selfClosingTags = Object.assign(Object.create(null), {
+	var selfClosingTags = {
 		area: 1,
 		base: 1,
 		basefont: 1,
@@ -41,7 +41,7 @@
 		rect: 1,
 		stop: 1,
 		use: 1
-	});
+	};
 
 	var reNameClass = /^(.+?):(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
@@ -521,14 +521,18 @@
 			}
 
 			if (isServer && this.onlyClient) {
-				cb(this._renderOpenTag(true) + (this.tagName in selfClosingTags ? '' : '</' + this.tagName + '>'));
+				cb(
+					this._renderOpenTag(true) +
+						(hasOwn.call(selfClosingTags, this.tagName) ? '' : '</' + this.tagName + '>')
+				);
+
 				return;
 			}
 
 			this._currentlyRendering = true;
 
 			receiveData(this, function() {
-				if (this.tagName in selfClosingTags) {
+				if (hasOwn.call(selfClosingTags, this.tagName)) {
 					this._currentlyRendering = false;
 					cb(this._renderOpenTag(false));
 				} else {
@@ -937,7 +941,7 @@
 								return inner.call(this, evt);
 							}
 						};
-						outer[keyListeningInner] = inner;
+						outer[keyListenerInner] = inner;
 
 						listener = outer;
 					}
@@ -951,7 +955,7 @@
 							return inner.call(this, evt);
 						}
 					};
-					outer[keyListeningInner] = inner;
+					outer[keyListenerInner] = inner;
 
 					listener = outer;
 				}
