@@ -2,6 +2,7 @@
 
 	var getUID = rt.object.getUID;
 	var getHash = rt.value.getHash;
+	var Map = rt.Map;
 	var EventEmitter = rt.EventEmitter;
 	var ActiveProperty = rt.ActiveProperty;
 	var autoBind = rt.ActiveProperty.autoBind;
@@ -15,10 +16,12 @@
 	 */
 	function wrapListeningMethod(method) {
 		return function _(target, type, listener, context, meta) {
-			if (Array.isArray(target) || target instanceof $) {
+			if (Array.isArray(target) || (isClient && target instanceof $)) {
 				for (var i = target.length; i;) {
 					_.call(this, target[--i], type, listener, context, meta);
 				}
+			} else if (typeof target == 'function' && target.constructor == ActiveProperty) {
+				target = target('dataCell', 0);
 			} else if (typeof type == 'object') {
 				meta = context;
 				context = listener;
@@ -62,10 +65,10 @@
 	}
 
 	/**
-	 * @class Rift.Cleanable
+	 * @class Rift.Disposable
 	 * @extends {Rift.EventEmitter}
 	 */
-	var Cleanable = EventEmitter.extend(/** @lends Rift.Cleanable# */{
+	var Disposable = EventEmitter.extend(/** @lends Rift.Disposable# */{
 		_listening: null,
 		_callbacks: null,
 		_timeouts: null,
@@ -82,7 +85,7 @@
 					cl._isActivePropertiesBound = true;
 
 					cl = cl.$super.constructor;
-				} while (cl != Cleanable && !cl._isActivePropertiesBound);
+				} while (cl != Disposable && !cl._isActivePropertiesBound);
 			}
 		},
 
@@ -94,7 +97,7 @@
 		 * @param {Function} listener
 		 * @param {Object|undefined} [context=this]
 		 * @param {*} [meta]
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
 		listen: wrapListeningMethod(function(target, type, listener, context, meta) {
 			this._listen(target, type, listener, context, meta);
@@ -146,7 +149,7 @@
 		 * @param {Function} listener
 		 * @param {Object|undefined} [context=this]
 		 * @param {*} [meta]
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
 		stopListening: wrapListeningMethod(function(target, type, listener, context, meta) {
 			this._stopListening(target, type, listener, context, meta);
@@ -179,7 +182,7 @@
 		/**
 		 * Останавливает прослушивание всех событий.
 		 *
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
 		stopAllListening: function() {
 			var listening = this._listening;
@@ -187,8 +190,9 @@
 			if (listening) {
 				for (var id in listening) {
 					removeListener(listening[id]);
-					delete listening[id];
 				}
+
+				this._listening = null;
 			}
 
 			return this;
@@ -200,46 +204,41 @@
 		 * @param {Function} cb
 		 * @returns {Function}
 		 */
-		regCallback: function(cb) {
-			var callbacks = this._callbacks || (this._callbacks = {});
-			var id = getUID(cb);
+		registerCallback: function(cb) {
+			var callbacks = this._callbacks || (this._callbacks = new Map());
 
-			if (hasOwn.call(callbacks, id)) {
-				callbacks[id].canceled = true;
+			if (callbacks.has(cb)) {
+				callbacks.get(cb).canceled = true;
 			}
 
-			var cleanable = this;
+			var disposable = this;
 
 			function outer() {
 				if (hasOwn.call(outer, 'canceled') && outer.canceled) {
 					return;
 				}
 
-				delete callbacks[id];
-				cb.apply(cleanable, arguments);
+				callbacks.delete(cb);
+				cb.apply(disposable, arguments);
 			}
 
-			callbacks[id] = outer;
+			callbacks.set(cb, outer);
 
 			return outer;
 		},
 
 		/**
-		 * Отменяет колбэк.
+		 * Отменяет регистрацию колбэка.
 		 *
 		 * @param {Function} cb
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
-		cancelCallback: function(cb) {
+		unregisterCallback: function(cb) {
 			var callbacks = this._callbacks;
 
-			if (callbacks) {
-				var id = getUID(cb);
-
-				if (hasOwn.call(callbacks, id)) {
-					callbacks[id].canceled = true;
-					delete callbacks[id];
-				}
+			if (callbacks && callbacks.has(cb)) {
+				callbacks.get(cb).canceled = true;
+				callbacks.delete(cb);
 			}
 
 			return this;
@@ -248,16 +247,17 @@
 		/**
 		 * Отменяет все колбэки.
 		 *
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
-		cancelAllCallbacks: function() {
+		unregisterAllCallbacks: function() {
 			var callbacks = this._callbacks;
 
 			if (callbacks) {
-				for (var id in callbacks) {
-					callbacks[id].canceled = true;
-					delete callbacks[id];
-				}
+				callbacks.forEach(function(outer) {
+					outer.canceled = true;
+				});
+
+				this._callbacks = null;
 			}
 
 			return this;
@@ -266,24 +266,23 @@
 		/**
 		 * Устанавливает таймер.
 		 *
-		 * @param {Function} cb
+		 * @param {Function} fn
 		 * @param {int} delay
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
-		setTimeout: function(cb, delay) {
-			var timeouts = this._timeouts || (this._timeouts = {});
-			var id = getUID(cb);
+		setTimeout: function(fn, delay) {
+			var timeouts = this._timeouts || (this._timeouts = new Map());
 
-			if (hasOwn.call(timeouts, id)) {
-				clearTimeout(timeouts[id]);
+			if (timeouts.has(fn)) {
+				clearTimeout(timeouts.get(fn));
 			}
 
-			var cleanable = this;
+			var disposable = this;
 
-			timeouts[id] = setTimeout(function() {
-				delete timeouts[id];
-				cb.call(cleanable);
-			}, delay);
+			timeouts.set(fn, setTimeout(function() {
+				timeouts.delete(fn);
+				fn.call(disposable);
+			}, delay));
 
 			return this;
 		},
@@ -291,19 +290,15 @@
 		/**
 		 * Отменяет установленный таймер.
 		 *
-		 * @param {Function} cb - Колбэк отменяемого таймера.
-		 * @returns {Rift.Cleanable}
+		 * @param {Function} fn - Колбэк отменяемого таймера.
+		 * @returns {Rift.Disposable}
 		 */
-		clearTimeout: function(cb) {
+		clearTimeout: function(fn) {
 			var timeouts = this._timeouts;
 
-			if (timeouts) {
-				var id = getUID(cb);
-
-				if (hasOwn.call(timeouts, id)) {
-					clearTimeout(timeouts[id]);
-					delete timeouts[id];
-				}
+			if (timeouts && timeouts.has(fn)) {
+				clearTimeout(timeouts.get(fn));
+				timeouts.delete(fn);
 			}
 
 			return this;
@@ -312,16 +307,17 @@
 		/**
 		 * Отменяет все установленные таймеры.
 		 *
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
 		clearAllTimeouts: function() {
 			var timeouts = this._timeouts;
 
 			if (timeouts) {
-				for (var id in timeouts) {
-					clearTimeout(timeouts[id]);
-					delete timeouts[id];
-				}
+				timeouts.forEach(function(fn, id) {
+					clearTimeout(id);
+				});
+
+				this._timeouts = null;
 			}
 
 			return this;
@@ -358,25 +354,18 @@
 		},
 
 		/**
-		 * Останавливает прослушивание всех событий, отменяет все колбэки и все установленные таймеры.
-		 */
-		clean: function() {
-			this
-				.stopAllListening()
-				.cancelAllCallbacks()
-				.clearAllTimeouts();
-
-			disposeDataCells(this);
-		},
-
-		/**
 		 * Уничтожает инстанс освобождая занятые им ресурсы.
 		 */
 		dispose: function() {
-			this.clean();
+			this
+				.stopAllListening()
+				.unregisterAllCallbacks()
+				.clearAllTimeouts();
+
+			disposeDataCells(this);
 		}
 	});
 
-	rt.Cleanable = Cleanable;
+	rt.Disposable = Disposable;
 
 })();

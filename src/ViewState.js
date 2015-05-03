@@ -3,27 +3,36 @@
 	var serialize = rt.dump.serialize;
 	var deserialize = rt.dump.deserialize;
 	var ActiveProperty = rt.ActiveProperty;
-	var Cleanable = rt.Cleanable;
+	var Disposable = rt.Disposable;
 
 	/**
 	 * @class Rift.ViewState
-	 * @extends {Rift.Cleanable}
+	 * @extends {Rift.Disposable}
 	 *
 	 * @param {Object} props
 	 */
-	var ViewState = Cleanable.extend('Rift.ViewState', /** @lends Rift.ViewState# */{
+	var ViewState = Disposable.extend('Rift.ViewState', /** @lends Rift.ViewState# */{
 		/**
 		 * @type {Array<string>}
 		 */
 		properties: null,
 
 		constructor: function(props) {
-			Cleanable.call(this);
+			Disposable.call(this);
 
 			this.properties = Object.keys(props);
 
 			for (var name in props) {
-				this[name] = typeof props[name] == 'function' ? props[name] : new ActiveProperty(props[name]);
+				var prop = (typeof props[name] == 'function' ? props[name] : new ActiveProperty(props[name]))
+					.bind(this);
+
+				Object.defineProperty(prop, 'constructor', {
+					configurable: true,
+					writable: true,
+					value: ActiveProperty
+				});
+
+				this[name] = prop;
 			}
 		},
 

@@ -6,7 +6,8 @@
 	var toString = rt.value.toString;
 	var classes = rt.Class.classes;
 	var getClassOrError = rt.Class.getOrError;
-	var Cleanable = rt.Cleanable;
+	var Map = rt.Map;
+	var Disposable = rt.Disposable;
 	var escapeHTML = rt.html.escape;
 	var bindDOM = rt.domBinding.bind;
 
@@ -197,7 +198,7 @@
 
 	/**
 	 * @class Rift.BaseView
-	 * @extends {Rift.Cleanable}
+	 * @extends {Rift.Disposable}
 	 *
 	 * @param {Object} [params]
 	 * @param {Rift.BaseApp} [params.app]
@@ -210,7 +211,7 @@
 	 * @param {?(HTMLElement|$)} [params.block]
 	 * @param {boolean} [params.onlyClient=false] - Рендерить только на клиенте.
 	 */
-	var BaseView = Cleanable.extend(/** @lends Rift.BaseView# */{
+	var BaseView = Disposable.extend(/** @lends Rift.BaseView# */{
 		_params: null,
 
 		_id: undef,
@@ -263,9 +264,9 @@
 		},
 		set parent(parent) {
 			if (parent) {
-				parent.regChild(this);
+				parent.registerChild(this);
 			} else if (this._parent) {
-				this._parent.unregChild(this);
+				this._parent.unregisterChild(this);
 			}
 		},
 
@@ -313,7 +314,7 @@
 		isClientInited: false,
 
 		constructor: function(params) {
-			Cleanable.call(this);
+			Disposable.call(this);
 
 			if (!params) {
 				params = {};
@@ -662,12 +663,14 @@
 			}
 
 			try {
-				var dcs = bindDOM(this.block[0], this, { removeAttr: true });
+				var dcs = this._dataCells || (this._dataCells = new Map());
+				var domBindingDCs = bindDOM(this.block[0], this, {
+					applyValues: false,
+					removeAttr: true
+				});
 
-				if (this._dataCells) {
-					Object.assign(this._dataCells, dcs);
-				} else {
-					this._dataCells = dcs;
+				for (var i = domBindingDCs.length; i;) {
+					dcs.set(domBindingDCs[--i], domBindingDCs[i]);
 				}
 
 				if (this._initClient != emptyFn) {
@@ -697,7 +700,7 @@
 		 * @param {Rift.BaseView} child
 		 * @returns {Rift.BaseView}
 		 */
-		regChild: function(child) {
+		registerChild: function(child) {
 			if (child._parent) {
 				if (child._parent == this) {
 					return this;
@@ -726,7 +729,7 @@
 		 * @param {Rift.BaseView} child
 		 * @returns {Rift.BaseView}
 		 */
-		unregChild: function(child) {
+		unregisterChild: function(child) {
 			if (child._parent !== this) {
 				return this;
 			}

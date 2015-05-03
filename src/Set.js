@@ -5,8 +5,14 @@
 	if (!Set || Set.toString().indexOf('[native code]') == -1) {
 		var Map = rt.Map;
 
-		Set = function Set() {
+		Set = function Set(arr) {
 			this._inner = new Map();
+
+			if (arr) {
+				for (var i = 0, l = arr.length; i < l; i++) {
+					this.add(arr[i]);
+				}
+			}
 		};
 
 		rt.object.mixin(Set.prototype, {
@@ -21,9 +27,7 @@
 			},
 
 			add: function(value) {
-				this._inner.delete(value);
-				this._inner.set(value, null);
-
+				this._inner.set(value, value);
 				return this;
 			},
 
@@ -36,8 +40,8 @@
 					context = global;
 				}
 
-				this._inner.forEach(function(value, key) {
-					cb.call(context, key, key, this);
+				this._inner.forEach(function(value) {
+					cb.call(context, value, value, this);
 				}, this);
 			},
 

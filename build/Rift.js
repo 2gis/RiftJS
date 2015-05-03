@@ -111,7 +111,7 @@ if (!Object.assign) {
 	 * @returns {string}
 	 */
 	function nextUID(prefix) {
-		if (uidCounter == 2176782335) {
+		if (uidCounter == 2176782335/* 'zzzzzz' */) {
 			uidCounter = 0;
 		}
 
@@ -356,6 +356,9 @@ if (!Object.assign) {
 			case 'boolean': { return '?' + value; }
 			case 'number': { return '+' + value; }
 			case 'string': { return ',' + value; }
+			default: {
+				return (typeof value) + '-' + value;
+			}
 		}
 
 		return '#' + getUID(value);
@@ -555,7 +558,7 @@ if (!Object.assign) {
 	 * @param {Function} cl
 	 * @returns {Function}
 	 */
-	function regClass(name, cl) {
+	function registerClass(name, cl) {
 		if (hasOwn.call(classes, name)) {
 			throw new TypeError('Class "' + name + '" is already registered');
 		}
@@ -626,7 +629,7 @@ if (!Object.assign) {
 		mixin(proto, declaration);
 
 		if (name) {
-			regClass(name, constr);
+			registerClass(name, constr);
 		}
 
 		return constr;
@@ -638,7 +641,7 @@ if (!Object.assign) {
 	rt.Class = {
 		classes: classes,
 		getOrError: getClassOrError,
-		register: regClass,
+		register: registerClass,
 		extend: extend
 	};
 
@@ -649,10 +652,10 @@ if (!Object.assign) {
 	var getUID = rt.object.getUID;
 	var toString = rt.value.toString;
 	var classes = rt.Class.classes;
-	var regClass = rt.Class.register;
+	var registerClass = rt.Class.register;
 
-	regClass('Array', Array);
-	regClass('Date', Date);
+	registerClass('Array', Array);
+	registerClass('Date', Date);
 
 	Object.defineProperties(Date.prototype, {
 		collectDumpObject: {
@@ -819,8 +822,14 @@ if (!Object.assign) {
 			next: null
 		};
 
-		Map = function Map() {
+		Map = function Map(arr) {
 			this._inner = Object.create(null);
+
+			if (arr) {
+				for (var i = 0, l = arr.length; i < l; i++) {
+					this.set(arr[i][0], arr[i][1]);
+				}
+			}
 		};
 
 		rt.object.mixin(Map.prototype, {
@@ -932,8 +941,14 @@ if (!Object.assign) {
 	if (!Set || Set.toString().indexOf('[native code]') == -1) {
 		var Map = rt.Map;
 
-		Set = function Set() {
+		Set = function Set(arr) {
 			this._inner = new Map();
+
+			if (arr) {
+				for (var i = 0, l = arr.length; i < l; i++) {
+					this.add(arr[i]);
+				}
+			}
 		};
 
 		rt.object.mixin(Set.prototype, {
@@ -948,9 +963,7 @@ if (!Object.assign) {
 			},
 
 			add: function(value) {
-				this._inner.delete(value);
-				this._inner.set(value, null);
-
+				this._inner.set(value, value);
 				return this;
 			},
 
@@ -963,8 +976,8 @@ if (!Object.assign) {
 					context = global;
 				}
 
-				this._inner.forEach(function(value, key) {
-					cb.call(context, key, key, this);
+				this._inner.forEach(function(value) {
+					cb.call(context, value, value, this);
 				}, this);
 			},
 
@@ -1007,17 +1020,25 @@ if (!Object.assign) {
 		target: null,
 
 		/**
+		 * Тип события.
+		 *
+		 * @type {string}
+		 */
+		type: undef,
+
+		/**
 		 * @type {int|undefined}
 		 * @writable
 		 */
 		timestamp: undef,
 
 		/**
-		 * Тип события.
+		 * Дополнительная информация по событию.
 		 *
-		 * @type {string}
+		 * @type {?Object}
+		 * @writable
 		 */
-		type: undef,
+		detail: null,
 
 		/**
 		 * Является ли событие всплывающим.
@@ -1039,14 +1060,6 @@ if (!Object.assign) {
 		 * @type {boolean}
 		 */
 		isImmediatePropagationStopped: false,
-
-		/**
-		 * Дополнительная информация по событию.
-		 *
-		 * @type {?Object}
-		 * @writable
-		 */
-		detail: null,
 
 		/**
 		 * Останавливает распространение события на другие объекты.
@@ -1219,46 +1232,34 @@ if (!Object.assign) {
 		_handleEvent: function(evt) {
 			if (!this.silent || evt.target != this) {
 				var type = evt.type;
-				var events = (this._events || (this._events = Object.create(null)))[type];
-				var eventCount;
+				var events = this._events || (this._events = Object.create(null));
+
+				events = type in events ? events[type].slice(0) : [];
 
 				if (typeof this['on' + type] == 'function') {
-					events = events ? events.slice(0) : [];
-					events.push({ listener: this['on' + type], context: this });
-
-					eventCount = events.length;
-				} else {
-					if (events) {
-						events = events.slice(0);
-						eventCount = events.length;
-					} else {
-						eventCount = 0;
-					}
+					events.push({
+						listener: this['on' + type],
+						context: this
+					});
 				}
 
-				if (eventCount) {
-					var i = 0;
+				for (var i = 0, l = events.length; i < l; i++) {
+					if (evt.isImmediatePropagationStopped) {
+						break;
+					}
 
-					do {
-						if (evt.isImmediatePropagationStopped) {
-							break;
+					try {
+						if (events[i].listener.call(events[i].context, evt) === false) {
+							evt.isPropagationStopped = true;
 						}
-
-						try {
-							if (events[i].listener.call(events[i].context, evt) === false) {
-								evt.isPropagationStopped = true;
-							}
-						} catch (err) {
-							this._logError(err);
-						}
-					} while (++i < eventCount);
+					} catch (err) {
+						this._logError(err);
+					}
 				}
 			}
 
-			var parent = this.parent;
-
-			if (parent && evt.bubbles && !evt.isPropagationStopped) {
-				parent._handleEvent(evt);
+			if (this.parent && evt.bubbles && !evt.isPropagationStopped) {
+				this.parent._handleEvent(evt);
 			}
 		},
 
@@ -3121,8 +3122,8 @@ if (!Object.assign) {
 
 (function() {
 
-	var getUID = rt.object.getUID;
 	var cloneObject = rt.object.clone;
+	var Map = rt.Map;
 	var DataCell = rt.DataCell;
 
 	/**
@@ -3140,26 +3141,22 @@ if (!Object.assign) {
 			var value = descr.value;
 
 			if (typeof value == 'function' && value.constructor == ActiveProperty) {
-				var origDescr = descr;
-
-				descr = {
+				Object.defineProperty(obj, name, {
 					configurable: true,
-					enumerable: origDescr.enumerable,
+					enumerable: descr.enumerable,
 
 					get: function() {
-						origDescr.value = Object.defineProperty(value.bind(this), 'constructor', {
+						descr.value = Object.defineProperty(value.bind(this), 'constructor', {
 							configurable: true,
 							writable: true,
 							value: ActiveProperty
 						});
 
-						Object.defineProperty(this, name, origDescr);
+						Object.defineProperty(this, name, descr);
 
 						return this[name];
 					}
-				};
-
-				Object.defineProperty(obj, name, descr);
+				});
 			}
 		});
 
@@ -3167,29 +3164,25 @@ if (!Object.assign) {
 	}
 
 	/**
-	 * Уничтожает активные свойства инстанса.
-	 *
 	 * @memberOf Rift.ActiveProperty
 	 *
-	 * @param {Object} inst
+	 * @param {Object} obj
 	 */
-	function disposeDataCells(inst) {
-		var dcs = inst._dataCells;
+	function disposeDataCells(obj) {
+		if (obj._dataCells) {
+			obj._dataCells.forEach(function(dc) {
+				dc.dispose();
+			});
 
-		if (dcs) {
-			for (var id in dcs) {
-				dcs[id].dispose();
-			}
-
-			inst._dataCells = null;
+			obj._dataCells = null;
 		}
 	}
 
 	/**
 	 * @private
 	 */
-	function exec(id, value, opts, args) {
-		var dc = (this._dataCells || (this._dataCells = Object.create(null)))[id];
+	function applyProperty(prop, value, opts, args) {
+		var dc = (this._dataCells || (this._dataCells = new Map())).get(prop);
 
 		if (!dc) {
 			if (value !== null && typeof value == 'object') {
@@ -3205,7 +3198,9 @@ if (!Object.assign) {
 
 			opts = Object.create(opts);
 			opts.owner = this;
-			dc = this._dataCells[id] = new DataCell(value, opts);
+
+			dc = new DataCell(value, opts);
+			this._dataCells.set(prop, dc);
 		}
 
 		switch (args.length) {
@@ -3292,13 +3287,9 @@ if (!Object.assign) {
 			opts = {};
 		}
 
-		var id;
-
 		function prop() {
-			return exec.call(this, id, value, opts, arguments);
+			return applyProperty.call(this, prop, value, opts, arguments);
 		}
-
-		id = getUID(prop);
 
 		Object.defineProperty(prop, 'constructor', {
 			configurable: true,
@@ -3388,6 +3379,7 @@ if (!Object.assign) {
 
 	var getUID = rt.object.getUID;
 	var getHash = rt.value.getHash;
+	var Map = rt.Map;
 	var EventEmitter = rt.EventEmitter;
 	var ActiveProperty = rt.ActiveProperty;
 	var autoBind = rt.ActiveProperty.autoBind;
@@ -3401,10 +3393,12 @@ if (!Object.assign) {
 	 */
 	function wrapListeningMethod(method) {
 		return function _(target, type, listener, context, meta) {
-			if (Array.isArray(target) || target instanceof $) {
+			if (Array.isArray(target) || (isClient && target instanceof $)) {
 				for (var i = target.length; i;) {
 					_.call(this, target[--i], type, listener, context, meta);
 				}
+			} else if (typeof target == 'function' && target.constructor == ActiveProperty) {
+				target = target('dataCell', 0);
 			} else if (typeof type == 'object') {
 				meta = context;
 				context = listener;
@@ -3448,10 +3442,10 @@ if (!Object.assign) {
 	}
 
 	/**
-	 * @class Rift.Cleanable
+	 * @class Rift.Disposable
 	 * @extends {Rift.EventEmitter}
 	 */
-	var Cleanable = EventEmitter.extend(/** @lends Rift.Cleanable# */{
+	var Disposable = EventEmitter.extend(/** @lends Rift.Disposable# */{
 		_listening: null,
 		_callbacks: null,
 		_timeouts: null,
@@ -3468,7 +3462,7 @@ if (!Object.assign) {
 					cl._isActivePropertiesBound = true;
 
 					cl = cl.$super.constructor;
-				} while (cl != Cleanable && !cl._isActivePropertiesBound);
+				} while (cl != Disposable && !cl._isActivePropertiesBound);
 			}
 		},
 
@@ -3480,7 +3474,7 @@ if (!Object.assign) {
 		 * @param {Function} listener
 		 * @param {Object|undefined} [context=this]
 		 * @param {*} [meta]
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
 		listen: wrapListeningMethod(function(target, type, listener, context, meta) {
 			this._listen(target, type, listener, context, meta);
@@ -3532,7 +3526,7 @@ if (!Object.assign) {
 		 * @param {Function} listener
 		 * @param {Object|undefined} [context=this]
 		 * @param {*} [meta]
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
 		stopListening: wrapListeningMethod(function(target, type, listener, context, meta) {
 			this._stopListening(target, type, listener, context, meta);
@@ -3565,7 +3559,7 @@ if (!Object.assign) {
 		/**
 		 * Останавливает прослушивание всех событий.
 		 *
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
 		stopAllListening: function() {
 			var listening = this._listening;
@@ -3573,8 +3567,9 @@ if (!Object.assign) {
 			if (listening) {
 				for (var id in listening) {
 					removeListener(listening[id]);
-					delete listening[id];
 				}
+
+				this._listening = null;
 			}
 
 			return this;
@@ -3586,46 +3581,41 @@ if (!Object.assign) {
 		 * @param {Function} cb
 		 * @returns {Function}
 		 */
-		regCallback: function(cb) {
-			var callbacks = this._callbacks || (this._callbacks = {});
-			var id = getUID(cb);
+		registerCallback: function(cb) {
+			var callbacks = this._callbacks || (this._callbacks = new Map());
 
-			if (hasOwn.call(callbacks, id)) {
-				callbacks[id].canceled = true;
+			if (callbacks.has(cb)) {
+				callbacks.get(cb).canceled = true;
 			}
 
-			var cleanable = this;
+			var disposable = this;
 
 			function outer() {
 				if (hasOwn.call(outer, 'canceled') && outer.canceled) {
 					return;
 				}
 
-				delete callbacks[id];
-				cb.apply(cleanable, arguments);
+				callbacks.delete(cb);
+				cb.apply(disposable, arguments);
 			}
 
-			callbacks[id] = outer;
+			callbacks.set(cb, outer);
 
 			return outer;
 		},
 
 		/**
-		 * Отменяет колбэк.
+		 * Отменяет регистрацию колбэка.
 		 *
 		 * @param {Function} cb
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
-		cancelCallback: function(cb) {
+		unregisterCallback: function(cb) {
 			var callbacks = this._callbacks;
 
-			if (callbacks) {
-				var id = getUID(cb);
-
-				if (hasOwn.call(callbacks, id)) {
-					callbacks[id].canceled = true;
-					delete callbacks[id];
-				}
+			if (callbacks && callbacks.has(cb)) {
+				callbacks.get(cb).canceled = true;
+				callbacks.delete(cb);
 			}
 
 			return this;
@@ -3634,16 +3624,17 @@ if (!Object.assign) {
 		/**
 		 * Отменяет все колбэки.
 		 *
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
-		cancelAllCallbacks: function() {
+		unregisterAllCallbacks: function() {
 			var callbacks = this._callbacks;
 
 			if (callbacks) {
-				for (var id in callbacks) {
-					callbacks[id].canceled = true;
-					delete callbacks[id];
-				}
+				callbacks.forEach(function(outer) {
+					outer.canceled = true;
+				});
+
+				this._callbacks = null;
 			}
 
 			return this;
@@ -3652,24 +3643,23 @@ if (!Object.assign) {
 		/**
 		 * Устанавливает таймер.
 		 *
-		 * @param {Function} cb
+		 * @param {Function} fn
 		 * @param {int} delay
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
-		setTimeout: function(cb, delay) {
-			var timeouts = this._timeouts || (this._timeouts = {});
-			var id = getUID(cb);
+		setTimeout: function(fn, delay) {
+			var timeouts = this._timeouts || (this._timeouts = new Map());
 
-			if (hasOwn.call(timeouts, id)) {
-				clearTimeout(timeouts[id]);
+			if (timeouts.has(fn)) {
+				clearTimeout(timeouts.get(fn));
 			}
 
-			var cleanable = this;
+			var disposable = this;
 
-			timeouts[id] = setTimeout(function() {
-				delete timeouts[id];
-				cb.call(cleanable);
-			}, delay);
+			timeouts.set(fn, setTimeout(function() {
+				timeouts.delete(fn);
+				fn.call(disposable);
+			}, delay));
 
 			return this;
 		},
@@ -3677,19 +3667,15 @@ if (!Object.assign) {
 		/**
 		 * Отменяет установленный таймер.
 		 *
-		 * @param {Function} cb - Колбэк отменяемого таймера.
-		 * @returns {Rift.Cleanable}
+		 * @param {Function} fn - Колбэк отменяемого таймера.
+		 * @returns {Rift.Disposable}
 		 */
-		clearTimeout: function(cb) {
+		clearTimeout: function(fn) {
 			var timeouts = this._timeouts;
 
-			if (timeouts) {
-				var id = getUID(cb);
-
-				if (hasOwn.call(timeouts, id)) {
-					clearTimeout(timeouts[id]);
-					delete timeouts[id];
-				}
+			if (timeouts && timeouts.has(fn)) {
+				clearTimeout(timeouts.get(fn));
+				timeouts.delete(fn);
 			}
 
 			return this;
@@ -3698,16 +3684,17 @@ if (!Object.assign) {
 		/**
 		 * Отменяет все установленные таймеры.
 		 *
-		 * @returns {Rift.Cleanable}
+		 * @returns {Rift.Disposable}
 		 */
 		clearAllTimeouts: function() {
 			var timeouts = this._timeouts;
 
 			if (timeouts) {
-				for (var id in timeouts) {
-					clearTimeout(timeouts[id]);
-					delete timeouts[id];
-				}
+				timeouts.forEach(function(fn, id) {
+					clearTimeout(id);
+				});
+
+				this._timeouts = null;
 			}
 
 			return this;
@@ -3744,46 +3731,39 @@ if (!Object.assign) {
 		},
 
 		/**
-		 * Останавливает прослушивание всех событий, отменяет все колбэки и все установленные таймеры.
-		 */
-		clean: function() {
-			this
-				.stopAllListening()
-				.cancelAllCallbacks()
-				.clearAllTimeouts();
-
-			disposeDataCells(this);
-		},
-
-		/**
 		 * Уничтожает инстанс освобождая занятые им ресурсы.
 		 */
 		dispose: function() {
-			this.clean();
+			this
+				.stopAllListening()
+				.unregisterAllCallbacks()
+				.clearAllTimeouts();
+
+			disposeDataCells(this);
 		}
 	});
 
-	rt.Cleanable = Cleanable;
+	rt.Disposable = Disposable;
 
 })();
 
 (function() {
 
-	var Cleanable = rt.Cleanable;
+	var Disposable = rt.Disposable;
 
 	/**
 	 * @class Rift.BaseModel
-	 * @extends {Rift.Cleanable}
+	 * @extends {Rift.Disposable}
 	 * @abstract
 	 *
 	 * @param {?(Object|undefined)} [data] - Начальные данные.
 	 * @param {Object} [opts]
 	 */
-	var BaseModel = Cleanable.extend(/** @lends Rift.BaseModel# */{
+	var BaseModel = Disposable.extend(/** @lends Rift.BaseModel# */{
 		_options: null,
 
 		constructor: function(data, opts) {
-			Cleanable.call(this);
+			Disposable.call(this);
 
 			this._options = opts || {};
 
@@ -3933,7 +3913,6 @@ if (!Object.assign) {
 
 (function() {
 
-	var getUID = rt.object.getUID;
 	var createNamespace = rt.namespace.create;
 	var forEachMatch = rt.regex.forEach;
 	var DataCell = rt.DataCell;
@@ -4015,7 +3994,11 @@ if (!Object.assign) {
 		},
 
 		attr: function(el, value, name) {
-			el.setAttribute(name, value);
+			value = String(value);
+
+			if (el.getAttribute(name) !== value) {
+				el.setAttribute(name, value);
+			}
 		},
 
 		value: function(el, value) {
@@ -4068,14 +4051,14 @@ if (!Object.assign) {
 	 * @param {Object} context
 	 * @param {Object} [opts]
 	 * @param {boolean} [opts.applyValues=true]
-	 * @returns {Object<Rift.DataCell>}
+	 * @returns {Array<Rift.DataCell>}
 	 */
 	function bindElement(el, context, opts) {
-		if (hasOwn.call(el, keyDataCells)) {
+		if (hasOwn.call(el, keyDataCells) && el[keyDataCells]) {
 			return el[keyDataCells];
 		}
 
-		var dcs = el[keyDataCells] = {};
+		var dcs = el[keyDataCells] = [];
 
 		if (el.hasAttribute('rt-bind')) {
 			var applyValues = !opts || opts.applyValues !== false;
@@ -4087,7 +4070,7 @@ if (!Object.assign) {
 					}
 				});
 
-				dcs[getUID(dc)] = dc;
+				dcs.push(dc);
 
 				if (applyValues) {
 					helpers[helper](el, dc.value, meta);
@@ -4110,11 +4093,11 @@ if (!Object.assign) {
 			var dcs = el[keyDataCells];
 
 			if (dcs) {
-				for (var id in dcs) {
-					dcs[id].dispose();
+				for (var i = dcs.length; i;) {
+					dcs[--i].dispose();
 				}
 
-				delete el[keyDataCells];
+				el[keyDataCells] = null;
 			}
 		}
 	}
@@ -4131,7 +4114,7 @@ if (!Object.assign) {
 	 * @param {boolean} [opts.bindRootElement=true]
 	 * @param {boolean} [opts.applyValues=true]
 	 * @param {boolean} [opts.removeAttr=false]
-	 * @returns {Object<Rift.DataCell>}
+	 * @returns {Array<Rift.DataCell>}
 	 */
 	function bindDOM(el, context, opts) {
 		if (!opts) {
@@ -4142,10 +4125,10 @@ if (!Object.assign) {
 		var elementBindingOptions = {
 			applyValues: opts.applyValues !== false
 		};
-		var dcs = {};
+		var dcs = [];
 
 		if (opts.bindRootElement !== false && el.hasAttribute('rt-bind')) {
-			Object.assign(dcs, bindElement(el, context, elementBindingOptions));
+			dcs.push.apply(dcs, bindElement(el, context, elementBindingOptions));
 
 			if (removeAttr) {
 				el.removeAttribute('rt-bind');
@@ -4155,7 +4138,7 @@ if (!Object.assign) {
 		var els = el.querySelectorAll('[rt-bind]');
 
 		for (var i = 0, l = els.length; i < l; i++) {
-			Object.assign(dcs, bindElement(els[i], context, elementBindingOptions));
+			dcs.push.apply(dcs, bindElement(els[i], context, elementBindingOptions));
 
 			if (removeAttr) {
 				el.removeAttribute('rt-bind');
@@ -4185,7 +4168,8 @@ if (!Object.assign) {
 	var toString = rt.value.toString;
 	var classes = rt.Class.classes;
 	var getClassOrError = rt.Class.getOrError;
-	var Cleanable = rt.Cleanable;
+	var Map = rt.Map;
+	var Disposable = rt.Disposable;
 	var escapeHTML = rt.html.escape;
 	var bindDOM = rt.domBinding.bind;
 
@@ -4376,7 +4360,7 @@ if (!Object.assign) {
 
 	/**
 	 * @class Rift.BaseView
-	 * @extends {Rift.Cleanable}
+	 * @extends {Rift.Disposable}
 	 *
 	 * @param {Object} [params]
 	 * @param {Rift.BaseApp} [params.app]
@@ -4389,7 +4373,7 @@ if (!Object.assign) {
 	 * @param {?(HTMLElement|$)} [params.block]
 	 * @param {boolean} [params.onlyClient=false] - Рендерить только на клиенте.
 	 */
-	var BaseView = Cleanable.extend(/** @lends Rift.BaseView# */{
+	var BaseView = Disposable.extend(/** @lends Rift.BaseView# */{
 		_params: null,
 
 		_id: undef,
@@ -4442,9 +4426,9 @@ if (!Object.assign) {
 		},
 		set parent(parent) {
 			if (parent) {
-				parent.regChild(this);
+				parent.registerChild(this);
 			} else if (this._parent) {
-				this._parent.unregChild(this);
+				this._parent.unregisterChild(this);
 			}
 		},
 
@@ -4492,7 +4476,7 @@ if (!Object.assign) {
 		isClientInited: false,
 
 		constructor: function(params) {
-			Cleanable.call(this);
+			Disposable.call(this);
 
 			if (!params) {
 				params = {};
@@ -4841,12 +4825,14 @@ if (!Object.assign) {
 			}
 
 			try {
-				var dcs = bindDOM(this.block[0], this, { removeAttr: true });
+				var dcs = this._dataCells || (this._dataCells = new Map());
+				var domBindingDCs = bindDOM(this.block[0], this, {
+					applyValues: false,
+					removeAttr: true
+				});
 
-				if (this._dataCells) {
-					Object.assign(this._dataCells, dcs);
-				} else {
-					this._dataCells = dcs;
+				for (var i = domBindingDCs.length; i;) {
+					dcs.set(domBindingDCs[--i], domBindingDCs[i]);
 				}
 
 				if (this._initClient != emptyFn) {
@@ -4876,7 +4862,7 @@ if (!Object.assign) {
 		 * @param {Rift.BaseView} child
 		 * @returns {Rift.BaseView}
 		 */
-		regChild: function(child) {
+		registerChild: function(child) {
 			if (child._parent) {
 				if (child._parent == this) {
 					return this;
@@ -4905,7 +4891,7 @@ if (!Object.assign) {
 		 * @param {Rift.BaseView} child
 		 * @returns {Rift.BaseView}
 		 */
-		unregChild: function(child) {
+		unregisterChild: function(child) {
 			if (child._parent !== this) {
 				return this;
 			}
@@ -5223,27 +5209,36 @@ if (!Object.assign) {
 	var serialize = rt.dump.serialize;
 	var deserialize = rt.dump.deserialize;
 	var ActiveProperty = rt.ActiveProperty;
-	var Cleanable = rt.Cleanable;
+	var Disposable = rt.Disposable;
 
 	/**
 	 * @class Rift.ViewState
-	 * @extends {Rift.Cleanable}
+	 * @extends {Rift.Disposable}
 	 *
 	 * @param {Object} props
 	 */
-	var ViewState = Cleanable.extend('Rift.ViewState', /** @lends Rift.ViewState# */{
+	var ViewState = Disposable.extend('Rift.ViewState', /** @lends Rift.ViewState# */{
 		/**
 		 * @type {Array<string>}
 		 */
 		properties: null,
 
 		constructor: function(props) {
-			Cleanable.call(this);
+			Disposable.call(this);
 
 			this.properties = Object.keys(props);
 
 			for (var name in props) {
-				this[name] = typeof props[name] == 'function' ? props[name] : new ActiveProperty(props[name]);
+				var prop = (typeof props[name] == 'function' ? props[name] : new ActiveProperty(props[name]))
+					.bind(this);
+
+				Object.defineProperty(prop, 'constructor', {
+					configurable: true,
+					writable: true,
+					value: ActiveProperty
+				});
+
+				this[name] = prop;
 			}
 		},
 
@@ -5309,6 +5304,7 @@ if (!Object.assign) {
 
 	var escapeRegExp = rt.regex.escape;
 	var nextTick = rt.process.nextTick;
+	var Disposable = rt.Disposable;
 
 	var reNotLocal = /^(?:\w+:)?\/\//;
 	var reSlashes = /[\/\\]+/g;
@@ -5544,19 +5540,7 @@ if (!Object.assign) {
 	 * @param {Rift.BaseApp} app
 	 * @param {Array<{ path: string, callback: Function= }|string>} [routes]
 	 */
-	function Router(app, routes) {
-		this._onViewStateChange = this._onViewStateChange.bind(this);
-
-		this.app = app;
-
-		this.routes = [];
-
-		if (routes) {
-			this.addRoutes(routes);
-		}
-	}
-
-	Object.assign(Router.prototype, /** @lends Rift.Router# */{
+	var Router = Disposable.extend(/** @lends Rift.Router# */{
 		/**
 		 * Ссылка на приложение.
 		 *
@@ -5593,6 +5577,17 @@ if (!Object.assign) {
 		started: false,
 
 		_isViewStateChangeHandlingRequired: false,
+
+		constructor: function(app, routes) {
+			Disposable.call(this);
+
+			this.app = app;
+			this.routes = [];
+
+			if (routes) {
+				this.addRoutes(routes);
+			}
+		},
 
 		/**
 		 * @param {Array<{ path: string, callback: Function }|string>} routes
@@ -5761,8 +5756,9 @@ if (!Object.assign) {
 		 */
 		_bindEvents: function() {
 			if (isClient) {
-				window.addEventListener('popstate', this._onWindowPopState.bind(this), false);
-				this.viewBlock.addEventListener('click', this._onViewBlockClick.bind(this), false);
+				this
+					.listen(window, 'popstate', this._onWindowPopState)
+					.listen(this.viewBlock, 'click', this._onViewBlockClick);
 			}
 
 			var viewState = this.app.viewState;
@@ -5770,7 +5766,7 @@ if (!Object.assign) {
 			var props = viewState.properties;
 
 			for (var i = props.length; i;) {
-				viewState[props[--i]]('subscribe', onViewStatePropertyChange, this);
+				this.listen(viewState[props[--i]], 'change', onViewStatePropertyChange);
 			}
 		},
 
@@ -5839,7 +5835,7 @@ if (!Object.assign) {
 
 			this._isViewStateChangeHandlingRequired = true;
 
-			nextTick(this._onViewStateChange);
+			nextTick(this.registerCallback(this._onViewStateChange));
 		},
 
 		/**
@@ -5992,12 +5988,13 @@ if (!Object.assign) {
 			this.model = typeof model == 'function' ? new model() : deserialize(model);
 
 			var router = this.router = new Router(this, routes);
-			var viewState = this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
+
+			this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
 
 			router.route(path);
 
 			if (isClient) {
-				viewState.updateFromSerializedData(viewStateData);
+				this.viewState.updateFromSerializedData(viewStateData);
 			}
 
 			var view = this.view = new viewClass({ app: this, block: viewBlock });
@@ -6007,6 +6004,13 @@ if (!Object.assign) {
 			if (isClient) {
 				view.initClient();
 			}
+		},
+
+		dispose: function() {
+			this.router.dispose();
+			this.view.dispose();
+			this.viewState.dispose();
+			this.model.dispose();
 		}
 	});
 

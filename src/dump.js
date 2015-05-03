@@ -3,10 +3,10 @@
 	var getUID = rt.object.getUID;
 	var toString = rt.value.toString;
 	var classes = rt.Class.classes;
-	var regClass = rt.Class.register;
+	var registerClass = rt.Class.register;
 
-	regClass('Array', Array);
-	regClass('Date', Date);
+	registerClass('Array', Array);
+	registerClass('Date', Date);
 
 	Object.defineProperties(Date.prototype, {
 		collectDumpObject: {

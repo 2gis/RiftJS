@@ -67,12 +67,13 @@
 			this.model = typeof model == 'function' ? new model() : deserialize(model);
 
 			var router = this.router = new Router(this, routes);
-			var viewState = this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
+
+			this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
 
 			router.route(path);
 
 			if (isClient) {
-				viewState.updateFromSerializedData(viewStateData);
+				this.viewState.updateFromSerializedData(viewStateData);
 			}
 
 			var view = this.view = new viewClass({ app: this, block: viewBlock });
@@ -82,6 +83,13 @@
 			if (isClient) {
 				view.initClient();
 			}
+		},
+
+		dispose: function() {
+			this.router.dispose();
+			this.view.dispose();
+			this.viewState.dispose();
+			this.model.dispose();
 		}
 	});
 

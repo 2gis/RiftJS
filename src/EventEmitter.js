@@ -149,46 +149,34 @@
 		_handleEvent: function(evt) {
 			if (!this.silent || evt.target != this) {
 				var type = evt.type;
-				var events = (this._events || (this._events = Object.create(null)))[type];
-				var eventCount;
+				var events = this._events || (this._events = Object.create(null));
+
+				events = type in events ? events[type].slice(0) : [];
 
 				if (typeof this['on' + type] == 'function') {
-					events = events ? events.slice(0) : [];
-					events.push({ listener: this['on' + type], context: this });
-
-					eventCount = events.length;
-				} else {
-					if (events) {
-						events = events.slice(0);
-						eventCount = events.length;
-					} else {
-						eventCount = 0;
-					}
+					events.push({
+						listener: this['on' + type],
+						context: this
+					});
 				}
 
-				if (eventCount) {
-					var i = 0;
+				for (var i = 0, l = events.length; i < l; i++) {
+					if (evt.isImmediatePropagationStopped) {
+						break;
+					}
 
-					do {
-						if (evt.isImmediatePropagationStopped) {
-							break;
+					try {
+						if (events[i].listener.call(events[i].context, evt) === false) {
+							evt.isPropagationStopped = true;
 						}
-
-						try {
-							if (events[i].listener.call(events[i].context, evt) === false) {
-								evt.isPropagationStopped = true;
-							}
-						} catch (err) {
-							this._logError(err);
-						}
-					} while (++i < eventCount);
+					} catch (err) {
+						this._logError(err);
+					}
 				}
 			}
 
-			var parent = this.parent;
-
-			if (parent && evt.bubbles && !evt.isPropagationStopped) {
-				parent._handleEvent(evt);
+			if (this.parent && evt.bubbles && !evt.isPropagationStopped) {
+				this.parent._handleEvent(evt);
 			}
 		},
 

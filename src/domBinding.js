@@ -1,6 +1,5 @@
 (function() {
 
-	var getUID = rt.object.getUID;
 	var createNamespace = rt.namespace.create;
 	var forEachMatch = rt.regex.forEach;
 	var DataCell = rt.DataCell;
@@ -82,7 +81,11 @@
 		},
 
 		attr: function(el, value, name) {
-			el.setAttribute(name, value);
+			value = String(value);
+
+			if (el.getAttribute(name) !== value) {
+				el.setAttribute(name, value);
+			}
 		},
 
 		value: function(el, value) {
@@ -135,14 +138,14 @@
 	 * @param {Object} context
 	 * @param {Object} [opts]
 	 * @param {boolean} [opts.applyValues=true]
-	 * @returns {Object<Rift.DataCell>}
+	 * @returns {Array<Rift.DataCell>}
 	 */
 	function bindElement(el, context, opts) {
-		if (hasOwn.call(el, keyDataCells)) {
+		if (hasOwn.call(el, keyDataCells) && el[keyDataCells]) {
 			return el[keyDataCells];
 		}
 
-		var dcs = el[keyDataCells] = {};
+		var dcs = el[keyDataCells] = [];
 
 		if (el.hasAttribute('rt-bind')) {
 			var applyValues = !opts || opts.applyValues !== false;
@@ -154,7 +157,7 @@
 					}
 				});
 
-				dcs[getUID(dc)] = dc;
+				dcs.push(dc);
 
 				if (applyValues) {
 					helpers[helper](el, dc.value, meta);
@@ -177,11 +180,11 @@
 			var dcs = el[keyDataCells];
 
 			if (dcs) {
-				for (var id in dcs) {
-					dcs[id].dispose();
+				for (var i = dcs.length; i;) {
+					dcs[--i].dispose();
 				}
 
-				delete el[keyDataCells];
+				el[keyDataCells] = null;
 			}
 		}
 	}
@@ -198,7 +201,7 @@
 	 * @param {boolean} [opts.bindRootElement=true]
 	 * @param {boolean} [opts.applyValues=true]
 	 * @param {boolean} [opts.removeAttr=false]
-	 * @returns {Object<Rift.DataCell>}
+	 * @returns {Array<Rift.DataCell>}
 	 */
 	function bindDOM(el, context, opts) {
 		if (!opts) {
@@ -209,10 +212,10 @@
 		var elementBindingOptions = {
 			applyValues: opts.applyValues !== false
 		};
-		var dcs = {};
+		var dcs = [];
 
 		if (opts.bindRootElement !== false && el.hasAttribute('rt-bind')) {
-			Object.assign(dcs, bindElement(el, context, elementBindingOptions));
+			dcs.push.apply(dcs, bindElement(el, context, elementBindingOptions));
 
 			if (removeAttr) {
 				el.removeAttribute('rt-bind');
@@ -222,7 +225,7 @@
 		var els = el.querySelectorAll('[rt-bind]');
 
 		for (var i = 0, l = els.length; i < l; i++) {
-			Object.assign(dcs, bindElement(els[i], context, elementBindingOptions));
+			dcs.push.apply(dcs, bindElement(els[i], context, elementBindingOptions));
 
 			if (removeAttr) {
 				el.removeAttribute('rt-bind');

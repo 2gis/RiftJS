@@ -12,8 +12,14 @@
 			next: null
 		};
 
-		Map = function Map() {
+		Map = function Map(arr) {
 			this._inner = Object.create(null);
+
+			if (arr) {
+				for (var i = 0, l = arr.length; i < l; i++) {
+					this.set(arr[i][0], arr[i][1]);
+				}
+			}
 		};
 
 		rt.object.mixin(Map.prototype, {

@@ -23,6 +23,9 @@
 			case 'boolean': { return '?' + value; }
 			case 'number': { return '+' + value; }
 			case 'string': { return ',' + value; }
+			default: {
+				return (typeof value) + '-' + value;
+			}
 		}
 
 		return '#' + getUID(value);

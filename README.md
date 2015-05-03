@@ -169,7 +169,7 @@ module.exports = viewState;
 ## Стандартные классы
 
 [Rift.EventEmitter](https://github.com/2gis/RiftJS/blob/master/docs/EventEmitter.ru.md)  
-[Rift.Cleanable](https://github.com/2gis/RiftJS/blob/master/docs/Cleanable.ru.md)  
+[Rift.Disposable](https://github.com/2gis/RiftJS/blob/master/docs/Disposable.ru.md)  
 [Rift.ActiveProperty](https://github.com/2gis/RiftJS/blob/master/docs/ActiveProperty.ru.md)
 
 ## Всякие мысли

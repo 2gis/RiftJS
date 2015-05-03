@@ -1,7 +1,7 @@
 (function() {
 
-	var getUID = rt.object.getUID;
 	var cloneObject = rt.object.clone;
+	var Map = rt.Map;
 	var DataCell = rt.DataCell;
 
 	/**
@@ -19,26 +19,22 @@
 			var value = descr.value;
 
 			if (typeof value == 'function' && value.constructor == ActiveProperty) {
-				var origDescr = descr;
-
-				descr = {
+				Object.defineProperty(obj, name, {
 					configurable: true,
-					enumerable: origDescr.enumerable,
+					enumerable: descr.enumerable,
 
 					get: function() {
-						origDescr.value = Object.defineProperty(value.bind(this), 'constructor', {
+						descr.value = Object.defineProperty(value.bind(this), 'constructor', {
 							configurable: true,
 							writable: true,
 							value: ActiveProperty
 						});
 
-						Object.defineProperty(this, name, origDescr);
+						Object.defineProperty(this, name, descr);
 
 						return this[name];
 					}
-				};
-
-				Object.defineProperty(obj, name, descr);
+				});
 			}
 		});
 
@@ -46,29 +42,25 @@
 	}
 
 	/**
-	 * Уничтожает активные свойства инстанса.
-	 *
 	 * @memberOf Rift.ActiveProperty
 	 *
-	 * @param {Object} inst
+	 * @param {Object} obj
 	 */
-	function disposeDataCells(inst) {
-		var dcs = inst._dataCells;
+	function disposeDataCells(obj) {
+		if (obj._dataCells) {
+			obj._dataCells.forEach(function(dc) {
+				dc.dispose();
+			});
 
-		if (dcs) {
-			for (var id in dcs) {
-				dcs[id].dispose();
-			}
-
-			inst._dataCells = null;
+			obj._dataCells = null;
 		}
 	}
 
 	/**
 	 * @private
 	 */
-	function exec(id, value, opts, args) {
-		var dc = (this._dataCells || (this._dataCells = Object.create(null)))[id];
+	function applyProperty(prop, value, opts, args) {
+		var dc = (this._dataCells || (this._dataCells = new Map())).get(prop);
 
 		if (!dc) {
 			if (value !== null && typeof value == 'object') {
@@ -84,7 +76,9 @@
 
 			opts = Object.create(opts);
 			opts.owner = this;
-			dc = this._dataCells[id] = new DataCell(value, opts);
+
+			dc = new DataCell(value, opts);
+			this._dataCells.set(prop, dc);
 		}
 
 		switch (args.length) {
@@ -171,13 +165,9 @@
 			opts = {};
 		}
 
-		var id;
-
 		function prop() {
-			return exec.call(this, id, value, opts, arguments);
+			return applyProperty.call(this, prop, value, opts, arguments);
 		}
-
-		id = getUID(prop);
 
 		Object.defineProperty(prop, 'constructor', {
 			configurable: true,

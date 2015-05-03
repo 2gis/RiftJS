@@ -27,17 +27,25 @@
 		target: null,
 
 		/**
+		 * Тип события.
+		 *
+		 * @type {string}
+		 */
+		type: undef,
+
+		/**
 		 * @type {int|undefined}
 		 * @writable
 		 */
 		timestamp: undef,
 
 		/**
-		 * Тип события.
+		 * Дополнительная информация по событию.
 		 *
-		 * @type {string}
+		 * @type {?Object}
+		 * @writable
 		 */
-		type: undef,
+		detail: null,
 
 		/**
 		 * Является ли событие всплывающим.
@@ -59,14 +67,6 @@
 		 * @type {boolean}
 		 */
 		isImmediatePropagationStopped: false,
-
-		/**
-		 * Дополнительная информация по событию.
-		 *
-		 * @type {?Object}
-		 * @writable
-		 */
-		detail: null,
 
 		/**
 		 * Останавливает распространение события на другие объекты.

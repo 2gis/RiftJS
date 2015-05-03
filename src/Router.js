@@ -2,6 +2,7 @@
 
 	var escapeRegExp = rt.regex.escape;
 	var nextTick = rt.process.nextTick;
+	var Disposable = rt.Disposable;
 
 	var reNotLocal = /^(?:\w+:)?\/\//;
 	var reSlashes = /[\/\\]+/g;
@@ -237,19 +238,7 @@
 	 * @param {Rift.BaseApp} app
 	 * @param {Array<{ path: string, callback: Function= }|string>} [routes]
 	 */
-	function Router(app, routes) {
-		this._onViewStateChange = this._onViewStateChange.bind(this);
-
-		this.app = app;
-
-		this.routes = [];
-
-		if (routes) {
-			this.addRoutes(routes);
-		}
-	}
-
-	Object.assign(Router.prototype, /** @lends Rift.Router# */{
+	var Router = Disposable.extend(/** @lends Rift.Router# */{
 		/**
 		 * Ссылка на приложение.
 		 *
@@ -286,6 +275,17 @@
 		started: false,
 
 		_isViewStateChangeHandlingRequired: false,
+
+		constructor: function(app, routes) {
+			Disposable.call(this);
+
+			this.app = app;
+			this.routes = [];
+
+			if (routes) {
+				this.addRoutes(routes);
+			}
+		},
 
 		/**
 		 * @param {Array<{ path: string, callback: Function }|string>} routes
@@ -454,8 +454,9 @@
 		 */
 		_bindEvents: function() {
 			if (isClient) {
-				window.addEventListener('popstate', this._onWindowPopState.bind(this), false);
-				this.viewBlock.addEventListener('click', this._onViewBlockClick.bind(this), false);
+				this
+					.listen(window, 'popstate', this._onWindowPopState)
+					.listen(this.viewBlock, 'click', this._onViewBlockClick);
 			}
 
 			var viewState = this.app.viewState;
@@ -463,7 +464,7 @@
 			var props = viewState.properties;
 
 			for (var i = props.length; i;) {
-				viewState[props[--i]]('subscribe', onViewStatePropertyChange, this);
+				this.listen(viewState[props[--i]], 'change', onViewStatePropertyChange);
 			}
 		},
 
@@ -532,7 +533,7 @@
 
 			this._isViewStateChangeHandlingRequired = true;
 
-			nextTick(this._onViewStateChange);
+			nextTick(this.registerCallback(this._onViewStateChange));
 		},
 
 		/**

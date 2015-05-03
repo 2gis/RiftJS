@@ -17,7 +17,7 @@
 	 * @returns {string}
 	 */
 	function nextUID(prefix) {
-		if (uidCounter == 2176782335) {
+		if (uidCounter == 2176782335/* 'zzzzzz' */) {
 			uidCounter = 0;
 		}
 

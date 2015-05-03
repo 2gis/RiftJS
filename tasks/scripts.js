@@ -5,33 +5,33 @@ var $ = require('gulp-load-plugins')();
 var helpers = require('./helpers');
 
 var bodyFiles = exports.bodyFiles = [
-	'src/es6-object-assign.js', // 3
-	'src/uid.js', // 3
+	'src/es6-object-assign.js', // 4
+	'src/uid.js', // 4
 	'src/object.js', // 3
 	'src/namespace.js', // 3
 	'src/regex.js', // 3
-	'src/value.js', // 3
+	'src/value.js', // 4
 	'src/process.js', // 3
 
 	'src/Class.js', // 3
 
 	'src/dump.js', // 3
 
-	'src/Map.js', // 0
-	'src/Set.js', // 0
-	'src/Event.js', // 3
+	'src/Map.js', // 1
+	'src/Set.js', // 1
+	'src/Event.js', // 4
 	'src/EventEmitter.js', // 4
-	'src/ActiveDictionary.js', // 3
-	'src/ActiveArray.js', // 3
+	'src/ActiveDictionary.js', // 4
+	'src/ActiveArray.js', // 4
 	'src/DataCell.js', // 3
-	'src/ActiveProperty.js', // 3
-	'src/Cleanable.js', // 3
+	'src/ActiveProperty.js', // 4
+	'src/Disposable.js', // 4
 
 	'src/BaseModel.js', // 3
 
 	'src/html.js', // 3
 	'src/template.js', // 2
-	'src/domBinding.js', // 2
+	'src/domBinding.js', // 3
 	'src/BaseView.js', // 2
 
 	'src/ViewState.js', // 2

@@ -1,4 +1,4 @@
-# Rift.Cleanable
+# Rift.Disposable
 
 Наследует от [Rift.EventEmitter](https://github.com/2gis/RiftJS/blob/master/docs/EventEmitter.ru.md).  
 Автоматизирует очистку памяти при уничтожении инстансов классов. Стандартный подход может выглядеть примерно так:
@@ -66,14 +66,14 @@ var m = new MyModule();
 m.dispose();
 ```
 
-Постоянное ручное написание `_unbindEvents` и `dispose` для каждого класса быстро утомляет. Пример выше переписанный с использованием класса `Rift.Cleanable` получается заметно проще:
+Постоянное ручное написание `_unbindEvents` и `dispose` для каждого класса быстро утомляет. Пример выше переписанный с использованием класса `Rift.Disposable` получается заметно проще:
 
 ```js
 // псевдокод
-var MyModule = rt.Cleanable.extend({
+var MyModule = rt.Disposable.extend({
 	constructor: function() {
 		this.setTimeout(this._onTimerTick, 1000); // устанавливаем какой-то таймер
-		sendRequest(this.regCallback(this._onRequestComplete)); // посылаем какой-то запрос
+		sendRequest(this.registerCallback(this._onRequestComplete)); // посылаем какой-то запрос
 		this._bindEvents(); // добавляем всяких обработчиков
 	},
 
@@ -104,11 +104,11 @@ var m = new MyModule();
 m.dispose();
 ```
 
-При добавлении таймеров, коллбэков и обработчиков используются не оригинальные методы, а их обёртки (в случае с коллбэками, они просто заворачиваются в `regCallback`), которые где-то запоминают, что они добавили. Далее в унаследованном `dispose` происходит вызов методов типа `cancelAllCallbacks`, `clearAllTimeouts` и т. д., которые по запомненному всё подчищают. Также в `dispose` происходит отвязка всех [активных свойств](https://github.com/2gis/RiftJS/blob/master/docs/ActiveProperty.ru.md) от их зависимостей (у активных свойств для этого тоже есть свой `dispose`). Также рекурсивно очищаются зависимые (дочерние) активные свойства. Никаких проверок на уничтоженность инстанса нигде не делается (очень уж много их делать прийдётся), здесь предполагается, что программист сам не будет какашкой и после вызова `dispose` не будет как-то использовать труп.
+При добавлении таймеров, коллбэков и обработчиков используются не оригинальные методы, а их обёртки (в случае с коллбэками, они просто заворачиваются в `registerCallback`), которые где-то запоминают, что они добавили. Далее в унаследованном `dispose` происходит вызов методов типа `unregisterAllCallbacks`, `clearAllTimeouts` и т. д., которые по запомненному всё подчищают. Также в `dispose` происходит отвязка всех [активных свойств](https://github.com/2gis/RiftJS/blob/master/docs/ActiveProperty.ru.md) от их зависимостей (у активных свойств для этого тоже есть свой `dispose`). Также рекурсивно очищаются зависимые (дочерние) активные свойства. Никаких проверок на уничтоженность инстанса нигде не делается (очень уж много их делать прийдётся), здесь предполагается, что программист сам не будет какашкой и после вызова `dispose` не будет как-то использовать труп.
 
 Подробнее по каждому методу:
 
-#### Rift.Cleanable#listen
+#### Rift.Disposable#listen
 
 Добавляет обработчик события.
 ```js
@@ -146,42 +146,38 @@ this.listen(this.model.viewer, 'change', {
 });
 ```
 
-#### Rift.Cleanable#stopListening
+#### Rift.Disposable#stopListening
 
 Снимает обработчик события. По аргументам всё то же самое, что и у `listen`. 
 
-#### Rift.Cleanable#stopAllListening
+#### Rift.Disposable#stopAllListening
 
 ???
 
-#### Rift.Cleanable#regCallback
+#### Rift.Disposable#registerCallback
 
 ???
 
-#### Rift.Cleanable#cancelCallback
+#### Rift.Disposable#unregisterCallback
 
 ???
 
-#### Rift.Cleanable#cancelAllCallbacks
+#### Rift.Disposable#unregisterAllCallbacks
 
 ???
 
-#### Rift.Cleanable#setTimeout
+#### Rift.Disposable#setTimeout
 
 ???
 
-#### Rift.Cleanable#clearTimeout
+#### Rift.Disposable#clearTimeout
 
 ???
 
-#### Rift.Cleanable#clearAllTimeouts
+#### Rift.Disposable#clearAllTimeouts
 
 ???
 
-#### Rift.Cleanable#clean
-
-???
-
-#### Rift.Cleanable#dispose
+#### Rift.Disposable#dispose
 
 ???

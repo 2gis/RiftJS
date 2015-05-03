@@ -31,7 +31,7 @@
 	 * @param {Function} cl
 	 * @returns {Function}
 	 */
-	function regClass(name, cl) {
+	function registerClass(name, cl) {
 		if (hasOwn.call(classes, name)) {
 			throw new TypeError('Class "' + name + '" is already registered');
 		}
@@ -102,7 +102,7 @@
 		mixin(proto, declaration);
 
 		if (name) {
-			regClass(name, constr);
+			registerClass(name, constr);
 		}
 
 		return constr;
@@ -114,7 +114,7 @@
 	rt.Class = {
 		classes: classes,
 		getOrError: getClassOrError,
-		register: regClass,
+		register: registerClass,
 		extend: extend
 	};
 

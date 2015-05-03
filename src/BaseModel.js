@@ -1,20 +1,20 @@
 (function() {
 
-	var Cleanable = rt.Cleanable;
+	var Disposable = rt.Disposable;
 
 	/**
 	 * @class Rift.BaseModel
-	 * @extends {Rift.Cleanable}
+	 * @extends {Rift.Disposable}
 	 * @abstract
 	 *
 	 * @param {?(Object|undefined)} [data] - Начальные данные.
 	 * @param {Object} [opts]
 	 */
-	var BaseModel = Cleanable.extend(/** @lends Rift.BaseModel# */{
+	var BaseModel = Disposable.extend(/** @lends Rift.BaseModel# */{
 		_options: null,
 
 		constructor: function(data, opts) {
-			Cleanable.call(this);
+			Disposable.call(this);
 
 			this._options = opts || {};
 
