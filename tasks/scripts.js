@@ -5,7 +5,7 @@ var $ = require('gulp-load-plugins')();
 var helpers = require('./helpers');
 
 var bodyFiles = exports.bodyFiles = [
-	'src/es6-object-assign.js', // 4
+	'src/es6-shim.js', // 4
 	'src/uid.js', // 4
 	'src/object.js', // 3
 	'src/namespace.js', // 3

@@ -1,3 +1,13 @@
+
+/*!
+ * https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertySymbols
+ */
+if (!Object.getOwnPropertySymbols) {
+	Object.getOwnPropertySymbols = function(obj) {
+		return [];
+	};
+}
+
 /*!
  * https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Object/assign
  */
@@ -25,6 +35,12 @@ if (!Object.assign) {
 
 				for (var j = 0, m = keys.length; j < m; j++) {
 					obj[keys[j]] = nextSource[keys[j]];
+				}
+
+				var symbols = Object.getOwnPropertySymbols(nextSource);
+
+				for (var j = 0, m = symbols.length; j < m; j++) {
+					obj[symbols[j]] = nextSource[symbols[j]];
 				}
 			}
 

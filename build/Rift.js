@@ -57,6 +57,16 @@ if (isClient) {
 
 var keyListenerInner = '_rt-listenerInner';
 
+
+/*!
+ * https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertySymbols
+ */
+if (!Object.getOwnPropertySymbols) {
+	Object.getOwnPropertySymbols = function(obj) {
+		return [];
+	};
+}
+
 /*!
  * https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Object/assign
  */
@@ -84,6 +94,12 @@ if (!Object.assign) {
 
 				for (var j = 0, m = keys.length; j < m; j++) {
 					obj[keys[j]] = nextSource[keys[j]];
+				}
+
+				var symbols = Object.getOwnPropertySymbols(nextSource);
+
+				for (var j = 0, m = symbols.length; j < m; j++) {
+					obj[symbols[j]] = nextSource[symbols[j]];
 				}
 			}
 
@@ -3167,6 +3183,7 @@ if (!Object.assign) {
 	 * @memberOf Rift.ActiveProperty
 	 *
 	 * @param {Object} obj
+	 * @returns {Object}
 	 */
 	function disposeDataCells(obj) {
 		if (obj._dataCells) {
@@ -3176,6 +3193,8 @@ if (!Object.assign) {
 
 			obj._dataCells = null;
 		}
+
+		return obj;
 	}
 
 	/**
@@ -5171,10 +5190,14 @@ if (!Object.assign) {
 		 * Уничтожает вьюшку освобождая занятые ей ресурсы.
 		 */
 		dispose: function() {
-			var block = this.block[0];
+			var block;
 
-			if (block.parentNode) {
-				block.parentNode.removeChild(block);
+			if (isClient) {
+				block = this.block[0];
+
+				if (block.parentNode) {
+					block.parentNode.removeChild(block);
+				}
 			}
 
 			var children = this.children;
@@ -5194,7 +5217,9 @@ if (!Object.assign) {
 				}
 			}
 
-			block[keyView] = null;
+			if (isClient) {
+				block[keyView] = null;
+			}
 
 			BaseView.$super.dispose.call(this);
 		}

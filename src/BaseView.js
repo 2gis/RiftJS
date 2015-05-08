@@ -1009,10 +1009,14 @@
 		 * Уничтожает вьюшку освобождая занятые ей ресурсы.
 		 */
 		dispose: function() {
-			var block = this.block[0];
+			var block;
 
-			if (block.parentNode) {
-				block.parentNode.removeChild(block);
+			if (isClient) {
+				block = this.block[0];
+
+				if (block.parentNode) {
+					block.parentNode.removeChild(block);
+				}
 			}
 
 			var children = this.children;
@@ -1032,7 +1036,9 @@
 				}
 			}
 
-			block[keyView] = null;
+			if (isClient) {
+				block[keyView] = null;
+			}
 
 			BaseView.$super.dispose.call(this);
 		}

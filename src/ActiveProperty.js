@@ -45,6 +45,7 @@
 	 * @memberOf Rift.ActiveProperty
 	 *
 	 * @param {Object} obj
+	 * @returns {Object}
 	 */
 	function disposeDataCells(obj) {
 		if (obj._dataCells) {
@@ -54,6 +55,8 @@
 
 			obj._dataCells = null;
 		}
+
+		return obj;
 	}
 
 	/**
