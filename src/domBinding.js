@@ -141,7 +141,7 @@
 	 * @returns {Array<Rift.DataCell>}
 	 */
 	function bindElement(el, context, opts) {
-		if (hasOwn.call(el, keyDataCells) && el[keyDataCells]) {
+		if (el.hasOwnProperty(keyDataCells) && el[keyDataCells]) {
 			return el[keyDataCells];
 		}
 
@@ -150,7 +150,7 @@
 		if (el.hasAttribute('rt-bind')) {
 			var applyValues = !opts || opts.applyValues !== false;
 
-			forEachMatch(reBindingExpr, el.getAttribute('rt-bind'), function(match, helper, meta, js) {
+			forEachMatch(reBindingExpr, el.getAttribute('rt-bind'), function(expr, helper, meta, js) {
 				var dc = new DataCell(Function('return ' + js + ';').bind(context), {
 					onchange: function() {
 						helpers[helper](el, this.value, meta);
@@ -176,7 +176,7 @@
 	 * @param {HTMLElement} el
 	 */
 	function unbindElement(el) {
-		if (hasOwn.call(el, keyDataCells)) {
+		if (el.hasOwnProperty(keyDataCells)) {
 			var dcs = el[keyDataCells];
 
 			if (dcs) {

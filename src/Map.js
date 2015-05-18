@@ -6,8 +6,8 @@
 		var getHash = rt.value.getHash;
 
 		var entryStub = {
-			key: undef,
-			value: undef,
+			key: undefined,
+			value: undefined,
 			prev: null,
 			next: null
 		};
@@ -24,10 +24,12 @@
 
 		rt.object.mixin(Map.prototype, {
 			_inner: null,
+
 			_first: null,
 			_last: null,
 
 			_size: 0,
+
 			get size() {
 				return this._size;
 			},
@@ -111,10 +113,64 @@
 				}
 			},
 
+			keys: function() {
+				var entry = this._first;
+
+				return {
+					next: function() {
+						if (entry) {
+							var step = { value: entry.key, done: false };
+							entry = entry.next;
+							return step;
+						}
+
+						return { value: undefined, done: true };
+					}
+				};
+			},
+
+			values: function() {
+				var entry = this._first;
+
+				return {
+					next: function() {
+						if (entry) {
+							var step = { value: entry.value, done: false };
+							entry = entry.next;
+							return step;
+						}
+
+						return { value: undefined, done: true };
+					}
+				};
+			},
+
+			entries: function() {
+				var entry = this._first;
+
+				return {
+					next: function() {
+						if (entry) {
+							var step = { value: [entry.key, entry.value], done: false };
+							entry = entry.next;
+							return step;
+						}
+
+						return { value: undefined, done: true };
+					}
+				};
+			},
+
 			clear: function() {
-				this._inner = Object.create(null);
+				var inner = this._inner;
+
+				for (var hash in inner) {
+					delete inner[hash];
+				}
+
 				this._first = null;
 				this._last = null;
+
 				this._size = 0;
 			}
 		});

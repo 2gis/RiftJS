@@ -1,4 +1,3 @@
-
 describe('object.js', function() {
 
 	describe('object.getUID', function() {

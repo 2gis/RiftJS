@@ -14,10 +14,10 @@
 			var routeProps = routes[--i].properties;
 
 			for (var j = routeProps.length; j;) {
-				var id = routeProps[--j].id;
+				var name = routeProps[--j].name;
 
-				if (!hasOwn.call(props, id)) {
-					props[id] = undef;
+				if (!hasOwn.call(props, name)) {
+					props[name] = undefined;
 				}
 			}
 		}
@@ -29,11 +29,7 @@
 	 * @class Rift.BaseApp
 	 * @extends {Object}
 	 */
-	function BaseApp() {}
-
-	BaseApp.extend = rt.Class.extend;
-
-	Object.assign(BaseApp.prototype, /** @lends Rift.BaseApp# */{
+	var BaseApp = rt.Class.extend(/** @lends Rift.BaseApp# */{
 		/**
 		 * @type {Rift.BaseModel}
 		 */

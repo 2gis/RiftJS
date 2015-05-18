@@ -1,5 +1,6 @@
 (function() {
 
+	var Map = rt.Map;
 	var Event = rt.Event;
 
 	var keyUsed = '_emt-used';
@@ -32,11 +33,7 @@
 	 * @class Rift.EventEmitter
 	 * @extends {Object}
 	 */
-	function EventEmitter() {}
-
-	EventEmitter.extend = rt.Class.extend;
-
-	Object.assign(EventEmitter.prototype, /** @lends Rift.EventEmitter# */{
+	var EventEmitter = rt.Class.extend(/** @lends Rift.EventEmitter# */{
 		_events: null,
 
 		/**
@@ -58,9 +55,14 @@
 		 * @returns {Rift.EventEmitter}
 		 */
 		on: wrapOnOff(function(type, listener, context) {
-			var events = this._events || (this._events = Object.create(null));
+			var events = (this._events || (this._events = new Map())).get(type);
 
-			(events[type] || (events[type] = [])).push({
+			if (!events) {
+				events = [];
+				this._events.set(type, events);
+			}
+
+			events.push({
 				listener: listener,
 				context: context || this
 			});
@@ -73,7 +75,7 @@
 		 * @returns {Rift.EventEmitter}
 		 */
 		off: wrapOnOff(function(type, listener, context) {
-			var events = (this._events || (this._events = Object.create(null)))[type];
+			var events = this._events || (this._events = new Map()).get(type);
 
 			if (!events) {
 				return;
@@ -88,14 +90,14 @@
 
 				if (evt.context == context && (
 					evt.listener == listener ||
-						(hasOwn.call(evt.listener, keyListenerInner) && evt.listener[keyListenerInner] == listener)
+						(evt.listener.hasOwnProperty(keyListenerInner) && evt.listener[keyListenerInner] == listener)
 				)) {
 					events.splice(i, 1);
 				}
 			}
 
 			if (!events.length) {
-				delete this._events[type];
+				this._events.delete(type);
 			}
 		}),
 
@@ -123,7 +125,7 @@
 		emit: function(evt, detail) {
 			if (typeof evt == 'string') {
 				evt = new Event(evt);
-			} else if (hasOwn.call(evt, keyUsed)) {
+			} else if (evt.hasOwnProperty(keyUsed)) {
 				throw new TypeError('Attempt to use an object that is no longer usable');
 			}
 
@@ -149,9 +151,7 @@
 		_handleEvent: function(evt) {
 			if (!this.silent || evt.target != this) {
 				var type = evt.type;
-				var events = this._events || (this._events = Object.create(null));
-
-				events = type in events ? events[type].slice(0) : [];
+				var events = (this._events && this._events.get(type) || []).slice(0);
 
 				if (typeof this['on' + type] == 'function') {
 					events.push({

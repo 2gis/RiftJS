@@ -21,6 +21,7 @@
 		constructor: function(data, opts) {
 			EventEmitter.call(this);
 
+			this._inner = new Map();
 			this._valueCounts = new Map();
 
 			if (typeof opts == 'boolean') {
@@ -29,21 +30,23 @@
 				opts = {};
 			}
 
-			var handleItemChanges = opts.handleItemChanges === true;
-
-			if (handleItemChanges) {
+			if (opts.handleItemChanges) {
 				this._handleItemChanges = true;
 			}
 
 			if (data) {
-				var inner = this._inner = Object.assign(
-					Object.create(null),
-					data instanceof ActiveDictionary ? data._inner : data
-				);
-				var valueCounts = this._valueCounts;
+				if (data instanceof ActiveDictionary) {
+					data = data._inner;
+				}
 
-				for (var name in inner) {
-					var value = inner[name];
+				var inner = this._inner;
+				var valueCounts = this._valueCounts;
+				var handleItemChanges = this._handleItemChanges;
+
+				for (var name in data) {
+					var value = data[name];
+
+					inner.set(name, value);
 
 					if (valueCounts.has(value)) {
 						valueCounts.set(value, valueCounts.get(value) + 1);
@@ -55,8 +58,6 @@
 						}
 					}
 				}
-			} else {
-				this._inner = {};
 			}
 		},
 
@@ -76,7 +77,7 @@
 		 * @returns {boolean}
 		 */
 		has: function(name) {
-			return name in this._inner;
+			return this._inner.has(name);
 		},
 
 		/**
@@ -86,7 +87,7 @@
 		 * @returns {*}
 		 */
 		get: function(name) {
-			return this._inner[name];
+			return this._inner.get(name);
 		},
 
 		/**
@@ -119,8 +120,8 @@
 			};
 
 			for (name in values) {
-				var hasName = name in inner;
-				var oldValue = inner[name];
+				var hasName = inner.has(name);
+				var oldValue = inner.get(name);
 				var val = values[name];
 
 				if (!hasName || !svz(oldValue, val)) {
@@ -162,7 +163,7 @@
 						value: val
 					};
 
-					inner[name] = val;
+					inner.set(name, val);
 				}
 			}
 
@@ -197,32 +198,34 @@
 			for (var i = 0, l = arguments.length; i < l; i++) {
 				var name = arguments[i];
 
-				if (name in inner) {
-					changed = true;
+				if (!inner.has(name)) {
+					continue;
+				}
 
-					var value = inner[name];
-					var valueCount = valueCounts.get(value) - 1;
+				changed = true;
 
-					if (valueCount) {
-						valueCounts.set(value, valueCount);
-					} else {
-						valueCounts.delete(value);
+				var value = inner.get(name);
+				var valueCount = valueCounts.get(value) - 1;
 
-						if (handleItemChanges && value instanceof EventEmitter) {
-							value.off('change', this._onItemChange);
-						}
+				if (valueCount) {
+					valueCounts.set(value, valueCount);
+				} else {
+					valueCounts.delete(value);
 
-						removedValues.push(value);
+					if (handleItemChanges && value instanceof EventEmitter) {
+						value.off('change', this._onItemChange);
 					}
 
-					diff[name] = {
-						type: 'delete',
-						oldValue: value,
-						value: undef
-					};
-
-					delete inner[name];
+					removedValues.push(value);
 				}
+
+				diff[name] = {
+					type: 'delete',
+					oldValue: value,
+					value: undefined
+				};
+
+				inner.delete(name);
 			}
 
 			if (changed) {
@@ -255,7 +258,13 @@
 		 * @returns {Object}
 		 */
 		toObject: function() {
-			return Object.assign({}, this._inner);
+			var obj = {};
+
+			this._inner.forEach(function(value, name) {
+				obj[name] = value;
+			});
+
+			return obj;
 		},
 
 		/**
@@ -263,11 +272,9 @@
 		 * @param {Object} opts
 		 */
 		collectDumpObject: function(data, opts) {
-			var inner = this._inner;
-
-			for (var name in inner) {
-				data[name] = inner[name];
-			}
+			this._inner.forEach(function(value, name) {
+				data[name] = value;
+			});
 
 			if (this._handleItemChanges) {
 				opts.handleItemChanges = true;

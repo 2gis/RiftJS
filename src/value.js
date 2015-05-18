@@ -23,9 +23,6 @@
 			case 'boolean': { return '?' + value; }
 			case 'number': { return '+' + value; }
 			case 'string': { return ',' + value; }
-			default: {
-				return (typeof value) + '-' + value;
-			}
 		}
 
 		return '#' + getUID(value);
@@ -70,7 +67,8 @@
 		});
 	}
 
-	var reUnquotablePropName = /^[$_a-zA-Z][$\w]*$/;
+	var reUnquotableProp = /^[$_a-zA-Z][$\w]*$/;
+	var reZeros = /0+$/;
 	var reScriptTagEnd = /<\/(script\b[^>]*)>/gi;
 
 	/**
@@ -79,8 +77,8 @@
 	 * @param {*} value
 	 * @returns {string}
 	 */
-	function toString(value) {
-		if (value === undef) {
+	function stringify(value) {
+		if (value === undefined) {
 			return 'void 0';
 		}
 		if (value === null) {
@@ -89,34 +87,42 @@
 
 		var type = typeof value;
 
-		if (type != 'object') {
-			return type == 'string' ?
-				'\'' + escapeString(value).replace(reScriptTagEnd, "</'+'$1>") + '\'' :
-				String(value);
-		}
+		if (type == 'object') {
+			var js = [];
 
-		var js = [];
-
-		if (Array.isArray(value)) {
-			for (var i = value.length; i;) {
-				js.unshift(--i in value ? toString(value[i]) : '');
-			}
-
-			js = '[' + js.join(',') + (js[js.length - 1] == '' ? ',]' : ']');
-		} else {
-			for (var name in value) {
-				if (hasOwn.call(value, name)) {
-					js.push(
-						(reUnquotablePropName.test(name) ? name : '\'' + escapeString(name) + '\'') + ':' +
-							toString(value[name])
-					);
+			if (Array.isArray(value)) {
+				for (var i = value.length; i;) {
+					js.unshift(--i in value ? stringify(value[i]) : '');
 				}
+
+				js = '[' + js.join(',') + (js[js.length - 1] == '' ? ',]' : ']');
+			} else {
+				for (var name in value) {
+					if (hasOwn.call(value, name)) {
+						js.push(
+							(reUnquotableProp.test(name) ? name : '\'' + escapeString(name) + '\'') + ':' +
+								stringify(value[name])
+						);
+					}
+				}
+
+				js = '{' + js + '}';
 			}
 
-			js = '{' + js + '}';
+			return js.replace(reScriptTagEnd, "</'+'$1>");
 		}
 
-		return js.replace(reScriptTagEnd, "</'+'$1>");
+		if (type == 'number') {
+			if (value && value % 1000 == 0) {
+				return String(value).replace(reZeros, function(zeros) {
+					return 'e' + zeros.length;
+				});
+			}
+		} else if (type == 'string') {
+			return '\'' + escapeString(value).replace(reScriptTagEnd, "</'+'$1>") + '\'';
+		}
+
+		return String(value);
 	}
 
 	/**
@@ -124,7 +130,7 @@
 	 */
 	rt.value = {
 		getHash: getHash,
-		toString: toString
+		stringify: stringify
 	};
 
 })();

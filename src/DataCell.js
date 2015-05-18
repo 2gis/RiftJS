@@ -1,7 +1,8 @@
 (function() {
 
-	var getUID = rt.object.getUID;
 	var nextTick = rt.process.nextTick;
+	var Map = rt.Map;
+	var Set = rt.Set;
 	var Event = rt.Event;
 	var EventEmitter = rt.EventEmitter;
 
@@ -12,10 +13,10 @@
 	var state = STATE_CHANGES_ACCUMULATION;
 
 	/**
-	 * @type {Object<{ dataCell: Rift.DataCell, event: Rift.Event, cancellable: boolean }>}
+	 * @type {Map<{ dataCell: Rift.DataCell, event: Rift.Event, cancellable: boolean }>}
 	 * @private
 	 */
-	var changes = {};
+	var changes = new Map();
 
 	var changeCount = 0;
 
@@ -27,7 +28,7 @@
 		last: null
 	});
 
-	var circularityDetectionCounter = {};
+	var circularityDetectionCounter = new Map();
 
 	/**
 	 * @private
@@ -42,13 +43,11 @@
 		if (dcBundle) {
 			while (true) {
 				if (maxParentDepth == dcBundle.maxParentDepth) {
-					var id = getUID(dc);
-
-					if (hasOwn.call(dcBundle.dataCells, id)) {
+					if (dcBundle.dataCells.has(dc)) {
 						return false;
 					}
 
-					dcBundle.dataCells[id] = dc;
+					dcBundle.dataCells.add(dc);
 					dcBundle.count++;
 
 					return true;
@@ -57,27 +56,26 @@
 				if (maxParentDepth > dcBundle.maxParentDepth) {
 					var next = dcBundle.next;
 
-					(dcBundle.next = (next || outdatedDataCells)[next ? 'prev' : 'last'] =
+					dcBundle.next = (next || outdatedDataCells)[next ? 'prev' : 'last'] =
 						outdatedDataCells[maxParentDepth] = {
 							maxParentDepth: maxParentDepth,
-							dataCells: {},
+							dataCells: new Set([dc]),
 							count: 1,
 							prev: dcBundle,
 							next: next
-						}
-					).dataCells[getUID(dc)] = dc;
+						};
 
 					return true;
 				}
 
 				if (!dcBundle.prev) {
-					(dcBundle.prev = outdatedDataCells.first = outdatedDataCells[maxParentDepth] = {
+					dcBundle.prev = outdatedDataCells.first = outdatedDataCells[maxParentDepth] = {
 						maxParentDepth: maxParentDepth,
-						dataCells: {},
+						dataCells: new Set([dc]),
 						count: 1,
 						prev: null,
 						next: dcBundle
-					}).dataCells[getUID(dc)] = dc;
+					};
 
 					return true;
 				}
@@ -86,13 +84,13 @@
 			}
 		}
 
-		(outdatedDataCells.first = outdatedDataCells.last = outdatedDataCells[maxParentDepth] = {
+		outdatedDataCells.first = outdatedDataCells.last = outdatedDataCells[maxParentDepth] = {
 			maxParentDepth: maxParentDepth,
-			dataCells: {},
+			dataCells: new Set([dc]),
 			count: 1,
 			prev: null,
 			next: null
-		}).dataCells[getUID(dc)] = dc;
+		};
 
 		return true;
 	}
@@ -106,33 +104,29 @@
 	function removeOutdatedDataCell(dc) {
 		var dcBundle = outdatedDataCells[dc._maxParentDepth];
 
-		if (dcBundle) {
-			var id = getUID(dc);
+		if (dcBundle && dcBundle.dataCells.has(dc)) {
+			if (--dcBundle.count) {
+				delete dcBundle.dataCells.delete(dc);
+			} else {
+				var prev = dcBundle.prev;
+				var next = dcBundle.next;
 
-			if (hasOwn.call(dcBundle.dataCells, id)) {
-				if (--dcBundle.count) {
-					delete dcBundle.dataCells[id];
+				if (prev) {
+					prev.next = next;
 				} else {
-					var prev = dcBundle.prev;
-					var next = dcBundle.next;
-
-					if (prev) {
-						prev.next = next;
-					} else {
-						outdatedDataCells.first = next;
-					}
-
-					if (next) {
-						next.prev = prev;
-					} else {
-						outdatedDataCells.last = prev;
-					}
-
-					delete outdatedDataCells[dc._maxParentDepth];
+					outdatedDataCells.first = next;
 				}
 
-				return true;
+				if (next) {
+					next.prev = prev;
+				} else {
+					outdatedDataCells.last = prev;
+				}
+
+				delete outdatedDataCells[dc._maxParentDepth];
 			}
+
+			return true;
 		}
 
 		return false;
@@ -145,16 +139,21 @@
 		state = STATE_CHANGES_HANDLING;
 
 		do {
-			for (var changeId in changes) {
-				var change = changes[changeId];
+			for (
+				var changesIterator = changes.values(), changesIteratorStep;
+				!(changesIteratorStep = changesIterator.next()).done;
+			) {
+				var change = changesIteratorStep.value;
 				var dc = change.dataCell;
-				var children = dc._children;
 
-				for (var childId in children) {
-					addOutdatedDataCell(children[childId]);
+				for (
+					var childrenIterator = dc._children.values(), childrenIteratorStep;
+					!(childrenIteratorStep = childrenIterator.next()).done;
+				) {
+					addOutdatedDataCell(childrenIteratorStep.value);
 				}
 
-				delete changes[changeId];
+				changes.delete(dc);
 				changeCount--;
 
 				dc._fixedValue = dc._value;
@@ -204,8 +203,8 @@
 		for (var dcBundle; dcBundle = outdatedDataCells.first;) {
 			var dcs = dcBundle.dataCells;
 
-			for (var id in dcs) {
-				var dc = dcs[id];
+			for (var iterator = dcs.values(), step; !(step = iterator.next()).done;) {
+				var dc = step.value;
 
 				dc._recalc();
 
@@ -215,7 +214,7 @@
 
 				// кажется, что правильней поставить этот if-else над dc._recalc() , но подумай получше ;)
 				if (--dcBundle.count) {
-					delete dcs[id];
+					delete dcs.delete(dc);
 				} else {
 					var prev = dcBundle.prev;
 					var next = dcBundle.next;
@@ -250,7 +249,7 @@
 		}
 
 		state = STATE_CHANGES_ACCUMULATION;
-		circularityDetectionCounter = {};
+		circularityDetectionCounter.clear();
 	}
 
 	/**
@@ -272,11 +271,9 @@
 			}
 		}
 
-		var id = getUID(dc);
-
 		if (changeCount) {
-			if (hasOwn.call(changes, id)) {
-				var change = changes[id];
+			if (changes.has(dc)) {
+				var change = changes.get(dc);
 
 				(evt.detail || (evt.detail = {})).prevEvent = change.event;
 				change.event = evt;
@@ -293,11 +290,11 @@
 			}
 		}
 
-		changes[id] = {
+		changes.set(dc, {
 			dataCell: dc,
 			event: evt,
 			cancellable: cancellable !== false
-		};
+		});
 
 		changeCount++;
 	}
@@ -340,10 +337,10 @@
 		/**
 		 * @type {*}
 		 */
-		initialValue: undef,
+		initialValue: undefined,
 
-		_value: undef,
-		_fixedValue: undef,
+		_value: undefined,
+		_fixedValue: undefined,
 
 		_formula: null,
 
@@ -358,7 +355,7 @@
 		/**
 		 * Родительские ячейки.
 		 *
-		 * @type {Object<Rift.DataCell>}
+		 * @type {Set<Rift.DataCell>}
 		 * @protected
 		 */
 		_parents: null,
@@ -366,7 +363,7 @@
 		/**
 		 * Дочерние ячейки.
 		 *
-		 * @type {Object<Rift.DataCell>}
+		 * @type {Set<Rift.DataCell>}
 		 * @protected
 		 */
 		_children: null,
@@ -465,11 +462,11 @@
 				this._onError = this.owner ? opts.onerror.bind(this.owner) : opts.onerror;
 			}
 
-			this._children = {};
+			this._children = new Set();
 
 			if (
 				typeof value == 'function' &&
-					(opts.computable !== undef ? opts.computable : value.constructor == Function)
+					(opts.computable !== undefined ? opts.computable : value.constructor == Function)
 			) {
 				this.computable = true;
 			}
@@ -477,7 +474,7 @@
 			if (this.computable) {
 				this._formula = value;
 
-				detectedParents.unshift({});
+				detectedParents.unshift(new Set());
 
 				try {
 					this._value = this._fixedValue = this._formula.call(this.owner || this);
@@ -485,13 +482,14 @@
 					this._handleError(err);
 				}
 
-				var parents = this._parents = detectedParents.shift();
+				this._parents = detectedParents.shift();
+
 				var maxParentDepth = 1;
 
-				for (var id in parents) {
-					var parent = parents[id];
+				for (var iterator = this._parents.values(), step; !(step = iterator.next()).done;) {
+					var parent = step.value;
 
-					parent._children[getUID(this)] = this;
+					parent._children.add(this);
 
 					if (maxParentDepth <= parent._maxParentDepth) {
 						maxParentDepth = parent._maxParentDepth + 1;
@@ -514,7 +512,7 @@
 		 */
 		get value() {
 			if (detectedParents.length) {
-				detectedParents[0][getUID(this)] = this;
+				detectedParents[0].add(this);
 			}
 
 			if (changeCount || state == STATE_CHANGES_HANDLING) {
@@ -560,22 +558,18 @@
 						addChange(this, { value: change });
 					} else {
 						if (!isEmpty(change)) {
-							addChange(this, { value: change }, undef, value !== this._fixedValue);
+							addChange(this, { value: change }, undefined, value !== this._fixedValue);
 						}
 					}
 				} else {
 					if (!svz(oldValue, value)) {
 						this._value = value;
 
-						if (svz(value, this._fixedValue)) {
-							var id = getUID(this);
+						if (svz(value, this._fixedValue) && changes.get(this).cancellable) {
+							changes.delete(this);
+							changeCount--;
 
-							if (changes[id].cancellable) {
-								delete changes[id];
-								changeCount--;
-
-								return;
-							}
+							return;
 						}
 
 						if (oldValue instanceof EventEmitter) {
@@ -606,22 +600,22 @@
 		 * @param {Object} [evt.detail.diff]
 		 */
 		_onValueChange: function(evt) {
-			addChange(this, undef, evt, this._value !== this._fixedValue);
+			addChange(this, undefined, evt, this._value !== this._fixedValue);
 		},
 
 		/**
 		 * @protected
 		 */
 		_recalc: function() {
-			var id = getUID(this);
-
-			if (hasOwn.call(circularityDetectionCounter, id)) {
-				if (++circularityDetectionCounter[id] == 10) {
+			if (circularityDetectionCounter.has(this)) {
+				if (circularityDetectionCounter.get(this) == 10) {
 					this._handleError(new RangeError('Circular dependency detected'));
 					return;
 				}
+
+				circularityDetectionCounter.set(this, circularityDetectionCounter.get(this) + 1);
 			} else {
-				circularityDetectionCounter[id] = 1;
+				circularityDetectionCounter.set(this, 1);
 			}
 
 			var oldValue = this._value;
@@ -629,7 +623,7 @@
 
 			var err;
 
-			detectedParents.unshift({});
+			detectedParents.unshift(new Set());
 
 			try {
 				var value = this._formula.call(this.owner || this);
@@ -645,17 +639,17 @@
 			var parents = this._parents = detectedParents.shift();
 			var maxParentDepth = 1;
 
-			for (var parentId in oldParents) {
-				if (!hasOwn.call(parents, parentId)) {
-					delete oldParents[parentId]._children[id];
+			for (var iterator = oldParents.values(), step; !(step = iterator.next()).done;) {
+				if (!parents.has(step.value)) {
+					step.value._children.delete(this);
 				}
 			}
 
-			for (var parentId in parents) {
-				var parent = parents[parentId];
+			for (var iterator = parents.values(), step; !(step = iterator.next()).done;) {
+				var parent = step.value;
 
-				if (!hasOwn.call(oldParents, parentId)) {
-					parent._children[id] = this;
+				if (!oldParents.has(parent)) {
+					parent._children.add(this);
 				}
 
 				if (maxParentDepth <= parent._maxParentDepth) {
@@ -714,14 +708,12 @@
 					this._handleEvent(evt);
 				}
 
-				var children = this._children;
-
-				for (var id in children) {
+				for (var iterator = this._children.values(), step; !(step = iterator.next()).done;) {
 					if (evt.isPropagationStopped) {
 						break;
 					}
 
-					children[id]._handleErrorEvent(evt);
+					step.value._handleErrorEvent(evt);
 				}
 			}
 		},
@@ -750,20 +742,16 @@
 				return;
 			}
 
-			var id = getUID(this);
-
-			if (id in changes) {
-				delete changes[id];
+			if (changes.has(this)) {
+				changes.delete(this);
 				changeCount--;
 			}
 
 			removeOutdatedDataCell(this);
 
 			if (this.computable) {
-				var parents = this._parents;
-
-				for (var parentId in parents) {
-					delete parents[parentId]._children[id];
+				for (var iterator = this._parents.values(), step; !(step = iterator.next()).done;) {
+					step.value._children.delete(this);
 				}
 			} else {
 				if (this._value instanceof EventEmitter) {
@@ -771,10 +759,8 @@
 				}
 			}
 
-			var children = this._children;
-
-			for (var childId in children) {
-				children[childId].dispose();
+			for (var iterator = this._children.values(), step; !(step = iterator.next()).done;) {
+				step.value.dispose();
 			}
 
 			this.disposed = true;

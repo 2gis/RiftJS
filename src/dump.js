@@ -1,7 +1,7 @@
 (function() {
 
 	var getUID = rt.object.getUID;
-	var toString = rt.value.toString;
+	var stringify = rt.value.stringify;
 	var classes = rt.Class.classes;
 	var registerClass = rt.Class.register;
 
@@ -36,14 +36,14 @@
 	function collectDump(obj, objects) {
 		var id = getUID(obj);
 
-		if (hasOwn.call(objects, id)) {
+		if (objects.hasOwnProperty(id)) {
 			return id;
 		}
 
 		var data = {};
 		var opts = {};
 
-		if (hasOwn.call(obj.constructor, '__class')) {
+		if (obj.constructor.hasOwnProperty('__class')) {
 			if (obj.collectDumpObject) {
 				obj.collectDumpObject(data, opts);
 			} else {
@@ -65,7 +65,7 @@
 				if (value === Object(value)) {
 					data[name] = collectDump(value, objects);
 				} else {
-					data[name] = value === undef ? {} : { v: value };
+					data[name] = value === undefined ? {} : { v: value };
 				}
 			}
 
@@ -90,7 +90,7 @@
 	function serialize(obj) {
 		var objects = {};
 
-		return toString({
+		return stringify({
 			s: objects,
 			r: collectDump(obj, objects)
 		});
@@ -114,9 +114,9 @@
 		for (var id in objects) {
 			var obj = objects[id];
 
-			if (hasOwn.call(obj, 'c')) {
+			if (obj.hasOwnProperty('c')) {
 				var cl = classes[obj.c];
-				obj.instance = hasOwn.call(obj, 'o') ? new cl(undef, obj.o) : new cl();
+				obj.instance = obj.hasOwnProperty('o') ? new cl(undefined, obj.o) : new cl();
 			} else {
 				obj.instance = {};
 			}
@@ -125,20 +125,20 @@
 		for (var id in objects) {
 			var obj = objects[id];
 
-			if (hasOwn.call(obj, 'd')) {
+			if (obj.hasOwnProperty('d')) {
 				var data = obj.d;
 
 				for (var name in data) {
 					var item = data[name];
 
 					if (typeof item == 'object') {
-						data[name] = hasOwn.call(item, 'v') ? item.v : undef;
+						data[name] = item.hasOwnProperty('v') ? item.v : undefined;
 					} else {
 						data[name] = objects[item].instance;
 					}
 				}
 
-				if (hasOwn.call(obj, 'c') && obj.instance.expandFromDumpObject) {
+				if (obj.hasOwnProperty('c') && obj.instance.expandFromDumpObject) {
 					obj.instance.expandFromDumpObject(data);
 				} else {
 					Object.assign(obj.instance, data);

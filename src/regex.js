@@ -29,7 +29,7 @@
 	 * @memberOf Rift.regex
 	 *
 	 * @example
-	 * forEachMatch(/(\w+)\-(\d+)/g, 'a-1 b-2 c-3', function(match, name, value) {
+	 * forEachMatch(/(\w+)\-(\d+)/g, 'a-1 b-2 c-3', function(pair, name, value) {
 	 *     console.log(name + '=' + value);
 	 * });
 	 * // => a=1

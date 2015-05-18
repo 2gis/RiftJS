@@ -5,19 +5,9 @@
 	 * @extends {Object}
 	 *
 	 * @param {string} type - Тип.
-	 * @param {boolean} [canBubble=false] - Может ли событие всплывать.
+	 * @param {boolean} [canBubble=false] - Может всплывать.
 	 */
-	function Event(type, canBubble) {
-		this.type = type;
-
-		if (canBubble) {
-			this.bubbles = true;
-		}
-	}
-
-	Event.extend = rt.Class.extend;
-
-	Object.assign(Event.prototype, /** @lends Rift.Event# */{
+	var Event = rt.Class.extend(/** @lends Rift.Event# */{
 		/**
 		 * Объект, к которому применено событие.
 		 *
@@ -31,13 +21,13 @@
 		 *
 		 * @type {string}
 		 */
-		type: undef,
+		type: undefined,
 
 		/**
 		 * @type {int|undefined}
 		 * @writable
 		 */
-		timestamp: undef,
+		timestamp: undefined,
 
 		/**
 		 * Дополнительная информация по событию.
@@ -67,6 +57,14 @@
 		 * @type {boolean}
 		 */
 		isImmediatePropagationStopped: false,
+
+		constructor: function(type, canBubble) {
+			this.type = type;
+
+			if (canBubble) {
+				this.bubbles = true;
+			}
+		},
 
 		/**
 		 * Останавливает распространение события на другие объекты.

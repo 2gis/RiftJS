@@ -45,8 +45,20 @@
 				}, this);
 			},
 
+			keys: function() {
+				return this._inner.keys();
+			},
+
+			values: function() {
+				return this._inner.values();
+			},
+
+			entries: function() {
+				return this._inner.entries();
+			},
+
 			clear: function() {
-				this._inner = new Map();
+				this._inner.clear();
 			}
 		});
 	}

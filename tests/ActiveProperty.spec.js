@@ -1,4 +1,3 @@
-
 describe('ActiveProperty.js', function() {
 
 	describe('ActiveProperty', function() {

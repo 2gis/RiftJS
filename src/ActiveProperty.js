@@ -49,9 +49,9 @@
 	 */
 	function disposeDataCells(obj) {
 		if (obj._dataCells) {
-			obj._dataCells.forEach(function(dc) {
-				dc.dispose();
-			});
+			for (var iterator = obj._dataCells.values(), step; !(step = iterator.next()).done;) {
+				step.value.dispose();
+			}
 
 			obj._dataCells = null;
 		}

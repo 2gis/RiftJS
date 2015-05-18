@@ -1,5 +1,6 @@
 (function() {
 
+	var ActiveProperty = rt.ActiveProperty;
 	var Disposable = rt.Disposable;
 
 	/**
@@ -28,7 +29,7 @@
 		 */
 		setData: function(data) {
 			for (var name in data) {
-				if (name in this) {
+				if (typeof this[name] == 'function' && this[name].constructor == ActiveProperty) {
 					this[name](data[name]);
 				}
 			}

@@ -3,10 +3,15 @@
 	var mixin = rt.object.mixin;
 
 	/**
+	 * @namespace Rift.Class
+	 */
+	var Class;
+
+	/**
 	 * @property {Object<Function>}
 	 * @memberOf Rift.Class
 	 */
-	var classes = {};
+	var classes = Object.create(null);
 
 	/**
 	 * @function getOrError
@@ -16,7 +21,7 @@
 	 * @returns {Function}
 	 */
 	function getClassOrError(name) {
-		if (!hasOwn.call(classes, name)) {
+		if (!(name in classes)) {
 			throw new TypeError('Class "' + name + '" is not defined');
 		}
 
@@ -32,7 +37,7 @@
 	 * @returns {Function}
 	 */
 	function registerClass(name, cl) {
-		if (hasOwn.call(classes, name)) {
+		if (name in classes) {
 			throw new TypeError('Class "' + name + '" is already registered');
 		}
 
@@ -58,19 +63,21 @@
 	function extend(name, declaration) {
 		if (typeof name == 'object') {
 			declaration = name;
-			name = undef;
+			name = undefined;
 		}
 
-		var parent = this;
+		var parent = this == Class ? Object : this;
 		var constr;
 
 		if (hasOwn.call(declaration, 'constructor')) {
 			constr = declaration.constructor;
 			delete declaration.constructor;
 		} else {
-			constr = function() {
-				return parent.apply(this, arguments);
-			};
+			constr = parent == Object ?
+				function() {} :
+				function() {
+					return parent.apply(this, arguments);
+				};
 		}
 
 		var proto = Object.create(parent.prototype);
@@ -95,7 +102,7 @@
 			delete declaration.static;
 		}
 
-		if (!constr.extend) {
+		if (constr.extend === undefined) {
 			constr.extend = extend;
 		}
 
@@ -108,14 +115,13 @@
 		return constr;
 	}
 
-	/**
-	 * @namespace Rift.Class
-	 */
-	rt.Class = {
+	Class = {
 		classes: classes,
 		getOrError: getClassOrError,
 		register: registerClass,
 		extend: extend
 	};
+
+	rt.Class = Class;
 
 })();

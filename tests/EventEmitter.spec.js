@@ -1,4 +1,3 @@
-
 describe('EventEmitter.js', function() {
 
 	describe('EventEmitter', function() {

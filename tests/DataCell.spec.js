@@ -1,4 +1,3 @@
-
 describe('DataCell.js', function() {
 
 	describe('DataCell', function() {

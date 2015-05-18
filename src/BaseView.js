@@ -3,46 +3,46 @@
 	var getUID = rt.object.getUID;
 	var execNamespace = rt.namespace.exec;
 	var getHash = rt.value.getHash;
-	var toString = rt.value.toString;
+	var stringify = rt.value.stringify;
 	var classes = rt.Class.classes;
 	var getClassOrError = rt.Class.getOrError;
 	var Map = rt.Map;
 	var Disposable = rt.Disposable;
-	var escapeHTML = rt.html.escape;
+	var escapeHTML = rt.html.escaescapeHTMLpe;
 	var bindDOM = rt.domBinding.bind;
 
-	var selfClosingTags = {
-		area: 1,
-		base: 1,
-		basefont: 1,
-		br: 1,
-		col: 1,
-		command: 1,
-		embed: 1,
-		frame: 1,
-		hr: 1,
-		img: 1,
-		input: 1,
-		isindex: 1,
-		keygen: 1,
-		link: 1,
-		meta: 1,
-		param: 1,
-		source: 1,
-		track: 1,
-		wbr: 1,
+	var selfClosingTags = new rt.Set([
+		'area',
+		'base',
+		'basefont',
+		'br',
+		'col',
+		'command',
+		'embed',
+		'frame',
+		'hr',
+		'img',
+		'input',
+		'isindex',
+		'keygen',
+		'link',
+		'meta',
+		'param',
+		'source',
+		'track',
+		'wbr',
 
 		// svg tags
-		circle: 1,
-		ellipse: 1,
-		line: 1,
-		path: 1,
-		polygone: 1,
-		polyline: 1,
-		rect: 1,
-		stop: 1,
-		use: 1
-	};
+		'circle',
+		'ellipse',
+		'line',
+		'path',
+		'polygone',
+		'polyline',
+		'rect',
+		'stop',
+		'use'
+	]);
 
 	var reNameClass = /^(.+?):(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
@@ -181,7 +181,7 @@
 	 * @param {HTMLElement} el
 	 */
 	function removeElement(view, el) {
-		if (!hasOwn.call(el, keyViewElementName) || !el[keyViewElementName] || el[keyView] != view) {
+		if (!el.hasOwnProperty(keyViewElementName) || !el[keyViewElementName] || el[keyView] != view) {
 			return;
 		}
 
@@ -189,7 +189,7 @@
 		els.splice(els.indexOf(el), 1);
 
 		el[keyView] = null;
-		el[keyViewElementName] = undef;
+		el[keyViewElementName] = undefined;
 
 		if (el.parentNode) {
 			el.parentNode.removeChild(el);
@@ -214,7 +214,7 @@
 	var BaseView = Disposable.extend(/** @lends Rift.BaseView# */{
 		_params: null,
 
-		_id: undef,
+		_id: undefined,
 
 		/**
 		 * @type {?Rift.BaseApp}
@@ -229,7 +229,7 @@
 		/**
 		 * @type {string|undefined}
 		 */
-		name: undef,
+		name: undefined,
 
 		/**
 		 * @type {string}
@@ -239,7 +239,7 @@
 		/**
 		 * @type {string}
 		 */
-		blockName: undef,
+		blockName: undefined,
 
 		/**
 		 * @type {Object}
@@ -351,7 +351,7 @@
 					delete params.block;
 				}
 			} else {
-				if (params.block !== undef) {
+				if (params.block !== undefined) {
 					block = params.block;
 					delete params.block;
 				}
@@ -369,10 +369,10 @@
 						block = block[0];
 					}
 
-					if (hasOwn.call(block, keyView) && block[keyView]) {
+					if (block.hasOwnProperty(keyView) && block[keyView]) {
 						throw new TypeError(
 							'Element is already used as ' + (
-								hasOwn.call(block, keyViewElementName) && block[keyViewElementName] ?
+								block.hasOwnProperty(keyViewElementName) && block[keyViewElementName] ?
 									'an element' : 'a block'
 							) + ' of view'
 						);
@@ -508,7 +508,7 @@
 				}
 			}
 
-			if (params.onlyClient !== undef) {
+			if (params.onlyClient !== undefined) {
 				this.onlyClient = params.onlyClient;
 			}
 		},
@@ -522,18 +522,14 @@
 			}
 
 			if (isServer && this.onlyClient) {
-				cb(
-					this._renderOpenTag(true) +
-						(hasOwn.call(selfClosingTags, this.tagName) ? '' : '</' + this.tagName + '>')
-				);
-
+				cb(this._renderOpenTag(true) + (selfClosingTags.has(this.tagName) ? '' : '</' + this.tagName + '>'));
 				return;
 			}
 
 			this._currentlyRendering = true;
 
 			receiveData(this, function() {
-				if (hasOwn.call(selfClosingTags, this.tagName)) {
+				if (selfClosingTags.has(this.tagName)) {
 					this._currentlyRendering = false;
 					cb(this._renderOpenTag(false));
 				} else {
@@ -576,7 +572,7 @@
 				' rt-d="' + [
 					this.constructor.__class,
 					billet ? '' : this._id,
-					isEmpty(this._params) ? '' : escapeHTML(toString(this._params).slice(1, -1))
+					isEmpty(this._params) ? '' : escapeHTML(stringify(this._params).slice(1, -1))
 				] + '"' +
 				(this._parent ? ' rt-p="' + this._parent._id + '"' : '') +
 				'>';
@@ -778,7 +774,7 @@
 
 				if (initSimilarDescendantElements(this, this.blockName, name)) {
 					els = els.filter(function() {
-						return !hasOwn.call(this, keyView) || !this[keyView];
+						return !this.hasOwnProperty(keyView) || !this[keyView];
 					});
 				}
 
@@ -803,8 +799,8 @@
 								outer.firstChild :
 								outer;
 						} else {
-							if (hasOwn.call(el, keyView) && el[keyView]) {
-								if (!hasOwn.call(el, keyViewElementName) || !el[keyViewElementName]) {
+							if (el.hasOwnProperty(keyView) && el[keyView]) {
+								if (!el.hasOwnProperty(keyViewElementName) || !el[keyViewElementName]) {
 									throw new TypeError('Element is already used as a block of view');
 								}
 

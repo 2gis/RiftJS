@@ -1,4 +1,3 @@
-
 describe('regex.js', function() {
 
 	describe('regex.escape', function() {
@@ -48,8 +47,8 @@ describe('regex.js', function() {
 		});
 
 		it('Отменяет дальнейший поиск совпадений при возвращении false', function() {
-			var cbSpy = sinon.spy(function(match) {
-				if (match == 'b-2') {
+			var cbSpy = sinon.spy(function(pair) {
+				if (pair == 'b-2') {
 					return false;
 				}
 			});

@@ -1,4 +1,4 @@
-(function(undef) {
+(function(undefined) {
 'use strict';
 
 var global = Function('return this;')();
@@ -10,14 +10,15 @@ function svz(a, b) {
 	return a === b || (a != a && b != b);
 }
 
-/* eslint-disable no-unused-vars */
 function isEmpty(obj) {
+	/* eslint-disable no-unused-vars */
 	for (var any in obj) {
 		return false;
 	}
+	/* eslint-enable no-unused-vars */
+
 	return true;
 }
-/* eslint-enable no-unused-vars */
 
 var hasOwn = Object.prototype.hasOwnProperty;
 var slice = Array.prototype.slice;
@@ -57,7 +58,6 @@ if (isClient) {
 
 var keyListenerInner = '_rt-listenerInner';
 
-
 /*!
  * https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertySymbols
  */
@@ -82,24 +82,24 @@ if (!Object.assign) {
 			obj = Object(obj);
 
 			for (var i = 1, l = arguments.length; i < l; i++) {
-				var nextSource = arguments[i];
+				var src = arguments[i];
 
-				if (nextSource == null) {
-					throw new TypeError('Can\'t convert ' + nextSource + ' to an object');
+				if (src == null) {
+					throw new TypeError('Can\'t convert ' + src + ' to an object');
 				}
 
-				nextSource = Object(nextSource);
+				src = Object(src);
 
-				var keys = Object.keys(nextSource);
+				var keys = Object.keys(src);
 
 				for (var j = 0, m = keys.length; j < m; j++) {
-					obj[keys[j]] = nextSource[keys[j]];
+					obj[keys[j]] = src[keys[j]];
 				}
 
-				var symbols = Object.getOwnPropertySymbols(nextSource);
+				var symbols = Object.getOwnPropertySymbols(src);
 
 				for (var j = 0, m = symbols.length; j < m; j++) {
-					obj[symbols[j]] = nextSource[symbols[j]];
+					obj[symbols[j]] = src[symbols[j]];
 				}
 			}
 
@@ -308,7 +308,7 @@ if (!Object.assign) {
 	 * @memberOf Rift.regex
 	 *
 	 * @example
-	 * forEachMatch(/(\w+)\-(\d+)/g, 'a-1 b-2 c-3', function(match, name, value) {
+	 * forEachMatch(/(\w+)\-(\d+)/g, 'a-1 b-2 c-3', function(pair, name, value) {
 	 *     console.log(name + '=' + value);
 	 * });
 	 * // => a=1
@@ -372,9 +372,6 @@ if (!Object.assign) {
 			case 'boolean': { return '?' + value; }
 			case 'number': { return '+' + value; }
 			case 'string': { return ',' + value; }
-			default: {
-				return (typeof value) + '-' + value;
-			}
 		}
 
 		return '#' + getUID(value);
@@ -419,7 +416,8 @@ if (!Object.assign) {
 		});
 	}
 
-	var reUnquotablePropName = /^[$_a-zA-Z][$\w]*$/;
+	var reUnquotableProp = /^[$_a-zA-Z][$\w]*$/;
+	var reZeros = /0+$/;
 	var reScriptTagEnd = /<\/(script\b[^>]*)>/gi;
 
 	/**
@@ -428,8 +426,8 @@ if (!Object.assign) {
 	 * @param {*} value
 	 * @returns {string}
 	 */
-	function toString(value) {
-		if (value === undef) {
+	function stringify(value) {
+		if (value === undefined) {
 			return 'void 0';
 		}
 		if (value === null) {
@@ -438,34 +436,42 @@ if (!Object.assign) {
 
 		var type = typeof value;
 
-		if (type != 'object') {
-			return type == 'string' ?
-				'\'' + escapeString(value).replace(reScriptTagEnd, "</'+'$1>") + '\'' :
-				String(value);
-		}
+		if (type == 'object') {
+			var js = [];
 
-		var js = [];
-
-		if (Array.isArray(value)) {
-			for (var i = value.length; i;) {
-				js.unshift(--i in value ? toString(value[i]) : '');
-			}
-
-			js = '[' + js.join(',') + (js[js.length - 1] == '' ? ',]' : ']');
-		} else {
-			for (var name in value) {
-				if (hasOwn.call(value, name)) {
-					js.push(
-						(reUnquotablePropName.test(name) ? name : '\'' + escapeString(name) + '\'') + ':' +
-							toString(value[name])
-					);
+			if (Array.isArray(value)) {
+				for (var i = value.length; i;) {
+					js.unshift(--i in value ? stringify(value[i]) : '');
 				}
+
+				js = '[' + js.join(',') + (js[js.length - 1] == '' ? ',]' : ']');
+			} else {
+				for (var name in value) {
+					if (hasOwn.call(value, name)) {
+						js.push(
+							(reUnquotableProp.test(name) ? name : '\'' + escapeString(name) + '\'') + ':' +
+								stringify(value[name])
+						);
+					}
+				}
+
+				js = '{' + js + '}';
 			}
 
-			js = '{' + js + '}';
+			return js.replace(reScriptTagEnd, "</'+'$1>");
 		}
 
-		return js.replace(reScriptTagEnd, "</'+'$1>");
+		if (type == 'number') {
+			if (value && value % 1000 == 0) {
+				return String(value).replace(reZeros, function(zeros) {
+					return 'e' + zeros.length;
+				});
+			}
+		} else if (type == 'string') {
+			return '\'' + escapeString(value).replace(reScriptTagEnd, "</'+'$1>") + '\'';
+		}
+
+		return String(value);
 	}
 
 	/**
@@ -473,7 +479,7 @@ if (!Object.assign) {
 	 */
 	rt.value = {
 		getHash: getHash,
-		toString: toString
+		stringify: stringify
 	};
 
 })();
@@ -498,6 +504,14 @@ if (!Object.assign) {
 	} else if (global.setImmediate) {
 		nextTick = function(cb) {
 			setImmediate(cb);
+		};
+	} else if (global.Promise) {
+		var prm = Promise.resolve();
+
+		nextTick = function(cb) {
+			prm.then(function() {
+				cb();
+			});
 		};
 	} else if (global.postMessage && !global.ActiveXObject) {
 		var queue;
@@ -546,10 +560,15 @@ if (!Object.assign) {
 	var mixin = rt.object.mixin;
 
 	/**
+	 * @namespace Rift.Class
+	 */
+	var Class;
+
+	/**
 	 * @property {Object<Function>}
 	 * @memberOf Rift.Class
 	 */
-	var classes = {};
+	var classes = Object.create(null);
 
 	/**
 	 * @function getOrError
@@ -559,7 +578,7 @@ if (!Object.assign) {
 	 * @returns {Function}
 	 */
 	function getClassOrError(name) {
-		if (!hasOwn.call(classes, name)) {
+		if (!(name in classes)) {
 			throw new TypeError('Class "' + name + '" is not defined');
 		}
 
@@ -575,7 +594,7 @@ if (!Object.assign) {
 	 * @returns {Function}
 	 */
 	function registerClass(name, cl) {
-		if (hasOwn.call(classes, name)) {
+		if (name in classes) {
 			throw new TypeError('Class "' + name + '" is already registered');
 		}
 
@@ -601,19 +620,21 @@ if (!Object.assign) {
 	function extend(name, declaration) {
 		if (typeof name == 'object') {
 			declaration = name;
-			name = undef;
+			name = undefined;
 		}
 
-		var parent = this;
+		var parent = this == Class ? Object : this;
 		var constr;
 
 		if (hasOwn.call(declaration, 'constructor')) {
 			constr = declaration.constructor;
 			delete declaration.constructor;
 		} else {
-			constr = function() {
-				return parent.apply(this, arguments);
-			};
+			constr = parent == Object ?
+				function() {} :
+				function() {
+					return parent.apply(this, arguments);
+				};
 		}
 
 		var proto = Object.create(parent.prototype);
@@ -638,7 +659,7 @@ if (!Object.assign) {
 			delete declaration.static;
 		}
 
-		if (!constr.extend) {
+		if (constr.extend === undefined) {
 			constr.extend = extend;
 		}
 
@@ -651,22 +672,21 @@ if (!Object.assign) {
 		return constr;
 	}
 
-	/**
-	 * @namespace Rift.Class
-	 */
-	rt.Class = {
+	Class = {
 		classes: classes,
 		getOrError: getClassOrError,
 		register: registerClass,
 		extend: extend
 	};
 
+	rt.Class = Class;
+
 })();
 
 (function() {
 
 	var getUID = rt.object.getUID;
-	var toString = rt.value.toString;
+	var stringify = rt.value.stringify;
 	var classes = rt.Class.classes;
 	var registerClass = rt.Class.register;
 
@@ -701,14 +721,14 @@ if (!Object.assign) {
 	function collectDump(obj, objects) {
 		var id = getUID(obj);
 
-		if (hasOwn.call(objects, id)) {
+		if (objects.hasOwnProperty(id)) {
 			return id;
 		}
 
 		var data = {};
 		var opts = {};
 
-		if (hasOwn.call(obj.constructor, '__class')) {
+		if (obj.constructor.hasOwnProperty('__class')) {
 			if (obj.collectDumpObject) {
 				obj.collectDumpObject(data, opts);
 			} else {
@@ -730,7 +750,7 @@ if (!Object.assign) {
 				if (value === Object(value)) {
 					data[name] = collectDump(value, objects);
 				} else {
-					data[name] = value === undef ? {} : { v: value };
+					data[name] = value === undefined ? {} : { v: value };
 				}
 			}
 
@@ -755,7 +775,7 @@ if (!Object.assign) {
 	function serialize(obj) {
 		var objects = {};
 
-		return toString({
+		return stringify({
 			s: objects,
 			r: collectDump(obj, objects)
 		});
@@ -779,9 +799,9 @@ if (!Object.assign) {
 		for (var id in objects) {
 			var obj = objects[id];
 
-			if (hasOwn.call(obj, 'c')) {
+			if (obj.hasOwnProperty('c')) {
 				var cl = classes[obj.c];
-				obj.instance = hasOwn.call(obj, 'o') ? new cl(undef, obj.o) : new cl();
+				obj.instance = obj.hasOwnProperty('o') ? new cl(undefined, obj.o) : new cl();
 			} else {
 				obj.instance = {};
 			}
@@ -790,20 +810,20 @@ if (!Object.assign) {
 		for (var id in objects) {
 			var obj = objects[id];
 
-			if (hasOwn.call(obj, 'd')) {
+			if (obj.hasOwnProperty('d')) {
 				var data = obj.d;
 
 				for (var name in data) {
 					var item = data[name];
 
 					if (typeof item == 'object') {
-						data[name] = hasOwn.call(item, 'v') ? item.v : undef;
+						data[name] = item.hasOwnProperty('v') ? item.v : undefined;
 					} else {
 						data[name] = objects[item].instance;
 					}
 				}
 
-				if (hasOwn.call(obj, 'c') && obj.instance.expandFromDumpObject) {
+				if (obj.hasOwnProperty('c') && obj.instance.expandFromDumpObject) {
 					obj.instance.expandFromDumpObject(data);
 				} else {
 					Object.assign(obj.instance, data);
@@ -832,8 +852,8 @@ if (!Object.assign) {
 		var getHash = rt.value.getHash;
 
 		var entryStub = {
-			key: undef,
-			value: undef,
+			key: undefined,
+			value: undefined,
 			prev: null,
 			next: null
 		};
@@ -850,10 +870,12 @@ if (!Object.assign) {
 
 		rt.object.mixin(Map.prototype, {
 			_inner: null,
+
 			_first: null,
 			_last: null,
 
 			_size: 0,
+
 			get size() {
 				return this._size;
 			},
@@ -937,10 +959,64 @@ if (!Object.assign) {
 				}
 			},
 
+			keys: function() {
+				var entry = this._first;
+
+				return {
+					next: function() {
+						if (entry) {
+							var step = { value: entry.key, done: false };
+							entry = entry.next;
+							return step;
+						}
+
+						return { value: undefined, done: true };
+					}
+				};
+			},
+
+			values: function() {
+				var entry = this._first;
+
+				return {
+					next: function() {
+						if (entry) {
+							var step = { value: entry.value, done: false };
+							entry = entry.next;
+							return step;
+						}
+
+						return { value: undefined, done: true };
+					}
+				};
+			},
+
+			entries: function() {
+				var entry = this._first;
+
+				return {
+					next: function() {
+						if (entry) {
+							var step = { value: [entry.key, entry.value], done: false };
+							entry = entry.next;
+							return step;
+						}
+
+						return { value: undefined, done: true };
+					}
+				};
+			},
+
 			clear: function() {
-				this._inner = Object.create(null);
+				var inner = this._inner;
+
+				for (var hash in inner) {
+					delete inner[hash];
+				}
+
 				this._first = null;
 				this._last = null;
+
 				this._size = 0;
 			}
 		});
@@ -997,8 +1073,20 @@ if (!Object.assign) {
 				}, this);
 			},
 
+			keys: function() {
+				return this._inner.keys();
+			},
+
+			values: function() {
+				return this._inner.values();
+			},
+
+			entries: function() {
+				return this._inner.entries();
+			},
+
 			clear: function() {
-				this._inner = new Map();
+				this._inner.clear();
 			}
 		});
 	}
@@ -1014,19 +1102,9 @@ if (!Object.assign) {
 	 * @extends {Object}
 	 *
 	 * @param {string} type - Тип.
-	 * @param {boolean} [canBubble=false] - Может ли событие всплывать.
+	 * @param {boolean} [canBubble=false] - Может всплывать.
 	 */
-	function Event(type, canBubble) {
-		this.type = type;
-
-		if (canBubble) {
-			this.bubbles = true;
-		}
-	}
-
-	Event.extend = rt.Class.extend;
-
-	Object.assign(Event.prototype, /** @lends Rift.Event# */{
+	var Event = rt.Class.extend(/** @lends Rift.Event# */{
 		/**
 		 * Объект, к которому применено событие.
 		 *
@@ -1040,13 +1118,13 @@ if (!Object.assign) {
 		 *
 		 * @type {string}
 		 */
-		type: undef,
+		type: undefined,
 
 		/**
 		 * @type {int|undefined}
 		 * @writable
 		 */
-		timestamp: undef,
+		timestamp: undefined,
 
 		/**
 		 * Дополнительная информация по событию.
@@ -1077,6 +1155,14 @@ if (!Object.assign) {
 		 */
 		isImmediatePropagationStopped: false,
 
+		constructor: function(type, canBubble) {
+			this.type = type;
+
+			if (canBubble) {
+				this.bubbles = true;
+			}
+		},
+
 		/**
 		 * Останавливает распространение события на другие объекты.
 		 */
@@ -1099,6 +1185,7 @@ if (!Object.assign) {
 
 (function() {
 
+	var Map = rt.Map;
 	var Event = rt.Event;
 
 	var keyUsed = '_emt-used';
@@ -1131,11 +1218,7 @@ if (!Object.assign) {
 	 * @class Rift.EventEmitter
 	 * @extends {Object}
 	 */
-	function EventEmitter() {}
-
-	EventEmitter.extend = rt.Class.extend;
-
-	Object.assign(EventEmitter.prototype, /** @lends Rift.EventEmitter# */{
+	var EventEmitter = rt.Class.extend(/** @lends Rift.EventEmitter# */{
 		_events: null,
 
 		/**
@@ -1157,9 +1240,14 @@ if (!Object.assign) {
 		 * @returns {Rift.EventEmitter}
 		 */
 		on: wrapOnOff(function(type, listener, context) {
-			var events = this._events || (this._events = Object.create(null));
+			var events = (this._events || (this._events = new Map())).get(type);
 
-			(events[type] || (events[type] = [])).push({
+			if (!events) {
+				events = [];
+				this._events.set(type, events);
+			}
+
+			events.push({
 				listener: listener,
 				context: context || this
 			});
@@ -1172,7 +1260,7 @@ if (!Object.assign) {
 		 * @returns {Rift.EventEmitter}
 		 */
 		off: wrapOnOff(function(type, listener, context) {
-			var events = (this._events || (this._events = Object.create(null)))[type];
+			var events = this._events || (this._events = new Map()).get(type);
 
 			if (!events) {
 				return;
@@ -1187,14 +1275,14 @@ if (!Object.assign) {
 
 				if (evt.context == context && (
 					evt.listener == listener ||
-						(hasOwn.call(evt.listener, keyListenerInner) && evt.listener[keyListenerInner] == listener)
+						(evt.listener.hasOwnProperty(keyListenerInner) && evt.listener[keyListenerInner] == listener)
 				)) {
 					events.splice(i, 1);
 				}
 			}
 
 			if (!events.length) {
-				delete this._events[type];
+				this._events.delete(type);
 			}
 		}),
 
@@ -1222,7 +1310,7 @@ if (!Object.assign) {
 		emit: function(evt, detail) {
 			if (typeof evt == 'string') {
 				evt = new Event(evt);
-			} else if (hasOwn.call(evt, keyUsed)) {
+			} else if (evt.hasOwnProperty(keyUsed)) {
 				throw new TypeError('Attempt to use an object that is no longer usable');
 			}
 
@@ -1248,9 +1336,7 @@ if (!Object.assign) {
 		_handleEvent: function(evt) {
 			if (!this.silent || evt.target != this) {
 				var type = evt.type;
-				var events = this._events || (this._events = Object.create(null));
-
-				events = type in events ? events[type].slice(0) : [];
+				var events = (this._events && this._events.get(type) || []).slice(0);
 
 				if (typeof this['on' + type] == 'function') {
 					events.push({
@@ -1316,6 +1402,7 @@ if (!Object.assign) {
 		constructor: function(data, opts) {
 			EventEmitter.call(this);
 
+			this._inner = new Map();
 			this._valueCounts = new Map();
 
 			if (typeof opts == 'boolean') {
@@ -1324,21 +1411,23 @@ if (!Object.assign) {
 				opts = {};
 			}
 
-			var handleItemChanges = opts.handleItemChanges === true;
-
-			if (handleItemChanges) {
+			if (opts.handleItemChanges) {
 				this._handleItemChanges = true;
 			}
 
 			if (data) {
-				var inner = this._inner = Object.assign(
-					Object.create(null),
-					data instanceof ActiveDictionary ? data._inner : data
-				);
-				var valueCounts = this._valueCounts;
+				if (data instanceof ActiveDictionary) {
+					data = data._inner;
+				}
 
-				for (var name in inner) {
-					var value = inner[name];
+				var inner = this._inner;
+				var valueCounts = this._valueCounts;
+				var handleItemChanges = this._handleItemChanges;
+
+				for (var name in data) {
+					var value = data[name];
+
+					inner.set(name, value);
 
 					if (valueCounts.has(value)) {
 						valueCounts.set(value, valueCounts.get(value) + 1);
@@ -1350,8 +1439,6 @@ if (!Object.assign) {
 						}
 					}
 				}
-			} else {
-				this._inner = {};
 			}
 		},
 
@@ -1371,7 +1458,7 @@ if (!Object.assign) {
 		 * @returns {boolean}
 		 */
 		has: function(name) {
-			return name in this._inner;
+			return this._inner.has(name);
 		},
 
 		/**
@@ -1381,7 +1468,7 @@ if (!Object.assign) {
 		 * @returns {*}
 		 */
 		get: function(name) {
-			return this._inner[name];
+			return this._inner.get(name);
 		},
 
 		/**
@@ -1414,8 +1501,8 @@ if (!Object.assign) {
 			};
 
 			for (name in values) {
-				var hasName = name in inner;
-				var oldValue = inner[name];
+				var hasName = inner.has(name);
+				var oldValue = inner.get(name);
 				var val = values[name];
 
 				if (!hasName || !svz(oldValue, val)) {
@@ -1457,7 +1544,7 @@ if (!Object.assign) {
 						value: val
 					};
 
-					inner[name] = val;
+					inner.set(name, val);
 				}
 			}
 
@@ -1492,32 +1579,34 @@ if (!Object.assign) {
 			for (var i = 0, l = arguments.length; i < l; i++) {
 				var name = arguments[i];
 
-				if (name in inner) {
-					changed = true;
+				if (!inner.has(name)) {
+					continue;
+				}
 
-					var value = inner[name];
-					var valueCount = valueCounts.get(value) - 1;
+				changed = true;
 
-					if (valueCount) {
-						valueCounts.set(value, valueCount);
-					} else {
-						valueCounts.delete(value);
+				var value = inner.get(name);
+				var valueCount = valueCounts.get(value) - 1;
 
-						if (handleItemChanges && value instanceof EventEmitter) {
-							value.off('change', this._onItemChange);
-						}
+				if (valueCount) {
+					valueCounts.set(value, valueCount);
+				} else {
+					valueCounts.delete(value);
 
-						removedValues.push(value);
+					if (handleItemChanges && value instanceof EventEmitter) {
+						value.off('change', this._onItemChange);
 					}
 
-					diff[name] = {
-						type: 'delete',
-						oldValue: value,
-						value: undef
-					};
-
-					delete inner[name];
+					removedValues.push(value);
 				}
+
+				diff[name] = {
+					type: 'delete',
+					oldValue: value,
+					value: undefined
+				};
+
+				inner.delete(name);
 			}
 
 			if (changed) {
@@ -1550,7 +1639,13 @@ if (!Object.assign) {
 		 * @returns {Object}
 		 */
 		toObject: function() {
-			return Object.assign({}, this._inner);
+			var obj = {};
+
+			this._inner.forEach(function(value, name) {
+				obj[name] = value;
+			});
+
+			return obj;
 		},
 
 		/**
@@ -1558,11 +1653,9 @@ if (!Object.assign) {
 		 * @param {Object} opts
 		 */
 		collectDumpObject: function(data, opts) {
-			var inner = this._inner;
-
-			for (var name in inner) {
-				data[name] = inner[name];
-			}
+			this._inner.forEach(function(value, name) {
+				data[name] = value;
+			});
 
 			if (this._handleItemChanges) {
 				opts.handleItemChanges = true;
@@ -1692,15 +1785,14 @@ if (!Object.assign) {
 				opts = {};
 			}
 
-			var handleItemChanges = opts.handleItemChanges === true;
-
-			if (handleItemChanges) {
+			if (opts.handleItemChanges) {
 				this._handleItemChanges = true;
 			}
 
 			if (data) {
 				var inner = this._inner = (data instanceof ActiveArray ? data._inner : data).slice(0);
 				var valueCounts = this._valueCounts;
+				var handleItemChanges = this._handleItemChanges;
 
 				for (var i = inner.length; i;) {
 					if (--i in inner) {
@@ -2351,8 +2443,9 @@ if (!Object.assign) {
 
 (function() {
 
-	var getUID = rt.object.getUID;
 	var nextTick = rt.process.nextTick;
+	var Map = rt.Map;
+	var Set = rt.Set;
 	var Event = rt.Event;
 	var EventEmitter = rt.EventEmitter;
 
@@ -2363,10 +2456,10 @@ if (!Object.assign) {
 	var state = STATE_CHANGES_ACCUMULATION;
 
 	/**
-	 * @type {Object<{ dataCell: Rift.DataCell, event: Rift.Event, cancellable: boolean }>}
+	 * @type {Map<{ dataCell: Rift.DataCell, event: Rift.Event, cancellable: boolean }>}
 	 * @private
 	 */
-	var changes = {};
+	var changes = new Map();
 
 	var changeCount = 0;
 
@@ -2378,7 +2471,7 @@ if (!Object.assign) {
 		last: null
 	});
 
-	var circularityDetectionCounter = {};
+	var circularityDetectionCounter = new Map();
 
 	/**
 	 * @private
@@ -2393,13 +2486,11 @@ if (!Object.assign) {
 		if (dcBundle) {
 			while (true) {
 				if (maxParentDepth == dcBundle.maxParentDepth) {
-					var id = getUID(dc);
-
-					if (hasOwn.call(dcBundle.dataCells, id)) {
+					if (dcBundle.dataCells.has(dc)) {
 						return false;
 					}
 
-					dcBundle.dataCells[id] = dc;
+					dcBundle.dataCells.add(dc);
 					dcBundle.count++;
 
 					return true;
@@ -2408,27 +2499,26 @@ if (!Object.assign) {
 				if (maxParentDepth > dcBundle.maxParentDepth) {
 					var next = dcBundle.next;
 
-					(dcBundle.next = (next || outdatedDataCells)[next ? 'prev' : 'last'] =
+					dcBundle.next = (next || outdatedDataCells)[next ? 'prev' : 'last'] =
 						outdatedDataCells[maxParentDepth] = {
 							maxParentDepth: maxParentDepth,
-							dataCells: {},
+							dataCells: new Set([dc]),
 							count: 1,
 							prev: dcBundle,
 							next: next
-						}
-					).dataCells[getUID(dc)] = dc;
+						};
 
 					return true;
 				}
 
 				if (!dcBundle.prev) {
-					(dcBundle.prev = outdatedDataCells.first = outdatedDataCells[maxParentDepth] = {
+					dcBundle.prev = outdatedDataCells.first = outdatedDataCells[maxParentDepth] = {
 						maxParentDepth: maxParentDepth,
-						dataCells: {},
+						dataCells: new Set([dc]),
 						count: 1,
 						prev: null,
 						next: dcBundle
-					}).dataCells[getUID(dc)] = dc;
+					};
 
 					return true;
 				}
@@ -2437,13 +2527,13 @@ if (!Object.assign) {
 			}
 		}
 
-		(outdatedDataCells.first = outdatedDataCells.last = outdatedDataCells[maxParentDepth] = {
+		outdatedDataCells.first = outdatedDataCells.last = outdatedDataCells[maxParentDepth] = {
 			maxParentDepth: maxParentDepth,
-			dataCells: {},
+			dataCells: new Set([dc]),
 			count: 1,
 			prev: null,
 			next: null
-		}).dataCells[getUID(dc)] = dc;
+		};
 
 		return true;
 	}
@@ -2457,33 +2547,29 @@ if (!Object.assign) {
 	function removeOutdatedDataCell(dc) {
 		var dcBundle = outdatedDataCells[dc._maxParentDepth];
 
-		if (dcBundle) {
-			var id = getUID(dc);
+		if (dcBundle && dcBundle.dataCells.has(dc)) {
+			if (--dcBundle.count) {
+				delete dcBundle.dataCells.delete(dc);
+			} else {
+				var prev = dcBundle.prev;
+				var next = dcBundle.next;
 
-			if (hasOwn.call(dcBundle.dataCells, id)) {
-				if (--dcBundle.count) {
-					delete dcBundle.dataCells[id];
+				if (prev) {
+					prev.next = next;
 				} else {
-					var prev = dcBundle.prev;
-					var next = dcBundle.next;
-
-					if (prev) {
-						prev.next = next;
-					} else {
-						outdatedDataCells.first = next;
-					}
-
-					if (next) {
-						next.prev = prev;
-					} else {
-						outdatedDataCells.last = prev;
-					}
-
-					delete outdatedDataCells[dc._maxParentDepth];
+					outdatedDataCells.first = next;
 				}
 
-				return true;
+				if (next) {
+					next.prev = prev;
+				} else {
+					outdatedDataCells.last = prev;
+				}
+
+				delete outdatedDataCells[dc._maxParentDepth];
 			}
+
+			return true;
 		}
 
 		return false;
@@ -2496,16 +2582,21 @@ if (!Object.assign) {
 		state = STATE_CHANGES_HANDLING;
 
 		do {
-			for (var changeId in changes) {
-				var change = changes[changeId];
+			for (
+				var changesIterator = changes.values(), changesIteratorStep;
+				!(changesIteratorStep = changesIterator.next()).done;
+			) {
+				var change = changesIteratorStep.value;
 				var dc = change.dataCell;
-				var children = dc._children;
 
-				for (var childId in children) {
-					addOutdatedDataCell(children[childId]);
+				for (
+					var childrenIterator = dc._children.values(), childrenIteratorStep;
+					!(childrenIteratorStep = childrenIterator.next()).done;
+				) {
+					addOutdatedDataCell(childrenIteratorStep.value);
 				}
 
-				delete changes[changeId];
+				changes.delete(dc);
 				changeCount--;
 
 				dc._fixedValue = dc._value;
@@ -2555,8 +2646,8 @@ if (!Object.assign) {
 		for (var dcBundle; dcBundle = outdatedDataCells.first;) {
 			var dcs = dcBundle.dataCells;
 
-			for (var id in dcs) {
-				var dc = dcs[id];
+			for (var iterator = dcs.values(), step; !(step = iterator.next()).done;) {
+				var dc = step.value;
 
 				dc._recalc();
 
@@ -2566,7 +2657,7 @@ if (!Object.assign) {
 
 				// кажется, что правильней поставить этот if-else над dc._recalc() , но подумай получше ;)
 				if (--dcBundle.count) {
-					delete dcs[id];
+					delete dcs.delete(dc);
 				} else {
 					var prev = dcBundle.prev;
 					var next = dcBundle.next;
@@ -2601,7 +2692,7 @@ if (!Object.assign) {
 		}
 
 		state = STATE_CHANGES_ACCUMULATION;
-		circularityDetectionCounter = {};
+		circularityDetectionCounter.clear();
 	}
 
 	/**
@@ -2623,11 +2714,9 @@ if (!Object.assign) {
 			}
 		}
 
-		var id = getUID(dc);
-
 		if (changeCount) {
-			if (hasOwn.call(changes, id)) {
-				var change = changes[id];
+			if (changes.has(dc)) {
+				var change = changes.get(dc);
 
 				(evt.detail || (evt.detail = {})).prevEvent = change.event;
 				change.event = evt;
@@ -2644,11 +2733,11 @@ if (!Object.assign) {
 			}
 		}
 
-		changes[id] = {
+		changes.set(dc, {
 			dataCell: dc,
 			event: evt,
 			cancellable: cancellable !== false
-		};
+		});
 
 		changeCount++;
 	}
@@ -2691,10 +2780,10 @@ if (!Object.assign) {
 		/**
 		 * @type {*}
 		 */
-		initialValue: undef,
+		initialValue: undefined,
 
-		_value: undef,
-		_fixedValue: undef,
+		_value: undefined,
+		_fixedValue: undefined,
 
 		_formula: null,
 
@@ -2709,7 +2798,7 @@ if (!Object.assign) {
 		/**
 		 * Родительские ячейки.
 		 *
-		 * @type {Object<Rift.DataCell>}
+		 * @type {Set<Rift.DataCell>}
 		 * @protected
 		 */
 		_parents: null,
@@ -2717,7 +2806,7 @@ if (!Object.assign) {
 		/**
 		 * Дочерние ячейки.
 		 *
-		 * @type {Object<Rift.DataCell>}
+		 * @type {Set<Rift.DataCell>}
 		 * @protected
 		 */
 		_children: null,
@@ -2816,11 +2905,11 @@ if (!Object.assign) {
 				this._onError = this.owner ? opts.onerror.bind(this.owner) : opts.onerror;
 			}
 
-			this._children = {};
+			this._children = new Set();
 
 			if (
 				typeof value == 'function' &&
-					(opts.computable !== undef ? opts.computable : value.constructor == Function)
+					(opts.computable !== undefined ? opts.computable : value.constructor == Function)
 			) {
 				this.computable = true;
 			}
@@ -2828,7 +2917,7 @@ if (!Object.assign) {
 			if (this.computable) {
 				this._formula = value;
 
-				detectedParents.unshift({});
+				detectedParents.unshift(new Set());
 
 				try {
 					this._value = this._fixedValue = this._formula.call(this.owner || this);
@@ -2836,13 +2925,14 @@ if (!Object.assign) {
 					this._handleError(err);
 				}
 
-				var parents = this._parents = detectedParents.shift();
+				this._parents = detectedParents.shift();
+
 				var maxParentDepth = 1;
 
-				for (var id in parents) {
-					var parent = parents[id];
+				for (var iterator = this._parents.values(), step; !(step = iterator.next()).done;) {
+					var parent = step.value;
 
-					parent._children[getUID(this)] = this;
+					parent._children.add(this);
 
 					if (maxParentDepth <= parent._maxParentDepth) {
 						maxParentDepth = parent._maxParentDepth + 1;
@@ -2865,7 +2955,7 @@ if (!Object.assign) {
 		 */
 		get value() {
 			if (detectedParents.length) {
-				detectedParents[0][getUID(this)] = this;
+				detectedParents[0].add(this);
 			}
 
 			if (changeCount || state == STATE_CHANGES_HANDLING) {
@@ -2911,22 +3001,18 @@ if (!Object.assign) {
 						addChange(this, { value: change });
 					} else {
 						if (!isEmpty(change)) {
-							addChange(this, { value: change }, undef, value !== this._fixedValue);
+							addChange(this, { value: change }, undefined, value !== this._fixedValue);
 						}
 					}
 				} else {
 					if (!svz(oldValue, value)) {
 						this._value = value;
 
-						if (svz(value, this._fixedValue)) {
-							var id = getUID(this);
+						if (svz(value, this._fixedValue) && changes.get(this).cancellable) {
+							changes.delete(this);
+							changeCount--;
 
-							if (changes[id].cancellable) {
-								delete changes[id];
-								changeCount--;
-
-								return;
-							}
+							return;
 						}
 
 						if (oldValue instanceof EventEmitter) {
@@ -2957,22 +3043,22 @@ if (!Object.assign) {
 		 * @param {Object} [evt.detail.diff]
 		 */
 		_onValueChange: function(evt) {
-			addChange(this, undef, evt, this._value !== this._fixedValue);
+			addChange(this, undefined, evt, this._value !== this._fixedValue);
 		},
 
 		/**
 		 * @protected
 		 */
 		_recalc: function() {
-			var id = getUID(this);
-
-			if (hasOwn.call(circularityDetectionCounter, id)) {
-				if (++circularityDetectionCounter[id] == 10) {
+			if (circularityDetectionCounter.has(this)) {
+				if (circularityDetectionCounter.get(this) == 10) {
 					this._handleError(new RangeError('Circular dependency detected'));
 					return;
 				}
+
+				circularityDetectionCounter.set(this, circularityDetectionCounter.get(this) + 1);
 			} else {
-				circularityDetectionCounter[id] = 1;
+				circularityDetectionCounter.set(this, 1);
 			}
 
 			var oldValue = this._value;
@@ -2980,7 +3066,7 @@ if (!Object.assign) {
 
 			var err;
 
-			detectedParents.unshift({});
+			detectedParents.unshift(new Set());
 
 			try {
 				var value = this._formula.call(this.owner || this);
@@ -2996,17 +3082,17 @@ if (!Object.assign) {
 			var parents = this._parents = detectedParents.shift();
 			var maxParentDepth = 1;
 
-			for (var parentId in oldParents) {
-				if (!hasOwn.call(parents, parentId)) {
-					delete oldParents[parentId]._children[id];
+			for (var iterator = oldParents.values(), step; !(step = iterator.next()).done;) {
+				if (!parents.has(step.value)) {
+					step.value._children.delete(this);
 				}
 			}
 
-			for (var parentId in parents) {
-				var parent = parents[parentId];
+			for (var iterator = parents.values(), step; !(step = iterator.next()).done;) {
+				var parent = step.value;
 
-				if (!hasOwn.call(oldParents, parentId)) {
-					parent._children[id] = this;
+				if (!oldParents.has(parent)) {
+					parent._children.add(this);
 				}
 
 				if (maxParentDepth <= parent._maxParentDepth) {
@@ -3065,14 +3151,12 @@ if (!Object.assign) {
 					this._handleEvent(evt);
 				}
 
-				var children = this._children;
-
-				for (var id in children) {
+				for (var iterator = this._children.values(), step; !(step = iterator.next()).done;) {
 					if (evt.isPropagationStopped) {
 						break;
 					}
 
-					children[id]._handleErrorEvent(evt);
+					step.value._handleErrorEvent(evt);
 				}
 			}
 		},
@@ -3101,20 +3185,16 @@ if (!Object.assign) {
 				return;
 			}
 
-			var id = getUID(this);
-
-			if (id in changes) {
-				delete changes[id];
+			if (changes.has(this)) {
+				changes.delete(this);
 				changeCount--;
 			}
 
 			removeOutdatedDataCell(this);
 
 			if (this.computable) {
-				var parents = this._parents;
-
-				for (var parentId in parents) {
-					delete parents[parentId]._children[id];
+				for (var iterator = this._parents.values(), step; !(step = iterator.next()).done;) {
+					step.value._children.delete(this);
 				}
 			} else {
 				if (this._value instanceof EventEmitter) {
@@ -3122,10 +3202,8 @@ if (!Object.assign) {
 				}
 			}
 
-			var children = this._children;
-
-			for (var childId in children) {
-				children[childId].dispose();
+			for (var iterator = this._children.values(), step; !(step = iterator.next()).done;) {
+				step.value.dispose();
 			}
 
 			this.disposed = true;
@@ -3187,9 +3265,9 @@ if (!Object.assign) {
 	 */
 	function disposeDataCells(obj) {
 		if (obj._dataCells) {
-			obj._dataCells.forEach(function(dc) {
-				dc.dispose();
-			});
+			for (var iterator = obj._dataCells.values(), step; !(step = iterator.next()).done;) {
+				step.value.dispose();
+			}
 
 			obj._dataCells = null;
 		}
@@ -3507,12 +3585,12 @@ if (!Object.assign) {
 				context = this;
 			}
 
-			var listening = this._listening || (this._listening = {});
+			var listening = this._listening || (this._listening = new Map());
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(hasOwn.call(listener, keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
-				getUID(context) + '-' + (meta !== undef ? getHash(meta) : '');
+				getUID(listener.hasOwnProperty(keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
+				getUID(context) + '-' + (meta !== undefined ? getHash(meta) : '');
 
-			if (hasOwn.call(listening, id)) {
+			if (listening.has(id)) {
 				return;
 			}
 
@@ -3528,13 +3606,13 @@ if (!Object.assign) {
 				throw new TypeError('Unable to add a listener');
 			}
 
-			listening[id] = {
+			listening.set(id, {
 				target: target,
 				type: type,
 				listener: listener,
 				context: context,
 				meta: meta
-			};
+			});
 		},
 
 		/**
@@ -3566,12 +3644,12 @@ if (!Object.assign) {
 			}
 
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(hasOwn.call(listener, keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
-				getUID(context) + '-' + (meta !== undef ? getHash(meta) : '');
+				getUID(listener.hasOwnProperty(keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
+				getUID(context) + '-' + (meta !== undefined ? getHash(meta) : '');
 
-			if (hasOwn.call(listening, id)) {
-				removeListener(listening[id]);
-				delete listening[id];
+			if (listening.has(id)) {
+				removeListener(listening.get(id));
+				listening.delete(id);
 			}
 		},
 
@@ -3610,7 +3688,7 @@ if (!Object.assign) {
 			var disposable = this;
 
 			function outer() {
-				if (hasOwn.call(outer, 'canceled') && outer.canceled) {
+				if (outer.hasOwnProperty('canceled') && outer.canceled) {
 					return;
 				}
 
@@ -3768,6 +3846,7 @@ if (!Object.assign) {
 
 (function() {
 
+	var ActiveProperty = rt.ActiveProperty;
 	var Disposable = rt.Disposable;
 
 	/**
@@ -3796,7 +3875,7 @@ if (!Object.assign) {
 		 */
 		setData: function(data) {
 			for (var name in data) {
-				if (name in this) {
+				if (typeof this[name] == 'function' && this[name].constructor == ActiveProperty) {
 					this[name](data[name]);
 				}
 			}
@@ -4073,7 +4152,7 @@ if (!Object.assign) {
 	 * @returns {Array<Rift.DataCell>}
 	 */
 	function bindElement(el, context, opts) {
-		if (hasOwn.call(el, keyDataCells) && el[keyDataCells]) {
+		if (el.hasOwnProperty(keyDataCells) && el[keyDataCells]) {
 			return el[keyDataCells];
 		}
 
@@ -4082,7 +4161,7 @@ if (!Object.assign) {
 		if (el.hasAttribute('rt-bind')) {
 			var applyValues = !opts || opts.applyValues !== false;
 
-			forEachMatch(reBindingExpr, el.getAttribute('rt-bind'), function(match, helper, meta, js) {
+			forEachMatch(reBindingExpr, el.getAttribute('rt-bind'), function(expr, helper, meta, js) {
 				var dc = new DataCell(Function('return ' + js + ';').bind(context), {
 					onchange: function() {
 						helpers[helper](el, this.value, meta);
@@ -4108,7 +4187,7 @@ if (!Object.assign) {
 	 * @param {HTMLElement} el
 	 */
 	function unbindElement(el) {
-		if (hasOwn.call(el, keyDataCells)) {
+		if (el.hasOwnProperty(keyDataCells)) {
 			var dcs = el[keyDataCells];
 
 			if (dcs) {
@@ -4184,46 +4263,46 @@ if (!Object.assign) {
 	var getUID = rt.object.getUID;
 	var execNamespace = rt.namespace.exec;
 	var getHash = rt.value.getHash;
-	var toString = rt.value.toString;
+	var stringify = rt.value.stringify;
 	var classes = rt.Class.classes;
 	var getClassOrError = rt.Class.getOrError;
 	var Map = rt.Map;
 	var Disposable = rt.Disposable;
-	var escapeHTML = rt.html.escape;
+	var escapeHTML = rt.html.escaescapeHTMLpe;
 	var bindDOM = rt.domBinding.bind;
 
-	var selfClosingTags = {
-		area: 1,
-		base: 1,
-		basefont: 1,
-		br: 1,
-		col: 1,
-		command: 1,
-		embed: 1,
-		frame: 1,
-		hr: 1,
-		img: 1,
-		input: 1,
-		isindex: 1,
-		keygen: 1,
-		link: 1,
-		meta: 1,
-		param: 1,
-		source: 1,
-		track: 1,
-		wbr: 1,
+	var selfClosingTags = new rt.Set([
+		'area',
+		'base',
+		'basefont',
+		'br',
+		'col',
+		'command',
+		'embed',
+		'frame',
+		'hr',
+		'img',
+		'input',
+		'isindex',
+		'keygen',
+		'link',
+		'meta',
+		'param',
+		'source',
+		'track',
+		'wbr',
 
 		// svg tags
-		circle: 1,
-		ellipse: 1,
-		line: 1,
-		path: 1,
-		polygone: 1,
-		polyline: 1,
-		rect: 1,
-		stop: 1,
-		use: 1
-	};
+		'circle',
+		'ellipse',
+		'line',
+		'path',
+		'polygone',
+		'polyline',
+		'rect',
+		'stop',
+		'use'
+	]);
 
 	var reNameClass = /^(.+?):(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
@@ -4362,7 +4441,7 @@ if (!Object.assign) {
 	 * @param {HTMLElement} el
 	 */
 	function removeElement(view, el) {
-		if (!hasOwn.call(el, keyViewElementName) || !el[keyViewElementName] || el[keyView] != view) {
+		if (!el.hasOwnProperty(keyViewElementName) || !el[keyViewElementName] || el[keyView] != view) {
 			return;
 		}
 
@@ -4370,7 +4449,7 @@ if (!Object.assign) {
 		els.splice(els.indexOf(el), 1);
 
 		el[keyView] = null;
-		el[keyViewElementName] = undef;
+		el[keyViewElementName] = undefined;
 
 		if (el.parentNode) {
 			el.parentNode.removeChild(el);
@@ -4395,7 +4474,7 @@ if (!Object.assign) {
 	var BaseView = Disposable.extend(/** @lends Rift.BaseView# */{
 		_params: null,
 
-		_id: undef,
+		_id: undefined,
 
 		/**
 		 * @type {?Rift.BaseApp}
@@ -4410,7 +4489,7 @@ if (!Object.assign) {
 		/**
 		 * @type {string|undefined}
 		 */
-		name: undef,
+		name: undefined,
 
 		/**
 		 * @type {string}
@@ -4420,7 +4499,7 @@ if (!Object.assign) {
 		/**
 		 * @type {string}
 		 */
-		blockName: undef,
+		blockName: undefined,
 
 		/**
 		 * @type {Object}
@@ -4532,7 +4611,7 @@ if (!Object.assign) {
 					delete params.block;
 				}
 			} else {
-				if (params.block !== undef) {
+				if (params.block !== undefined) {
 					block = params.block;
 					delete params.block;
 				}
@@ -4550,10 +4629,10 @@ if (!Object.assign) {
 						block = block[0];
 					}
 
-					if (hasOwn.call(block, keyView) && block[keyView]) {
+					if (block.hasOwnProperty(keyView) && block[keyView]) {
 						throw new TypeError(
 							'Element is already used as ' + (
-								hasOwn.call(block, keyViewElementName) && block[keyViewElementName] ?
+								block.hasOwnProperty(keyViewElementName) && block[keyViewElementName] ?
 									'an element' : 'a block'
 							) + ' of view'
 						);
@@ -4689,7 +4768,7 @@ if (!Object.assign) {
 				}
 			}
 
-			if (params.onlyClient !== undef) {
+			if (params.onlyClient !== undefined) {
 				this.onlyClient = params.onlyClient;
 			}
 		},
@@ -4703,18 +4782,14 @@ if (!Object.assign) {
 			}
 
 			if (isServer && this.onlyClient) {
-				cb(
-					this._renderOpenTag(true) +
-						(hasOwn.call(selfClosingTags, this.tagName) ? '' : '</' + this.tagName + '>')
-				);
-
+				cb(this._renderOpenTag(true) + (selfClosingTags.has(this.tagName) ? '' : '</' + this.tagName + '>'));
 				return;
 			}
 
 			this._currentlyRendering = true;
 
 			receiveData(this, function() {
-				if (hasOwn.call(selfClosingTags, this.tagName)) {
+				if (selfClosingTags.has(this.tagName)) {
 					this._currentlyRendering = false;
 					cb(this._renderOpenTag(false));
 				} else {
@@ -4757,7 +4832,7 @@ if (!Object.assign) {
 				' rt-d="' + [
 					this.constructor.__class,
 					billet ? '' : this._id,
-					isEmpty(this._params) ? '' : escapeHTML(toString(this._params).slice(1, -1))
+					isEmpty(this._params) ? '' : escapeHTML(stringify(this._params).slice(1, -1))
 				] + '"' +
 				(this._parent ? ' rt-p="' + this._parent._id + '"' : '') +
 				'>';
@@ -4959,7 +5034,7 @@ if (!Object.assign) {
 
 				if (initSimilarDescendantElements(this, this.blockName, name)) {
 					els = els.filter(function() {
-						return !hasOwn.call(this, keyView) || !this[keyView];
+						return !this.hasOwnProperty(keyView) || !this[keyView];
 					});
 				}
 
@@ -4984,8 +5059,8 @@ if (!Object.assign) {
 								outer.firstChild :
 								outer;
 						} else {
-							if (hasOwn.call(el, keyView) && el[keyView]) {
-								if (!hasOwn.call(el, keyViewElementName) || !el[keyViewElementName]) {
+							if (el.hasOwnProperty(keyView) && el[keyView]) {
+								if (!el.hasOwnProperty(keyViewElementName) || !el[keyViewElementName]) {
 									throw new TypeError('Element is already used as a block of view');
 								}
 
@@ -5403,9 +5478,9 @@ if (!Object.assign) {
 	/**
 	 * @typedef {{
 	 *     rePath: RegExp,
-	 *     properties: { type: int, id: string },
+	 *     properties: Array<{ type: int, name: string }>,
 	 *     requiredProperties: Array<string>,
-	 *     pathMap: { requiredProperties: Array<string>, pathPart: string=, prop: string= },
+	 *     pathMap: Array<{ requiredProperties: Array<string>, pathPart: string|undefined, prop: string|undefined }>,
 	 *     callback: Function
 	 * }} Router~Route
 	 */
@@ -5429,7 +5504,7 @@ if (!Object.assign) {
 					route: route,
 
 					state: route.properties.reduce(function(state, prop, index) {
-						state[prop.id] = prop.type == 1 ?
+						state[prop.name] = prop.type == 1 ?
 							Boolean(match[index + 1]) :
 							tryStringAsNumber(decodeURIComponent(match[index + 1]));
 
@@ -5509,9 +5584,7 @@ if (!Object.assign) {
 			}
 
 			if (j == -1) {
-				path.push(
-					hasOwn.call(pathMapItem, 'pathPart') ? pathMapItem.pathPart : viewState[pathMapItem.prop]()
-				);
+				path.push(pathMapItem.pathPart !== undefined ? pathMapItem.pathPart : viewState[pathMapItem.prop]());
 			}
 		}
 
@@ -5594,7 +5667,7 @@ if (!Object.assign) {
 		/**
 		 * @type {string|undefined}
 		 */
-		currentPath: undef,
+		currentPath: undefined,
 
 		/**
 		 * @type {boolean}
@@ -5658,7 +5731,7 @@ if (!Object.assign) {
 
 						props.push({
 							type: 1,
-							id: path[i]
+							name: path[i]
 						});
 					}
 
@@ -5666,20 +5739,21 @@ if (!Object.assign) {
 
 					for (var j = 0, m = pathPart.length; j < m; j++) {
 						if (j % 2) {
-							var id = pathPart[j];
+							var prop = pathPart[j];
 
-							pathMapItemRequiredProps.push(id);
+							pathMapItemRequiredProps.push(prop);
 
 							rePath.push('([^\\/]+)');
 
 							props.push({
 								type: 2,
-								id: id
+								name: prop
 							});
 
 							pathMap.push({
 								requiredProperties: pathMapItemRequiredProps,
-								prop: id
+								pathPart: undefined,
+								prop: prop
 							});
 						} else {
 							if (pathPart[j]) {
@@ -5689,7 +5763,8 @@ if (!Object.assign) {
 
 								pathMap.push({
 									requiredProperties: pathMapItemRequiredProps,
-									pathPart: encodedPathPart.split('*').join('')
+									pathPart: encodedPathPart.split('*').join(''),
+									prop: undefined
 								});
 							}
 						}
@@ -5704,20 +5779,21 @@ if (!Object.assign) {
 
 						for (var j = 0, m = pathPart.length; j < m; j++) {
 							if (j % 2) {
-								var id = pathPart[j];
+								var prop = pathPart[j];
 
 								rePath.push('([^\\/]+)');
 
 								props.push({
 									type: 0,
-									id: id
+									name: prop
 								});
 
-								requiredProps.push(id);
+								requiredProps.push(prop);
 
 								pathMap.push({
-									requiredProperties: [id],
-									prop: id
+									requiredProperties: [prop],
+									pathPart: undefined,
+									prop: prop
 								});
 							} else {
 								if (pathPart[j]) {
@@ -5727,7 +5803,8 @@ if (!Object.assign) {
 
 									pathMap.push({
 										requiredProperties: [],
-										pathPart: encodedPathPart.split('*').join('')
+										pathPart: encodedPathPart.split('*').join(''),
+										prop: undefined
 									});
 								}
 							}
@@ -5819,7 +5896,7 @@ if (!Object.assign) {
 					setState(this, match.route, match.path, {}, 1);
 				} else {
 					this.currentRoute = null;
-					this.currentPath = undef;
+					this.currentPath = undefined;
 				}
 			}
 		},
@@ -5960,10 +6037,10 @@ if (!Object.assign) {
 			var routeProps = routes[--i].properties;
 
 			for (var j = routeProps.length; j;) {
-				var id = routeProps[--j].id;
+				var name = routeProps[--j].name;
 
-				if (!hasOwn.call(props, id)) {
-					props[id] = undef;
+				if (!hasOwn.call(props, name)) {
+					props[name] = undefined;
 				}
 			}
 		}
@@ -5975,11 +6052,7 @@ if (!Object.assign) {
 	 * @class Rift.BaseApp
 	 * @extends {Object}
 	 */
-	function BaseApp() {}
-
-	BaseApp.extend = rt.Class.extend;
-
-	Object.assign(BaseApp.prototype, /** @lends Rift.BaseApp# */{
+	var BaseApp = rt.Class.extend(/** @lends Rift.BaseApp# */{
 		/**
 		 * @type {Rift.BaseModel}
 		 */

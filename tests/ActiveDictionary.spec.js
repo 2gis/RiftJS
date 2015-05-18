@@ -1,4 +1,3 @@
-
 describe('ActiveDictionary.js', function() {
 
 	describe('ActiveDictionary', function() {

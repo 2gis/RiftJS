@@ -1,4 +1,4 @@
-(function(undef) {
+(function(undefined) {
 'use strict';
 
 var global = Function('return this;')();
@@ -10,14 +10,15 @@ function svz(a, b) {
 	return a === b || (a != a && b != b);
 }
 
-/* eslint-disable no-unused-vars */
 function isEmpty(obj) {
+	/* eslint-disable no-unused-vars */
 	for (var any in obj) {
 		return false;
 	}
+	/* eslint-enable no-unused-vars */
+
 	return true;
 }
-/* eslint-enable no-unused-vars */
 
 var hasOwn = Object.prototype.hasOwnProperty;
 var slice = Array.prototype.slice;

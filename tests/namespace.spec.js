@@ -1,4 +1,3 @@
-
 describe('namespace.js', function() {
 
 	describe('namespace.create', function() {

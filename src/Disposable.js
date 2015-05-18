@@ -111,12 +111,12 @@
 				context = this;
 			}
 
-			var listening = this._listening || (this._listening = {});
+			var listening = this._listening || (this._listening = new Map());
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(hasOwn.call(listener, keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
-				getUID(context) + '-' + (meta !== undef ? getHash(meta) : '');
+				getUID(listener.hasOwnProperty(keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
+				getUID(context) + '-' + (meta !== undefined ? getHash(meta) : '');
 
-			if (hasOwn.call(listening, id)) {
+			if (listening.has(id)) {
 				return;
 			}
 
@@ -132,13 +132,13 @@
 				throw new TypeError('Unable to add a listener');
 			}
 
-			listening[id] = {
+			listening.set(id, {
 				target: target,
 				type: type,
 				listener: listener,
 				context: context,
 				meta: meta
-			};
+			});
 		},
 
 		/**
@@ -170,12 +170,12 @@
 			}
 
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(hasOwn.call(listener, keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
-				getUID(context) + '-' + (meta !== undef ? getHash(meta) : '');
+				getUID(listener.hasOwnProperty(keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
+				getUID(context) + '-' + (meta !== undefined ? getHash(meta) : '');
 
-			if (hasOwn.call(listening, id)) {
-				removeListener(listening[id]);
-				delete listening[id];
+			if (listening.has(id)) {
+				removeListener(listening.get(id));
+				listening.delete(id);
 			}
 		},
 
@@ -214,7 +214,7 @@
 			var disposable = this;
 
 			function outer() {
-				if (hasOwn.call(outer, 'canceled') && outer.canceled) {
+				if (outer.hasOwnProperty('canceled') && outer.canceled) {
 					return;
 				}
 

@@ -94,15 +94,14 @@
 				opts = {};
 			}
 
-			var handleItemChanges = opts.handleItemChanges === true;
-
-			if (handleItemChanges) {
+			if (opts.handleItemChanges) {
 				this._handleItemChanges = true;
 			}
 
 			if (data) {
 				var inner = this._inner = (data instanceof ActiveArray ? data._inner : data).slice(0);
 				var valueCounts = this._valueCounts;
+				var handleItemChanges = this._handleItemChanges;
 
 				for (var i = inner.length; i;) {
 					if (--i in inner) {

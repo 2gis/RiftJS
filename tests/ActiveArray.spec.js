@@ -1,4 +1,3 @@
-
 describe('ActiveArray.js', function() {
 
 	describe('ActiveArray', function() {

@@ -1,8 +1,11 @@
 {
 	rules: {
+		// Possible Errors
 		'no-cond-assign': 0,
 		'no-console': 0,
 		'no-constant-condition': 0,
+
+		// Best Practices
 		'consistent-return': 0,
 		'eqeqeq': 0,
 		'no-extend-native': 0,
@@ -11,23 +14,28 @@
 		'no-new': 0,
 		'no-redeclare': 0,
 		'no-return-assign': 0,
+
+		// Strict Mode
 		'strict': 0,
+
+		// Variables
+		'no-shadow-restricted-names': 0,
 		'no-shadow': 0,
 		'no-unused-vars': [2, { vars: 'all', args: 'none' }],
 		'no-use-before-define': 0,
+
+		// Stylistic Issues
 		'new-cap': 0,
 		'no-underscore-dangle': 0,
-		'quotes': 'single',
+		'quotes': [2, 'single', 'avoid-escape'],
 		'semi-spacing': 0
 	},
 	globals: {
-		undef: true,
 		global: true,
 		svz: true,
 		isEmpty: true,
 		hasOwn: true,
 		slice: true,
-		Rift: true,
 		rt: true,
 		isServer: true,
 		isClient: true,

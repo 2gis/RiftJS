@@ -1,4 +1,3 @@
-
 var notifier = require('node-notifier');
 var gutil = require('gulp-util');
 

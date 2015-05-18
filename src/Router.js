@@ -76,9 +76,9 @@
 	/**
 	 * @typedef {{
 	 *     rePath: RegExp,
-	 *     properties: { type: int, id: string },
+	 *     properties: Array<{ type: int, name: string }>,
 	 *     requiredProperties: Array<string>,
-	 *     pathMap: { requiredProperties: Array<string>, pathPart: string=, prop: string= },
+	 *     pathMap: Array<{ requiredProperties: Array<string>, pathPart: string|undefined, prop: string|undefined }>,
 	 *     callback: Function
 	 * }} Router~Route
 	 */
@@ -102,7 +102,7 @@
 					route: route,
 
 					state: route.properties.reduce(function(state, prop, index) {
-						state[prop.id] = prop.type == 1 ?
+						state[prop.name] = prop.type == 1 ?
 							Boolean(match[index + 1]) :
 							tryStringAsNumber(decodeURIComponent(match[index + 1]));
 
@@ -182,9 +182,7 @@
 			}
 
 			if (j == -1) {
-				path.push(
-					hasOwn.call(pathMapItem, 'pathPart') ? pathMapItem.pathPart : viewState[pathMapItem.prop]()
-				);
+				path.push(pathMapItem.pathPart !== undefined ? pathMapItem.pathPart : viewState[pathMapItem.prop]());
 			}
 		}
 
@@ -267,7 +265,7 @@
 		/**
 		 * @type {string|undefined}
 		 */
-		currentPath: undef,
+		currentPath: undefined,
 
 		/**
 		 * @type {boolean}
@@ -331,7 +329,7 @@
 
 						props.push({
 							type: 1,
-							id: path[i]
+							name: path[i]
 						});
 					}
 
@@ -339,20 +337,21 @@
 
 					for (var j = 0, m = pathPart.length; j < m; j++) {
 						if (j % 2) {
-							var id = pathPart[j];
+							var prop = pathPart[j];
 
-							pathMapItemRequiredProps.push(id);
+							pathMapItemRequiredProps.push(prop);
 
 							rePath.push('([^\\/]+)');
 
 							props.push({
 								type: 2,
-								id: id
+								name: prop
 							});
 
 							pathMap.push({
 								requiredProperties: pathMapItemRequiredProps,
-								prop: id
+								pathPart: undefined,
+								prop: prop
 							});
 						} else {
 							if (pathPart[j]) {
@@ -362,7 +361,8 @@
 
 								pathMap.push({
 									requiredProperties: pathMapItemRequiredProps,
-									pathPart: encodedPathPart.split('*').join('')
+									pathPart: encodedPathPart.split('*').join(''),
+									prop: undefined
 								});
 							}
 						}
@@ -377,20 +377,21 @@
 
 						for (var j = 0, m = pathPart.length; j < m; j++) {
 							if (j % 2) {
-								var id = pathPart[j];
+								var prop = pathPart[j];
 
 								rePath.push('([^\\/]+)');
 
 								props.push({
 									type: 0,
-									id: id
+									name: prop
 								});
 
-								requiredProps.push(id);
+								requiredProps.push(prop);
 
 								pathMap.push({
-									requiredProperties: [id],
-									prop: id
+									requiredProperties: [prop],
+									pathPart: undefined,
+									prop: prop
 								});
 							} else {
 								if (pathPart[j]) {
@@ -400,7 +401,8 @@
 
 									pathMap.push({
 										requiredProperties: [],
-										pathPart: encodedPathPart.split('*').join('')
+										pathPart: encodedPathPart.split('*').join(''),
+										prop: undefined
 									});
 								}
 							}
@@ -492,7 +494,7 @@
 					setState(this, match.route, match.path, {}, 1);
 				} else {
 					this.currentRoute = null;
-					this.currentPath = undef;
+					this.currentPath = undefined;
 				}
 			}
 		},

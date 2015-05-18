@@ -19,6 +19,14 @@
 		nextTick = function(cb) {
 			setImmediate(cb);
 		};
+	} else if (global.Promise) {
+		var prm = Promise.resolve();
+
+		nextTick = function(cb) {
+			prm.then(function() {
+				cb();
+			});
+		};
 	} else if (global.postMessage && !global.ActiveXObject) {
 		var queue;
 
