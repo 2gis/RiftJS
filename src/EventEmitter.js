@@ -1,6 +1,5 @@
 (function() {
 
-	var Map = rt.Map;
 	var Event = rt.Event;
 
 	var keyUsed = '_emt-used';

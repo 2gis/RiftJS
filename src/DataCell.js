@@ -1,8 +1,6 @@
 (function() {
 
 	var nextTick = rt.process.nextTick;
-	var Map = rt.Map;
-	var Set = rt.Set;
 	var Event = rt.Event;
 	var EventEmitter = rt.EventEmitter;
 

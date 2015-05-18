@@ -2,7 +2,6 @@
 
 	var getUID = rt.object.getUID;
 	var getHash = rt.value.getHash;
-	var Map = rt.Map;
 	var EventEmitter = rt.EventEmitter;
 	var ActiveProperty = rt.ActiveProperty;
 	var autoBind = rt.ActiveProperty.autoBind;

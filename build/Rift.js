@@ -844,11 +844,9 @@ if (!Object.assign) {
 
 })();
 
-(function() {
+if (!global.Map) {
+	(function() {
 
-	var Map = global.Map;
-
-	if (!Map || Map.toString().indexOf('[native code]') == -1) {
 		var getHash = rt.value.getHash;
 
 		var entryStub = {
@@ -858,7 +856,7 @@ if (!Object.assign) {
 			next: null
 		};
 
-		Map = function Map(arr) {
+		function Map(arr) {
 			this._inner = Object.create(null);
 
 			if (arr) {
@@ -866,7 +864,7 @@ if (!Object.assign) {
 					this.set(arr[i][0], arr[i][1]);
 				}
 			}
-		};
+		}
 
 		rt.object.mixin(Map.prototype, {
 			_inner: null,
@@ -1020,20 +1018,16 @@ if (!Object.assign) {
 				this._size = 0;
 			}
 		});
-	}
 
-	rt.Map = Map;
+		global.Map = Map;
 
-})();
+	})();
+}
 
-(function() {
+if (!global.Set) {
+	(function() {
 
-	var Set = global.Set;
-
-	if (!Set || Set.toString().indexOf('[native code]') == -1) {
-		var Map = rt.Map;
-
-		Set = function Set(arr) {
+		function Set(arr) {
 			this._inner = new Map();
 
 			if (arr) {
@@ -1041,7 +1035,7 @@ if (!Object.assign) {
 					this.add(arr[i]);
 				}
 			}
-		};
+		}
 
 		rt.object.mixin(Set.prototype, {
 			_inner: null,
@@ -1089,11 +1083,11 @@ if (!Object.assign) {
 				this._inner.clear();
 			}
 		});
-	}
 
-	rt.Set = Set;
+		global.Set = Set;
 
-})();
+	})();
+}
 
 (function() {
 
@@ -1185,7 +1179,6 @@ if (!Object.assign) {
 
 (function() {
 
-	var Map = rt.Map;
 	var Event = rt.Event;
 
 	var keyUsed = '_emt-used';
@@ -1381,8 +1374,6 @@ if (!Object.assign) {
 
 (function() {
 
-	var Map = rt.Map;
-	var Set = rt.Set;
 	var EventEmitter = rt.EventEmitter;
 
 	/**
@@ -1691,8 +1682,6 @@ if (!Object.assign) {
 
 (function() {
 
-	var Map = rt.Map;
-	var Set = rt.Set;
 	var EventEmitter = rt.EventEmitter;
 
 	var arrayProto = Array.prototype;
@@ -2444,8 +2433,6 @@ if (!Object.assign) {
 (function() {
 
 	var nextTick = rt.process.nextTick;
-	var Map = rt.Map;
-	var Set = rt.Set;
 	var Event = rt.Event;
 	var EventEmitter = rt.EventEmitter;
 
@@ -3217,7 +3204,6 @@ if (!Object.assign) {
 (function() {
 
 	var cloneObject = rt.object.clone;
-	var Map = rt.Map;
 	var DataCell = rt.DataCell;
 
 	/**
@@ -3476,7 +3462,6 @@ if (!Object.assign) {
 
 	var getUID = rt.object.getUID;
 	var getHash = rt.value.getHash;
-	var Map = rt.Map;
 	var EventEmitter = rt.EventEmitter;
 	var ActiveProperty = rt.ActiveProperty;
 	var autoBind = rt.ActiveProperty.autoBind;
@@ -4266,12 +4251,11 @@ if (!Object.assign) {
 	var stringify = rt.value.stringify;
 	var classes = rt.Class.classes;
 	var getClassOrError = rt.Class.getOrError;
-	var Map = rt.Map;
 	var Disposable = rt.Disposable;
 	var escapeHTML = rt.html.escape;
 	var bindDOM = rt.domBinding.bind;
 
-	var selfClosingTags = new rt.Set([
+	var selfClosingTags = new Set([
 		'area',
 		'base',
 		'basefont',

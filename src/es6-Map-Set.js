@@ -1,8 +1,6 @@
-(function() {
+if (!global.Map) {
+	(function() {
 
-	var Map = global.Map;
-
-	if (!Map || Map.toString().indexOf('[native code]') == -1) {
 		var getHash = rt.value.getHash;
 
 		var entryStub = {
@@ -12,7 +10,7 @@
 			next: null
 		};
 
-		Map = function Map(arr) {
+		function Map(arr) {
 			this._inner = Object.create(null);
 
 			if (arr) {
@@ -20,7 +18,7 @@
 					this.set(arr[i][0], arr[i][1]);
 				}
 			}
-		};
+		}
 
 		rt.object.mixin(Map.prototype, {
 			_inner: null,
@@ -174,8 +172,73 @@
 				this._size = 0;
 			}
 		});
-	}
 
-	rt.Map = Map;
+		global.Map = Map;
 
-})();
+	})();
+}
+
+if (!global.Set) {
+	(function() {
+
+		function Set(arr) {
+			this._inner = new Map();
+
+			if (arr) {
+				for (var i = 0, l = arr.length; i < l; i++) {
+					this.add(arr[i]);
+				}
+			}
+		}
+
+		rt.object.mixin(Set.prototype, {
+			_inner: null,
+
+			get size() {
+				return this._inner.size;
+			},
+
+			has: function(value) {
+				return this._inner.has(value);
+			},
+
+			add: function(value) {
+				this._inner.set(value, value);
+				return this;
+			},
+
+			delete: function(value) {
+				return this._inner.delete(value);
+			},
+
+			forEach: function(cb, context) {
+				if (context == null) {
+					context = global;
+				}
+
+				this._inner.forEach(function(value) {
+					cb.call(context, value, value, this);
+				}, this);
+			},
+
+			keys: function() {
+				return this._inner.keys();
+			},
+
+			values: function() {
+				return this._inner.values();
+			},
+
+			entries: function() {
+				return this._inner.entries();
+			},
+
+			clear: function() {
+				this._inner.clear();
+			}
+		});
+
+		global.Set = Set;
+
+	})();
+}

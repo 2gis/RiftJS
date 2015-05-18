@@ -16,8 +16,7 @@ var bodyFiles = exports.bodyFiles = [
 
 	'src/dump.js', // 3
 
-	'src/Map.js', // 1
-	'src/Set.js', // 1
+	'src/es6-Map-Set.js', // 1
 	'src/Event.js', // 4
 	'src/EventEmitter.js', // 4
 	'src/ActiveDictionary.js', // 4

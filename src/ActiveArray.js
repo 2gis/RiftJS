@@ -1,7 +1,5 @@
 (function() {
 
-	var Map = rt.Map;
-	var Set = rt.Set;
 	var EventEmitter = rt.EventEmitter;
 
 	var arrayProto = Array.prototype;

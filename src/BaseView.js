@@ -6,12 +6,11 @@
 	var stringify = rt.value.stringify;
 	var classes = rt.Class.classes;
 	var getClassOrError = rt.Class.getOrError;
-	var Map = rt.Map;
 	var Disposable = rt.Disposable;
 	var escapeHTML = rt.html.escape;
 	var bindDOM = rt.domBinding.bind;
 
-	var selfClosingTags = new rt.Set([
+	var selfClosingTags = new Set([
 		'area',
 		'base',
 		'basefont',

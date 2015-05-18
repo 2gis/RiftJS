@@ -1,7 +1,6 @@
 (function() {
 
 	var cloneObject = rt.object.clone;
-	var Map = rt.Map;
 	var DataCell = rt.DataCell;
 
 	/**
