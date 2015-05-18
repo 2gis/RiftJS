@@ -4268,7 +4268,7 @@ if (!Object.assign) {
 	var getClassOrError = rt.Class.getOrError;
 	var Map = rt.Map;
 	var Disposable = rt.Disposable;
-	var escapeHTML = rt.html.escaescapeHTMLpe;
+	var escapeHTML = rt.html.escape;
 	var bindDOM = rt.domBinding.bind;
 
 	var selfClosingTags = new rt.Set([
