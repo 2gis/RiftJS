@@ -1,10 +1,9 @@
-var argv = require('yargs').argv;
-
 var gulp = require('gulp');
+var gutil = require('gulp-util');
 var tasks = require('require-dir')('./tasks');
 
 gulp.task('default', ['scripts'], function() {
-	if (argv.dev) {
+	if (gutil.env.dev) {
 		gulp.watch(tasks.scripts.files, ['scripts']);
 	}
 });

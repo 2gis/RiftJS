@@ -1,5 +1,7 @@
 # RiftJS
 
+[![DevDependency Status](https://img.shields.io/david/dev/2gis/RiftJS.svg?style=flat-square)](https://david-dm.org/2gis/RiftJS#info=devDependencies)
+
 RiftJS — js-фреймворк для написания изоморфных приложений со сложной бизнес-логикой и высокосвязными интерфейсами.
 
 Основные фичи:
