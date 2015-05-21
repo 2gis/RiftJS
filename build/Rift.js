@@ -6058,6 +6058,8 @@ if (!global.Set) {
 		router: null,
 
 		/**
+		 * @protected
+		 *
 		 * @param {Function|Object} model
 		 * @param {Function} viewClass
 		 * @param {?HTMLElement} viewBlock
