@@ -8,10 +8,10 @@ gulp.task('scripts-build', function() {
 	return gulp.src(config.files)
 		.pipe($.plumber(helpers.plumberErrorHandler))
 		.pipe($.concat('Rift.js'))
-		.pipe(gulp.dest('build'))
+		.pipe(gulp.dest(''))
 		.pipe($.uglify())
 		.pipe($.rename({ suffix: '.min' }))
-		.pipe(gulp.dest('build'));
+		.pipe(gulp.dest(''));
 });
 
 gulp.task('scripts', ['scripts-build'], function() {

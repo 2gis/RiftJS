@@ -15,22 +15,22 @@
 	var getUID;
 
 	if (typeof Symbol == 'function' && typeof Symbol.iterator == 'symbol') {
-		var smbUID = Symbol('uid');
+		var uidKey = Symbol('uid');
 
 		getUID = function getUID(obj, prefix) {
-			return obj[smbUID] || (obj[smbUID] = nextUID(prefix));
+			return obj[uidKey] || (obj[uidKey] = nextUID(prefix));
 		};
 	} else {
-		var keyUID = '_rt-uid';
+		var uidKey = '_rt-uid';
 
 		getUID = function getUID(obj, prefix) {
-			if (!hasOwn.call(obj, keyUID)) {
-				Object.defineProperty(obj, keyUID, {
+			if (!hasOwn.call(obj, uidKey)) {
+				Object.defineProperty(obj, uidKey, {
 					value: nextUID(prefix)
 				});
 			}
 
-			return obj[keyUID];
+			return obj[uidKey];
 		};
 	}
 
@@ -39,11 +39,10 @@
 	 *
 	 * @param {Object} obj
 	 * @param {Object} source
-	 * @param {boolean} [skipDontEnums=false]
 	 * @returns {Object}
 	 */
-	function mixin(obj, source, skipDontEnums) {
-		var names = skipDontEnums ? Object.keys(source) : Object.getOwnPropertyNames(source);
+	function mixin(obj, source) {
+		var names = Object.getOwnPropertyNames(source);
 
 		for (var i = names.length; i;) {
 			Object.defineProperty(obj, names[--i], Object.getOwnPropertyDescriptor(source, names[i]));

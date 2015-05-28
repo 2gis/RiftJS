@@ -95,7 +95,9 @@
 			value: constr
 		});
 
-		mixin(constr, parent, true);
+		Object.keys(parent).forEach(function(name) {
+			Object.defineProperty(constr, name, Object.getOwnPropertyDescriptor(parent, name));
+		});
 
 		if (hasOwn.call(declaration, 'static')) {
 			mixin(constr, declaration.static);

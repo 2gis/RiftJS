@@ -5,7 +5,7 @@
 	 * @extends {Object}
 	 *
 	 * @param {string} type - Тип.
-	 * @param {boolean} [canBubble=false] - Может всплывать.
+	 * @param {boolean} [canBubble=true] - Может всплывать.
 	 */
 	var Event = rt.Class.extend(/** @lends Rift.Event# */{
 		/**
@@ -61,8 +61,8 @@
 		constructor: function(type, canBubble) {
 			this.type = type;
 
-			if (canBubble) {
-				this.bubbles = true;
+			if (canBubble === false) {
+				this.bubbles = false;
 			}
 		},
 

@@ -8,7 +8,7 @@
 	 * @param {*} value
 	 * @returns {string}
 	 */
-	function getHash(value) {
+	function getStamp(value) {
 		switch (typeof value) {
 			case 'undefined': {
 				return 'undefined';
@@ -20,9 +20,15 @@
 
 				break;
 			}
-			case 'boolean': { return '?' + value; }
-			case 'number': { return '+' + value; }
-			case 'string': { return ',' + value; }
+			case 'boolean': {
+				return '?' + value;
+			}
+			case 'number': {
+				return '+' + value;
+			}
+			case 'string': {
+				return ',' + value;
+			}
 		}
 
 		return '#' + getUID(value);
@@ -92,7 +98,7 @@
 
 			if (Array.isArray(value)) {
 				for (var i = value.length; i;) {
-					js.unshift(--i in value ? stringify(value[i]) : '');
+					js[--i] = i in value ? stringify(value[i]) : '';
 				}
 
 				js = '[' + js.join(',') + (js[js.length - 1] == '' ? ',]' : ']');
@@ -112,14 +118,14 @@
 			return js.replace(reScriptTagEnd, "</'+'$1>");
 		}
 
-		if (type == 'number') {
-			if (value && value % 1000 == 0) {
-				return String(value).replace(reZeros, function(zeros) {
-					return 'e' + zeros.length;
-				});
-			}
-		} else if (type == 'string') {
+		if (type == 'string') {
 			return '\'' + escapeString(value).replace(reScriptTagEnd, "</'+'$1>") + '\'';
+		}
+
+		if (type == 'number' && value && value % 1000 == 0) {
+			return String(value).replace(reZeros, function(zeros) {
+				return 'e' + zeros.length;
+			});
 		}
 
 		return String(value);
@@ -129,7 +135,7 @@
 	 * @namespace Rift.value
 	 */
 	rt.value = {
-		getHash: getHash,
+		getStamp: getStamp,
 		stringify: stringify
 	};
 

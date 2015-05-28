@@ -2,7 +2,7 @@
 
 	var getUID = rt.object.getUID;
 	var execNamespace = rt.namespace.exec;
-	var getHash = rt.value.getHash;
+	var getStamp = rt.value.getStamp;
 	var stringify = rt.value.stringify;
 	var classes = rt.Class.classes;
 	var getClassOrError = rt.Class.getOrError;
@@ -45,8 +45,6 @@
 
 	var reNameClass = /^(.+?):(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
-	var keyView = '_rt-view';
-	var keyViewElementName = '_rt-viewElementName';
 
 	function emptyFn() {}
 
@@ -180,15 +178,15 @@
 	 * @param {HTMLElement} el
 	 */
 	function removeElement(view, el) {
-		if (!el.hasOwnProperty(keyViewElementName) || !el[keyViewElementName] || el[keyView] != view) {
+		if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME] || el[KEY_VIEW] != view) {
 			return;
 		}
 
-		var els = view.elements[el[keyViewElementName]];
+		var els = view.elements[el[KEY_VIEW_ELEMENT_NAME]];
 		els.splice(els.indexOf(el), 1);
 
-		el[keyView] = null;
-		el[keyViewElementName] = undefined;
+		el[KEY_VIEW] = null;
+		el[KEY_VIEW_ELEMENT_NAME] = undefined;
 
 		if (el.parentNode) {
 			el.parentNode.removeChild(el);
@@ -368,10 +366,10 @@
 						block = block[0];
 					}
 
-					if (block.hasOwnProperty(keyView) && block[keyView]) {
+					if (block.hasOwnProperty(KEY_VIEW) && block[KEY_VIEW]) {
 						throw new TypeError(
 							'Element is already used as ' + (
-								block.hasOwnProperty(keyViewElementName) && block[keyViewElementName] ?
+								block.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) && block[KEY_VIEW_ELEMENT_NAME] ?
 									'an element' : 'a block'
 							) + ' of view'
 						);
@@ -398,7 +396,7 @@
 				}
 
 				this.block = $(block);
-				block[keyView] = this;
+				block[KEY_VIEW] = this;
 
 				if (rendered) {
 					var view = this;
@@ -438,7 +436,7 @@
 									var childBlock = blockDict[child._id];
 
 									child.block = $(childBlock);
-									childBlock[keyView] = child;
+									childBlock[KEY_VIEW] = child;
 
 									_(child);
 								}
@@ -773,7 +771,7 @@
 
 				if (initSimilarDescendantElements(this, this.blockName, name)) {
 					els = els.filter(function() {
-						return !this.hasOwnProperty(keyView) || !this[keyView];
+						return !this.hasOwnProperty(KEY_VIEW) || !this[KEY_VIEW];
 					});
 				}
 
@@ -798,12 +796,12 @@
 								outer.firstChild :
 								outer;
 						} else {
-							if (el.hasOwnProperty(keyView) && el[keyView]) {
-								if (!el.hasOwnProperty(keyViewElementName) || !el[keyViewElementName]) {
+							if (el.hasOwnProperty(KEY_VIEW) && el[KEY_VIEW]) {
+								if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME]) {
 									throw new TypeError('Element is already used as a block of view');
 								}
 
-								if (el[keyView] != this || el[keyViewElementName] != name) {
+								if (el[KEY_VIEW] != this || el[KEY_VIEW_ELEMENT_NAME] != name) {
 									throw new TypeError('Element is already used as an element of view');
 								}
 
@@ -834,8 +832,8 @@
 						}
 					}
 
-					el[keyView] = this;
-					el[keyViewElementName] = name;
+					el[KEY_VIEW] = this;
+					el[KEY_VIEW_ELEMENT_NAME] = name;
 
 					els.push(el);
 				} while (++i < argCount);
@@ -939,7 +937,7 @@
 								return inner.call(this, evt);
 							}
 						};
-						outer[keyListenerInner] = inner;
+						outer[KEY_INNER] = inner;
 
 						listener = outer;
 					}
@@ -953,7 +951,7 @@
 							return inner.call(this, evt);
 						}
 					};
-					outer[keyListenerInner] = inner;
+					outer[KEY_INNER] = inner;
 
 					listener = outer;
 				}
@@ -967,7 +965,7 @@
 				type,
 				listener,
 				context,
-				(cl ? (cl === '*' ? '' : getUID(cl)) : '0') + getHash(meta)
+				(cl ? (cl === '*' ? '' : getUID(cl)) : '0') + getStamp(meta)
 			);
 		},
 
@@ -996,7 +994,7 @@
 				type,
 				listener,
 				context,
-				(cl ? (cl === '*' ? '' : getUID(cl)) : '0') + getHash(meta)
+				(cl ? (cl === '*' ? '' : getUID(cl)) : '0') + getStamp(meta)
 			);
 		},
 
@@ -1032,7 +1030,7 @@
 			}
 
 			if (isClient) {
-				block[keyView] = null;
+				block[KEY_VIEW] = null;
 			}
 
 			BaseView.$super.dispose.call(this);

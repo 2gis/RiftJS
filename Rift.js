@@ -3,6 +3,44 @@
 
 var global = Function('return this;')();
 
+/**
+ * @namespace Rift
+ */
+var rt;
+
+if (typeof exports != 'undefined') {
+	rt = exports;
+} else {
+	rt = global.Rift = global.rt = {};
+}
+
+rt.global = global;
+
+var KEY_INNER = rt.KEY_INNER = '_rt-inner';
+var KEY_USED = rt.KEY_USED = '_rt-used';
+var KEY_DATA_CELLS = '_rt-dataCells';
+var KEY_VIEW = '_rt-view';
+var KEY_VIEW_ELEMENT_NAME = '_rt-viewElementName';
+
+var isServer = rt.isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
+var isClient = rt.isClient = !isServer;
+
+var $ = rt.$ = isClient ? global.jQuery || global.Zepto || global.ender || global.$ : undefined;
+
+var hasOwn = Object.prototype.hasOwnProperty;
+var slice = Array.prototype.slice;
+
+/**
+ * @memberOf Rift
+ *
+ * @param {*} err
+ */
+function logError(err) {
+	console.error(err === Object(err) && err.stack || err);
+}
+
+rt.logError = logError;
+
 /*!
  * https://people.mozilla.org/~jorendorff/es6-draft.html#sec-samevaluezero
  */
@@ -19,44 +57,6 @@ function isEmpty(obj) {
 
 	return true;
 }
-
-var hasOwn = Object.prototype.hasOwnProperty;
-var slice = Array.prototype.slice;
-
-/**
- * @namespace Rift
- */
-var rt;
-
-if (typeof exports != 'undefined') {
-	rt = exports;
-} else {
-	rt = global.Rift = global.rt = {};
-}
-
-rt.global = global;
-
-var isServer = rt.isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
-var isClient = rt.isClient = !isServer;
-
-/**
- * @memberOf Rift
- *
- * @param {*} err
- */
-function logError(err) {
-	console.error(err === Object(err) && err.stack || err);
-}
-
-rt.logError = logError;
-
-var $;
-
-if (isClient) {
-	$ = rt.$ = global.jQuery || global.Zepto || global.ender || global.$;
-}
-
-var keyListenerInner = '_rt-listenerInner';
 
 /*!
  * https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertySymbols
@@ -160,22 +160,22 @@ if (!Object.assign) {
 	var getUID;
 
 	if (typeof Symbol == 'function' && typeof Symbol.iterator == 'symbol') {
-		var smbUID = Symbol('uid');
+		var uidKey = Symbol('uid');
 
 		getUID = function getUID(obj, prefix) {
-			return obj[smbUID] || (obj[smbUID] = nextUID(prefix));
+			return obj[uidKey] || (obj[uidKey] = nextUID(prefix));
 		};
 	} else {
-		var keyUID = '_rt-uid';
+		var uidKey = '_rt-uid';
 
 		getUID = function getUID(obj, prefix) {
-			if (!hasOwn.call(obj, keyUID)) {
-				Object.defineProperty(obj, keyUID, {
+			if (!hasOwn.call(obj, uidKey)) {
+				Object.defineProperty(obj, uidKey, {
 					value: nextUID(prefix)
 				});
 			}
 
-			return obj[keyUID];
+			return obj[uidKey];
 		};
 	}
 
@@ -184,11 +184,10 @@ if (!Object.assign) {
 	 *
 	 * @param {Object} obj
 	 * @param {Object} source
-	 * @param {boolean} [skipDontEnums=false]
 	 * @returns {Object}
 	 */
-	function mixin(obj, source, skipDontEnums) {
-		var names = skipDontEnums ? Object.keys(source) : Object.getOwnPropertyNames(source);
+	function mixin(obj, source) {
+		var names = Object.getOwnPropertyNames(source);
 
 		for (var i = names.length; i;) {
 			Object.defineProperty(obj, names[--i], Object.getOwnPropertyDescriptor(source, names[i]));
@@ -357,7 +356,7 @@ if (!Object.assign) {
 	 * @param {*} value
 	 * @returns {string}
 	 */
-	function getHash(value) {
+	function getStamp(value) {
 		switch (typeof value) {
 			case 'undefined': {
 				return 'undefined';
@@ -369,9 +368,15 @@ if (!Object.assign) {
 
 				break;
 			}
-			case 'boolean': { return '?' + value; }
-			case 'number': { return '+' + value; }
-			case 'string': { return ',' + value; }
+			case 'boolean': {
+				return '?' + value;
+			}
+			case 'number': {
+				return '+' + value;
+			}
+			case 'string': {
+				return ',' + value;
+			}
 		}
 
 		return '#' + getUID(value);
@@ -441,7 +446,7 @@ if (!Object.assign) {
 
 			if (Array.isArray(value)) {
 				for (var i = value.length; i;) {
-					js.unshift(--i in value ? stringify(value[i]) : '');
+					js[--i] = i in value ? stringify(value[i]) : '';
 				}
 
 				js = '[' + js.join(',') + (js[js.length - 1] == '' ? ',]' : ']');
@@ -461,14 +466,14 @@ if (!Object.assign) {
 			return js.replace(reScriptTagEnd, "</'+'$1>");
 		}
 
-		if (type == 'number') {
-			if (value && value % 1000 == 0) {
-				return String(value).replace(reZeros, function(zeros) {
-					return 'e' + zeros.length;
-				});
-			}
-		} else if (type == 'string') {
+		if (type == 'string') {
 			return '\'' + escapeString(value).replace(reScriptTagEnd, "</'+'$1>") + '\'';
+		}
+
+		if (type == 'number' && value && value % 1000 == 0) {
+			return String(value).replace(reZeros, function(zeros) {
+				return 'e' + zeros.length;
+			});
 		}
 
 		return String(value);
@@ -478,7 +483,7 @@ if (!Object.assign) {
 	 * @namespace Rift.value
 	 */
 	rt.value = {
-		getHash: getHash,
+		getStamp: getStamp,
 		stringify: stringify
 	};
 
@@ -499,8 +504,8 @@ if (!Object.assign) {
 	 */
 	var nextTick;
 
-	if (global.process && global.process.nextTick) {
-		nextTick = global.process.nextTick;
+	if (global.process && process.nextTick) {
+		nextTick = process.nextTick;
 	} else if (global.setImmediate) {
 		nextTick = function(cb) {
 			setImmediate(cb);
@@ -652,7 +657,9 @@ if (!Object.assign) {
 			value: constr
 		});
 
-		mixin(constr, parent, true);
+		Object.keys(parent).forEach(function(name) {
+			Object.defineProperty(constr, name, Object.getOwnPropertyDescriptor(parent, name));
+		});
 
 		if (hasOwn.call(declaration, 'static')) {
 			mixin(constr, declaration.static);
@@ -847,17 +854,14 @@ if (!Object.assign) {
 if (!global.Map) {
 	(function() {
 
-		var getHash = rt.value.getHash;
+		var getStamp = rt.value.getStamp;
 
 		var entryStub = {
-			key: undefined,
-			value: undefined,
-			prev: null,
-			next: null
+			value: undefined
 		};
 
 		function Map(arr) {
-			this._inner = Object.create(null);
+			this._entries = Object.create(null);
 
 			if (arr) {
 				for (var i = 0, l = arr.length; i < l; i++) {
@@ -867,39 +871,37 @@ if (!global.Map) {
 		}
 
 		rt.object.mixin(Map.prototype, {
-			_inner: null,
+			_entries: null,
 
 			_first: null,
 			_last: null,
 
-			_size: 0,
-
-			get size() {
-				return this._size;
-			},
+			size: 0,
 
 			has: function(key) {
-				return getHash(key) in this._inner;
+				return getStamp(key) in this._entries;
 			},
 
 			get: function(key) {
-				return (this._inner[getHash(key)] || entryStub).value;
+				return (this._entries[getStamp(key)] || entryStub).value;
 			},
 
 			set: function(key, value) {
-				var hash = getHash(key);
+				var entries = this._entries;
+				var stamp = getStamp(key);
 
-				if (hash in this._inner) {
-					this._inner[hash].value = value;
+				if (stamp in entries) {
+					entries[stamp].value = value;
 				} else {
-					var entry = this._inner[hash] = {
+					var entry = entries[stamp] = {
 						key: key,
+						keyStamp: stamp,
 						value: value,
 						prev: this._last,
 						next: null
 					};
 
-					if (this._size++) {
+					if (this.size++) {
 						this._last.next = entry;
 					} else {
 						this._first = entry;
@@ -912,16 +914,16 @@ if (!global.Map) {
 			},
 
 			delete: function(key) {
-				var inner = this._inner;
-				var hash = getHash(key);
+				var entries = this._entries;
+				var stamp = getStamp(key);
 
-				if (!(hash in inner)) {
+				if (!(stamp in entries)) {
 					return false;
 				}
 
-				if (--this._size) {
-					var prev = inner[hash].prev;
-					var next = inner[hash].next;
+				if (--this.size) {
+					var prev = entries[stamp].prev;
+					var next = entries[stamp].next;
 
 					if (prev) {
 						prev.next = next;
@@ -939,7 +941,7 @@ if (!global.Map) {
 					this._last = null;
 				}
 
-				delete inner[hash];
+				delete entries[stamp];
 
 				return true;
 			},
@@ -949,74 +951,79 @@ if (!global.Map) {
 					context = global;
 				}
 
+				var entries = this._entries;
 				var entry = this._first;
 
 				while (entry) {
 					cb.call(context, entry.value, entry.key, this);
-					entry = entry.next;
+
+					do {
+						entry = entry.next;
+					} while (entry && !(entry.keyStamp in entries));
 				}
 			},
 
-			keys: function() {
-				var entry = this._first;
-
-				return {
-					next: function() {
-						if (entry) {
-							var step = { value: entry.key, done: false };
-							entry = entry.next;
-							return step;
-						}
-
-						return { value: undefined, done: true };
-					}
-				};
-			},
-
-			values: function() {
-				var entry = this._first;
-
-				return {
-					next: function() {
-						if (entry) {
-							var step = { value: entry.value, done: false };
-							entry = entry.next;
-							return step;
-						}
-
-						return { value: undefined, done: true };
-					}
-				};
-			},
-
-			entries: function() {
-				var entry = this._first;
-
-				return {
-					next: function() {
-						if (entry) {
-							var step = { value: [entry.key, entry.value], done: false };
-							entry = entry.next;
-							return step;
-						}
-
-						return { value: undefined, done: true };
-					}
-				};
-			},
-
 			clear: function() {
-				var inner = this._inner;
+				var entries = this._entries;
 
-				for (var hash in inner) {
-					delete inner[hash];
+				for (var stamp in entries) {
+					delete entries[stamp];
 				}
 
 				this._first = null;
 				this._last = null;
 
-				this._size = 0;
+				this.size = 0;
 			}
+		});
+
+		[
+			['keys', function(entry) {
+				return entry.key;
+			}],
+			['values', function(entry) {
+				return entry.value;
+			}],
+			['entries', function(entry) {
+				return [entry.key, entry.value];
+			}]
+		].forEach(function(iterator) {
+			Map.prototype[iterator[0]] = (function(getStepValue) {
+				return function() {
+					var entries = this._entries;
+					var entry;
+					var done = false;
+					var map = this;
+
+					return {
+						next: function() {
+							if (!done) {
+								if (entry) {
+									do {
+										entry = entry.next;
+									} while (entry && !(entry.keyStamp in entries));
+								} else {
+									entry = map._first;
+								}
+
+								if (entry) {
+									return {
+										value: getStepValue(entry),
+										done: false
+									};
+								}
+
+								done = true;
+							}
+
+							return {
+								value: undefined,
+								done: true
+							};
+						}
+					};
+				};
+			})(iterator[1]);
 		});
 
 		global.Map = Map;
@@ -1028,7 +1035,7 @@ if (!global.Set) {
 	(function() {
 
 		function Set(arr) {
-			this._inner = new Map();
+			this._entries = new Map();
 
 			if (arr) {
 				for (var i = 0, l = arr.length; i < l; i++) {
@@ -1038,23 +1045,23 @@ if (!global.Set) {
 		}
 
 		rt.object.mixin(Set.prototype, {
-			_inner: null,
+			_entries: null,
 
 			get size() {
-				return this._inner.size;
+				return this._entries.size;
 			},
 
 			has: function(value) {
-				return this._inner.has(value);
+				return this._entries.has(value);
 			},
 
 			add: function(value) {
-				this._inner.set(value, value);
+				this._entries.set(value, value);
 				return this;
 			},
 
 			delete: function(value) {
-				return this._inner.delete(value);
+				return this._entries.delete(value);
 			},
 
 			forEach: function(cb, context) {
@@ -1062,25 +1069,25 @@ if (!global.Set) {
 					context = global;
 				}
 
-				this._inner.forEach(function(value) {
+				this._entries.forEach(function(value) {
 					cb.call(context, value, value, this);
 				}, this);
 			},
 
 			keys: function() {
-				return this._inner.keys();
+				return this._entries.keys();
 			},
 
 			values: function() {
-				return this._inner.values();
+				return this._entries.values();
 			},
 
 			entries: function() {
-				return this._inner.entries();
+				return this._entries.entries();
 			},
 
 			clear: function() {
-				this._inner.clear();
+				this._entries.clear();
 			}
 		});
 
@@ -1096,7 +1103,7 @@ if (!global.Set) {
 	 * @extends {Object}
 	 *
 	 * @param {string} type - Тип.
-	 * @param {boolean} [canBubble=false] - Может всплывать.
+	 * @param {boolean} [canBubble=true] - Может всплывать.
 	 */
 	var Event = rt.Class.extend(/** @lends Rift.Event# */{
 		/**
@@ -1152,8 +1159,8 @@ if (!global.Set) {
 		constructor: function(type, canBubble) {
 			this.type = type;
 
-			if (canBubble) {
-				this.bubbles = true;
+			if (canBubble === false) {
+				this.bubbles = false;
 			}
 		},
 
@@ -1181,32 +1188,6 @@ if (!global.Set) {
 
 	var Event = rt.Event;
 
-	var keyUsed = '_emt-used';
-
-	/**
-	 * @private
-	 *
-	 * @param {Function} method
-	 * @returns {Function}
-	 */
-	function wrapOnOff(method) {
-		return function _(type, listener, context) {
-			if (typeof type == 'object') {
-				context = listener;
-
-				var types = type;
-
-				for (type in types) {
-					_.call(this, type, types[type], context);
-				}
-			} else {
-				method.call(this, type, listener, context);
-			}
-
-			return this;
-		};
-	}
-
 	/**
 	 * @class Rift.EventEmitter
 	 * @extends {Object}
@@ -1229,10 +1210,26 @@ if (!global.Set) {
 		/**
 		 * @param {string} type
 		 * @param {Function} listener
-		 * @param {Object} [context=this]
+		 * @param {Object} [context]
 		 * @returns {Rift.EventEmitter}
 		 */
-		on: wrapOnOff(function(type, listener, context) {
+		on: function(type, listener, context) {
+			if (typeof type == 'object') {
+				context = listener;
+
+				var types = type;
+
+				for (type in types) {
+					this._on(type, types[type], context);
+				}
+			} else {
+				this._on(type, listener, context);
+			}
+
+			return this;
+		},
+
+		_on: function(type, listener, context) {
 			var events = (this._events || (this._events = new Map())).get(type);
 
 			if (!events) {
@@ -1244,15 +1241,33 @@ if (!global.Set) {
 				listener: listener,
 				context: context || this
 			});
-		}),
+		},
 
 		/**
 		 * @param {string} type
 		 * @param {Function} listener
-		 * @param {Object} [context=this]
+		 * @param {Object} [context]
 		 * @returns {Rift.EventEmitter}
 		 */
-		off: wrapOnOff(function(type, listener, context) {
+		off: function(type, listener, context) {
+			if (type === undefined) {
+				this._events = null;
+			} else if (typeof type == 'object') {
+				context = listener;
+
+				var types = type;
+
+				for (type in types) {
+					this._off(type, types[type], context);
+				}
+			} else {
+				this._off(type, listener, context);
+			}
+
+			return this;
+		},
+
+		_off: function(type, listener, context) {
 			var events = this._events || (this._events = new Map()).get(type);
 
 			if (!events) {
@@ -1264,35 +1279,35 @@ if (!global.Set) {
 			}
 
 			for (var i = events.length; i;) {
-				var evt = events[--i];
+				if (events[--i].context == context) {
+					var lst = events[i].listener;
 
-				if (evt.context == context && (
-					evt.listener == listener ||
-						(evt.listener.hasOwnProperty(keyListenerInner) && evt.listener[keyListenerInner] == listener)
-				)) {
-					events.splice(i, 1);
+					if (lst == listener || (lst.hasOwnProperty(KEY_INNER) && lst[KEY_INNER] == listener)) {
+						events.splice(i, 1);
+						break;
+					}
 				}
 			}
 
 			if (!events.length) {
 				this._events.delete(type);
 			}
-		}),
+		},
 
 		/**
 		 * @param {string} type
 		 * @param {Function} listener
-		 * @param {Object} [context=this]
+		 * @param {Object} [context]
 		 * @returns {Rift.EventEmitter}
 		 */
 		once: function(type, listener, context) {
 			function outer() {
-				this.off(type, outer);
+				this._off(type, outer, context);
 				listener.apply(this, arguments);
 			}
-			outer[keyListenerInner] = listener;
+			outer[KEY_INNER] = listener;
 
-			return this.on(type, outer, context);
+			return this._on(type, outer, context);
 		},
 
 		/**
@@ -1303,11 +1318,11 @@ if (!global.Set) {
 		emit: function(evt, detail) {
 			if (typeof evt == 'string') {
 				evt = new Event(evt);
-			} else if (evt.hasOwnProperty(keyUsed)) {
+			} else if (evt.hasOwnProperty(KEY_USED)) {
 				throw new TypeError('Attempt to use an object that is no longer usable');
 			}
 
-			evt[keyUsed] = true;
+			evt[KEY_USED] = true;
 
 			evt.target = this;
 			evt.timestamp = Date.now();
@@ -1345,7 +1360,7 @@ if (!global.Set) {
 
 					try {
 						if (events[i].listener.call(events[i].context, evt) === false) {
-							evt.isPropagationStopped = true;
+							evt.stopPropagation();
 						}
 					} catch (err) {
 						this._logError(err);
@@ -1382,54 +1397,48 @@ if (!global.Set) {
 	 *
 	 * @param {?(Object|Rift.ActiveDictionary|undefined)} [data]
 	 * @param {Object|boolean} [opts]
-	 * @param {boolean} [opts.handleItemChanges=false]
+	 * @param {boolean} [opts.adoptItemChanges=false]
 	 */
 	var ActiveDictionary = EventEmitter.extend('Rift.ActiveDictionary', /** @lends Rift.ActiveDictionary# */{
-		_inner: null,
+		_data: null,
 		_valueCounts: null,
 
-		_handleItemChanges: false,
+		_adoptItemChanges: false,
 
 		constructor: function(data, opts) {
 			EventEmitter.call(this);
 
-			this._inner = new Map();
-			this._valueCounts = new Map();
-
-			if (typeof opts == 'boolean') {
-				opts = { handleItemChanges: opts };
-			} else if (!opts) {
-				opts = {};
-			}
-
-			if (opts.handleItemChanges) {
-				this._handleItemChanges = true;
-			}
+			var thisData = new Map();
+			var valueCounts = new Map();
+			var adoptItemChanges = typeof opts == 'boolean' ? opts : !!opts && opts.adoptItemChanges;
 
 			if (data) {
 				if (data instanceof ActiveDictionary) {
-					data = data._inner;
+					data = data._data;
 				}
-
-				var inner = this._inner;
-				var valueCounts = this._valueCounts;
-				var handleItemChanges = this._handleItemChanges;
 
 				for (var name in data) {
 					var value = data[name];
 
-					inner.set(name, value);
+					thisData.set(name, value);
 
 					if (valueCounts.has(value)) {
 						valueCounts.set(value, valueCounts.get(value) + 1);
 					} else {
 						valueCounts.set(value, 1);
 
-						if (handleItemChanges && value instanceof EventEmitter) {
+						if (adoptItemChanges && value instanceof EventEmitter) {
 							value.on('change', this._onItemChange, this);
 						}
 					}
 				}
+			}
+
+			this._data = thisData;
+			this._valueCounts = valueCounts;
+
+			if (adoptItemChanges) {
+				this._adoptItemChanges = true;
 			}
 		},
 
@@ -1449,7 +1458,7 @@ if (!global.Set) {
 		 * @returns {boolean}
 		 */
 		has: function(name) {
-			return this._inner.has(name);
+			return this._data.has(name);
 		},
 
 		/**
@@ -1459,7 +1468,7 @@ if (!global.Set) {
 		 * @returns {*}
 		 */
 		get: function(name) {
-			return this._inner.get(name);
+			return this._data.get(name);
 		},
 
 		/**
@@ -1479,9 +1488,9 @@ if (!global.Set) {
 				values = name;
 			}
 
-			var inner = this._inner;
+			var data = this._data;
 			var valueCounts = this._valueCounts;
-			var handleItemChanges = this._handleItemChanges;
+			var adoptItemChanges = this._adoptItemChanges;
 			var changed = false;
 			var removedValueSet = new Set();
 			var removedValues = [];
@@ -1492,8 +1501,8 @@ if (!global.Set) {
 			};
 
 			for (name in values) {
-				var hasName = inner.has(name);
-				var oldValue = inner.get(name);
+				var hasName = data.has(name);
+				var oldValue = data.get(name);
 				var val = values[name];
 
 				if (!hasName || !svz(oldValue, val)) {
@@ -1507,7 +1516,7 @@ if (!global.Set) {
 						} else {
 							valueCounts.delete(oldValue);
 
-							if (handleItemChanges && oldValue instanceof EventEmitter) {
+							if (adoptItemChanges && oldValue instanceof EventEmitter) {
 								oldValue.off('change', this._onItemChange);
 							}
 
@@ -1520,7 +1529,7 @@ if (!global.Set) {
 					} else {
 						valueCounts.set(val, 1);
 
-						if (handleItemChanges && val instanceof EventEmitter) {
+						if (adoptItemChanges && val instanceof EventEmitter) {
 							val.on('change', this._onItemChange, this);
 						}
 
@@ -1535,7 +1544,7 @@ if (!global.Set) {
 						value: val
 					};
 
-					inner.set(name, val);
+					data.set(name, val);
 				}
 			}
 
@@ -1557,9 +1566,9 @@ if (!global.Set) {
 		 * @returns {Rift.ActiveDictionary}
 		 */
 		delete: function() {
-			var inner = this._inner;
+			var data = this._data;
 			var valueCounts = this._valueCounts;
-			var handleItemChanges = this._handleItemChanges;
+			var adoptItemChanges = this._adoptItemChanges;
 			var changed = false;
 			var removedValues = [];
 			var diff = {
@@ -1570,13 +1579,13 @@ if (!global.Set) {
 			for (var i = 0, l = arguments.length; i < l; i++) {
 				var name = arguments[i];
 
-				if (!inner.has(name)) {
+				if (!data.has(name)) {
 					continue;
 				}
 
 				changed = true;
 
-				var value = inner.get(name);
+				var value = data.get(name);
 				var valueCount = valueCounts.get(value) - 1;
 
 				if (valueCount) {
@@ -1584,7 +1593,7 @@ if (!global.Set) {
 				} else {
 					valueCounts.delete(value);
 
-					if (handleItemChanges && value instanceof EventEmitter) {
+					if (adoptItemChanges && value instanceof EventEmitter) {
 						value.off('change', this._onItemChange);
 					}
 
@@ -1597,7 +1606,7 @@ if (!global.Set) {
 					value: undefined
 				};
 
-				inner.delete(name);
+				data.delete(name);
 			}
 
 			if (changed) {
@@ -1621,7 +1630,7 @@ if (!global.Set) {
 		 * @returns {Rift.ActiveDictionary}
 		 */
 		clone: function() {
-			return new this.constructor(this, { handleItemChanges: this._handleItemChanges });
+			return new this.constructor(this, { adoptItemChanges: this._adoptItemChanges });
 		},
 
 		/**
@@ -1632,7 +1641,7 @@ if (!global.Set) {
 		toObject: function() {
 			var obj = {};
 
-			this._inner.forEach(function(value, name) {
+			this._data.forEach(function(value, name) {
 				obj[name] = value;
 			});
 
@@ -1644,12 +1653,12 @@ if (!global.Set) {
 		 * @param {Object} opts
 		 */
 		collectDumpObject: function(data, opts) {
-			this._inner.forEach(function(value, name) {
+			this._data.forEach(function(value, name) {
 				data[name] = value;
 			});
 
-			if (this._handleItemChanges) {
-				opts.handleItemChanges = true;
+			if (this._adoptItemChanges) {
+				opts.adoptItemChanges = true;
 			}
 		},
 
@@ -1664,7 +1673,7 @@ if (!global.Set) {
 		 * Уничтожает инстанс освобождая занятые им ресурсы.
 		 */
 		dispose: function() {
-			if (this._handleItemChanges) {
+			if (this._adoptItemChanges) {
 				var onItemChange = this._onItemChange;
 
 				this._valueCounts.forEach(function(value) {
@@ -1691,7 +1700,6 @@ if (!global.Set) {
 	var slice = arrayProto.slice;
 	var splice = arrayProto.splice;
 	var map = arrayProto.map;
-	var reduce = arrayProto.reduce;
 
 	/**
 	 * @private
@@ -1702,7 +1710,7 @@ if (!global.Set) {
 	 */
 	function addValues(arr, values) {
 		var valueCounts = arr._valueCounts;
-		var handleItemChanges = arr._handleItemChanges;
+		var adoptItemChanges = arr._adoptItemChanges;
 		var addedValues = [];
 
 		for (var i = 0, l = values.length; i < l; i++) {
@@ -1713,7 +1721,7 @@ if (!global.Set) {
 			} else {
 				valueCounts.set(value, 1);
 
-				if (handleItemChanges && value instanceof EventEmitter) {
+				if (adoptItemChanges && value instanceof EventEmitter) {
 					value.on('change', arr._onItemChange, arr);
 				}
 
@@ -1739,7 +1747,7 @@ if (!global.Set) {
 		} else {
 			arr._valueCounts.delete(value);
 
-			if (arr._handleItemChanges && value instanceof EventEmitter) {
+			if (arr._adoptItemChanges && value instanceof EventEmitter) {
 				value.off('change', arr._onItemChange);
 			}
 
@@ -1755,51 +1763,48 @@ if (!global.Set) {
 	 *
 	 * @param {?(Array|Rift.ActiveArray|undefined)} [data]
 	 * @param {Object|boolean} [opts]
-	 * @param {boolean} [opts.handleItemChanges=false]
+	 * @param {boolean} [opts.adoptItemChanges=false]
 	 */
 	var ActiveArray = EventEmitter.extend('Rift.ActiveArray', /** @lends Rift.ActiveArray# */{
-		_inner: null,
+		_data: null,
 		_valueCounts: null,
 
-		_handleItemChanges: false,
+		_adoptItemChanges: false,
 
 		constructor: function(data, opts) {
 			EventEmitter.call(this);
 
-			this._valueCounts = new Map();
-
-			if (typeof opts == 'boolean') {
-				opts = { handleItemChanges: opts };
-			} else if (!opts) {
-				opts = {};
-			}
-
-			if (opts.handleItemChanges) {
-				this._handleItemChanges = true;
-			}
+			var thisData;
+			var valueCounts = new Map();
+			var adoptItemChanges = typeof opts == 'boolean' ? opts : !!opts && opts.adoptItemChanges;
 
 			if (data) {
-				var inner = this._inner = (data instanceof ActiveArray ? data._inner : data).slice(0);
-				var valueCounts = this._valueCounts;
-				var handleItemChanges = this._handleItemChanges;
+				thisData = (data instanceof ActiveArray ? data._data : data).slice(0);
 
-				for (var i = inner.length; i;) {
-					if (--i in inner) {
-						var value = inner[i];
+				for (var i = thisData.length; i;) {
+					if (--i in thisData) {
+						var value = thisData[i];
 
 						if (valueCounts.has(value)) {
 							valueCounts.set(value, valueCounts.get(value) + 1);
 						} else {
 							valueCounts.set(value, 1);
 
-							if (handleItemChanges && value instanceof EventEmitter) {
+							if (adoptItemChanges && value instanceof EventEmitter) {
 								value.on('change', this._onItemChange, this);
 							}
 						}
 					}
 				}
 			} else {
-				this._inner = [];
+				thisData = [];
+			}
+
+			this._data = thisData;
+			this._valueCounts = valueCounts;
+
+			if (adoptItemChanges) {
+				this._adoptItemChanges = adoptItemChanges;
 			}
 		},
 
@@ -1819,7 +1824,7 @@ if (!global.Set) {
 		 * @returns {*}
 		 */
 		get: function(index) {
-			return this._inner[index];
+			return this._data[index];
 		},
 
 		/**
@@ -1830,9 +1835,9 @@ if (!global.Set) {
 		 * @returns {Rift.ActiveArray}
 		 */
 		set: function(index, value) {
-			var inner = this._inner;
-			var hasIndex = index in inner;
-			var oldValue = inner[index];
+			var data = this._data;
+			var hasIndex = index in data;
+			var oldValue = data[index];
 
 			if (!hasIndex || !svz(oldValue, value)) {
 				var valueCounts = this._valueCounts;
@@ -1847,7 +1852,7 @@ if (!global.Set) {
 					} else {
 						valueCounts.delete(oldValue);
 
-						if (this._handleItemChanges && oldValue instanceof EventEmitter) {
+						if (this._adoptItemChanges && oldValue instanceof EventEmitter) {
 							oldValue.off('change', this._onItemChange);
 						}
 
@@ -1860,14 +1865,14 @@ if (!global.Set) {
 				} else {
 					valueCounts.set(value, 1);
 
-					if (this._handleItemChanges && value instanceof EventEmitter) {
+					if (this._adoptItemChanges && value instanceof EventEmitter) {
 						value.on('change', this._onItemChange, this);
 					}
 
 					addedValues = [value];
 				}
 
-				inner[index] = value;
+				data[index] = value;
 
 				this.emit('change', {
 					diff: {
@@ -1887,19 +1892,19 @@ if (!global.Set) {
 		 * @returns {Rift.ActiveArray}
 		 */
 		delete: function() {
-			var inner = this._inner;
+			var data = this._data;
 			var valueCounts = this._valueCounts;
-			var handleItemChanges = this._handleItemChanges;
+			var adoptItemChanges = this._adoptItemChanges;
 			var changed = false;
 			var removedValues = [];
 
 			for (var i = 0, l = arguments.length; i < l; i++) {
 				var index = arguments[i];
 
-				if (index in inner) {
+				if (index in data) {
 					changed = true;
 
-					var value = inner[index];
+					var value = data[index];
 					var valueCount = valueCounts.get(value) - 1;
 
 					if (valueCount) {
@@ -1907,14 +1912,14 @@ if (!global.Set) {
 					} else {
 						valueCounts.delete(value);
 
-						if (handleItemChanges && value instanceof EventEmitter) {
+						if (adoptItemChanges && value instanceof EventEmitter) {
 							value.off('change', this._onItemChange);
 						}
 
 						removedValues.push(value);
 					}
 
-					delete inner[index];
+					delete data[index];
 				}
 			}
 
@@ -1937,11 +1942,11 @@ if (!global.Set) {
 		 * @writable
 		 */
 		get length() {
-			return this._inner.length;
+			return this._data.length;
 		},
 		set length(len) {
-			var inner = this._inner;
-			var oldLen = inner.length;
+			var data = this._data;
+			var oldLen = data.length;
 
 			if (oldLen != len) {
 				var changed = false;
@@ -1949,14 +1954,14 @@ if (!global.Set) {
 
 				if (len < oldLen) {
 					var valueCounts = this._valueCounts;
-					var handleItemChanges = this._handleItemChanges;
+					var adoptItemChanges = this._adoptItemChanges;
 					var i = len;
 
 					do {
-						if (i in inner) {
+						if (i in data) {
 							changed = true;
 
-							var value = inner[i];
+							var value = data[i];
 							var valueCount = valueCounts.get(value) - 1;
 
 							if (valueCount) {
@@ -1964,7 +1969,7 @@ if (!global.Set) {
 							} else {
 								valueCounts.delete(value);
 
-								if (handleItemChanges && value instanceof EventEmitter) {
+								if (adoptItemChanges && value instanceof EventEmitter) {
 									value.off('change', this._onItemChange);
 								}
 
@@ -1974,7 +1979,7 @@ if (!global.Set) {
 					} while (++i < oldLen);
 				}
 
-				inner.length = len;
+				data.length = len;
 
 				if (changed) {
 					this.emit('change', {
@@ -2001,7 +2006,7 @@ if (!global.Set) {
 		 * @returns {int}
 		 */
 		indexOf: function(value, fromIndex) {
-			return this._inner.indexOf(value, fromIndex);
+			return this._data.indexOf(value, fromIndex);
 		},
 
 		/**
@@ -2010,7 +2015,7 @@ if (!global.Set) {
 		 * @returns {int}
 		 */
 		lastIndexOf: function(value, fromIndex) {
-			return this._inner.lastIndexOf(value, fromIndex);
+			return this._data.lastIndexOf(value, fromIndex);
 		},
 
 		/**
@@ -2021,10 +2026,10 @@ if (!global.Set) {
 		 */
 		push: function() {
 			if (!arguments.length) {
-				return this._inner.length;
+				return this._data.length;
 			}
 
-			push.apply(this._inner, arguments);
+			push.apply(this._data, arguments);
 
 			this.emit('change', {
 				diff: {
@@ -2033,27 +2038,7 @@ if (!global.Set) {
 				}
 			});
 
-			return this._inner.length;
-		},
-
-		/**
-		 * Добавляет один или более элементов в конец массива и возвращает новую длину массива.
-		 * Элементы, уже присутствующие в массиве, добавлены не будут. Повторяющиеся элементы, отсутствующие в массиве,
-		 * будут добавлены один раз.
-		 *
-		 * @param {...*} values - Элементы, добавляемые в конец массива.
-		 * @returns {int}
-		 */
-		pushUnique: function() {
-			var valueCounts = this._valueCounts;
-
-			return this.push.apply(this, reduce.call(arguments, function(values, value) {
-				if (!valueCounts.has(value) && values.indexOf(value) == -1) {
-					values.push(value);
-				}
-
-				return values;
-			}, []));
+			return this._data.length;
 		},
 
 		/**
@@ -2062,24 +2047,24 @@ if (!global.Set) {
 		 * @returns {*}
 		 */
 		shift: function() {
-			var inner = this._inner;
+			var data = this._data;
 
-			if (!inner.length) {
+			if (!data.length) {
 				return;
 			}
 
 			if (!this._valueCounts.size) {
-				inner.length--;
+				data.length--;
 				return;
 			}
 
-			var hasFirst = '0' in inner;
+			var hasFirst = '0' in data;
 			var value;
 
 			if (hasFirst) {
-				value = inner.shift();
+				value = data.shift();
 			} else {
-				inner.shift();
+				data.shift();
 			}
 
 			this.emit('change', {
@@ -2111,10 +2096,10 @@ if (!global.Set) {
 		 */
 		unshift: function() {
 			if (!arguments.length) {
-				return this._inner.length;
+				return this._data.length;
 			}
 
-			unshift.apply(this._inner, arguments);
+			unshift.apply(this._data, arguments);
 
 			this.emit('change', {
 				diff: {
@@ -2123,7 +2108,7 @@ if (!global.Set) {
 				}
 			});
 
-			return this._inner.length;
+			return this._data.length;
 		},
 
 		/**
@@ -2132,18 +2117,18 @@ if (!global.Set) {
 		 * @returns {*}
 		 */
 		pop: function() {
-			var inner = this._inner;
+			var data = this._data;
 
-			if (!inner.length) {
+			if (!data.length) {
 				return;
 			}
 
-			if (!(inner.length - 1 in inner)) {
-				inner.length--;
+			if (!(data.length - 1 in data)) {
+				data.length--;
 				return;
 			}
 
-			var value = inner.pop();
+			var value = data.pop();
 
 			this.emit('change', {
 				diff: {
@@ -2162,7 +2147,7 @@ if (!global.Set) {
 		 * @returns {string}
 		 */
 		join: function(separator) {
-			return this._inner.join(separator);
+			return this._data.join(separator);
 		},
 
 		/**
@@ -2171,8 +2156,8 @@ if (!global.Set) {
 		 */
 		concat: function() {
 			return new this.constructor(
-				concat.apply(this._inner, map.call(arguments, function(value) {
-					return value instanceof ActiveArray ? value._inner : value;
+				concat.apply(this._data, map.call(arguments, function(value) {
+					return value instanceof ActiveArray ? value._data : value;
 				}))
 			);
 		},
@@ -2181,11 +2166,11 @@ if (!global.Set) {
 		 * Создаёт поверхностную копию части массива.
 		 *
 		 * @param {int} [startIndex=0]
-		 * @param {int} [endIndex=this.length]
+		 * @param {int} [endIndex]
 		 * @returns {Array}
 		 */
 		slice: function(startIndex, endIndex) {
-			return this._inner.slice(startIndex, endIndex);
+			return this._data.slice(startIndex, endIndex);
 		},
 
 		/**
@@ -2197,8 +2182,8 @@ if (!global.Set) {
 		 * @returns {Array} - Удалённые элементы.
 		 */
 		splice: function(startIndex, deleteCount) {
-			var inner = this._inner;
-			var removedSlice = splice.apply(inner, arguments);
+			var data = this._data;
+			var removedSlice = splice.apply(data, arguments);
 			var addedSlice = slice.call(arguments, 2);
 			var removedSliceLen = removedSlice.length;
 			var addedSliceLen = addedSlice.length;
@@ -2208,7 +2193,7 @@ if (!global.Set) {
 			}
 
 			var valueCounts = this._valueCounts;
-			var handleItemChanges = this._handleItemChanges;
+			var adoptItemChanges = this._adoptItemChanges;
 			var changed = false;
 			var removedValueSet = new Set();
 			var addedValues = [];
@@ -2235,7 +2220,7 @@ if (!global.Set) {
 						} else {
 							valueCounts.delete(removedValue);
 
-							if (handleItemChanges && removedValue instanceof EventEmitter) {
+							if (adoptItemChanges && removedValue instanceof EventEmitter) {
 								removedValue.off('change', this._onItemChange);
 							}
 
@@ -2249,7 +2234,7 @@ if (!global.Set) {
 						} else {
 							valueCounts.set(addedValue, 1);
 
-							if (handleItemChanges && addedValue instanceof EventEmitter) {
+							if (adoptItemChanges && addedValue instanceof EventEmitter) {
 								addedValue.on('change', this._onItemChange, this);
 							}
 
@@ -2262,8 +2247,8 @@ if (!global.Set) {
 			}
 
 			if (!changed && removedSliceLen > addedSliceLen) {
-				for (var i = startIndex + addedSliceLen, l = inner.length; i < l; i++) {
-					if (i in inner) {
+				for (var i = startIndex + addedSliceLen, l = data.length; i < l; i++) {
+					if (i in data) {
 						changed = true;
 						break;
 					}
@@ -2356,7 +2341,7 @@ if (!global.Set) {
 		 * @returns {Rift.ActiveArray}
 		 */
 		clone: function() {
-			return new this.constructor(this, { handleItemChanges: this._handleItemChanges });
+			return new this.constructor(this, { adoptItemChanges: this._adoptItemChanges });
 		},
 
 		/**
@@ -2365,7 +2350,7 @@ if (!global.Set) {
 		 * @returns {Array}
 		 */
 		toArray: function() {
-			return this._inner.slice(0);
+			return this._data.slice(0);
 		},
 
 		/**
@@ -2374,7 +2359,7 @@ if (!global.Set) {
 		 * @returns {string}
 		 */
 		toString: function() {
-			return this._inner.toString();
+			return this._data.toString();
 		},
 
 		/**
@@ -2382,16 +2367,12 @@ if (!global.Set) {
 		 * @param {Object} opts
 		 */
 		collectDumpObject: function(data, opts) {
-			var inner = this._inner;
+			this._data.forEach(function(value, index) {
+				data[index] = value;
+			});
 
-			for (var i = inner.length; i;) {
-				if (--i in inner) {
-					data[i] = inner[i];
-				}
-			}
-
-			if (this._handleItemChanges) {
-				opts.handleItemChanges = true;
+			if (this._adoptItemChanges) {
+				opts.adoptItemChanges = true;
 			}
 		},
 
@@ -2408,7 +2389,7 @@ if (!global.Set) {
 		 * Уничтожает инстанс освобождая занятые им ресурсы.
 		 */
 		dispose: function() {
-			if (this._handleItemChanges) {
+			if (this._adoptItemChanges) {
 				var onItemChange = this._onItemChange;
 
 				this._valueCounts.forEach(function(value) {
@@ -2422,7 +2403,7 @@ if (!global.Set) {
 
 	['forEach', 'map', 'filter', 'every', 'some', 'reduce', 'reduceRight'].forEach(function(name) {
 		this[name] = function() {
-			return arrayProto[name].apply(this._inner, arguments);
+			return arrayProto[name].apply(this._data, arguments);
 		};
 	}, ActiveArray.prototype);
 
@@ -3461,7 +3442,7 @@ if (!global.Set) {
 (function() {
 
 	var getUID = rt.object.getUID;
-	var getHash = rt.value.getHash;
+	var getStamp = rt.value.getStamp;
 	var EventEmitter = rt.EventEmitter;
 	var ActiveProperty = rt.ActiveProperty;
 	var autoBind = rt.ActiveProperty.autoBind;
@@ -3554,7 +3535,7 @@ if (!global.Set) {
 		 * @param {Rift.EventEmitter|EventTarget} target
 		 * @param {string} type
 		 * @param {Function} listener
-		 * @param {Object|undefined} [context=this]
+		 * @param {Object|undefined} [context]
 		 * @param {*} [meta]
 		 * @returns {Rift.Disposable}
 		 */
@@ -3572,8 +3553,8 @@ if (!global.Set) {
 
 			var listening = this._listening || (this._listening = new Map());
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(listener.hasOwnProperty(keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
-				getUID(context) + '-' + (meta !== undefined ? getHash(meta) : '');
+				getUID(listener.hasOwnProperty(KEY_INNER) ? listener[KEY_INNER] : listener) + '-' +
+				getUID(context) + '-' + (meta !== undefined ? getStamp(meta) : '');
 
 			if (listening.has(id)) {
 				return;
@@ -3606,7 +3587,7 @@ if (!global.Set) {
 		 * @param {Rift.EventEmitter|EventTarget} target
 		 * @param {string} type
 		 * @param {Function} listener
-		 * @param {Object|undefined} [context=this]
+		 * @param {Object|undefined} [context]
 		 * @param {*} [meta]
 		 * @returns {Rift.Disposable}
 		 */
@@ -3629,8 +3610,8 @@ if (!global.Set) {
 			}
 
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(listener.hasOwnProperty(keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
-				getUID(context) + '-' + (meta !== undefined ? getHash(meta) : '');
+				getUID(listener.hasOwnProperty(KEY_INNER) ? listener[KEY_INNER] : listener) + '-' +
+				getUID(context) + '-' + (meta !== undefined ? getStamp(meta) : '');
 
 			if (listening.has(id)) {
 				removeListener(listening.get(id));
@@ -4093,7 +4074,7 @@ if (!global.Set) {
 		},
 
 		checked: function(el, value) {
-			value = Boolean(value);
+			value = !!value;
 
 			if (el.checked != value) {
 				el.checked = value;
@@ -4123,7 +4104,6 @@ if (!global.Set) {
 			'(?:\\([^)]*\\))?:\\s*\\S|$))',
 		'g'
 	);
-	var keyDataCells = '_rt-dataCells';
 
 	/**
 	 * Привязывает элемент к активным свойствам по атрибуту `rt-bind`.
@@ -4137,11 +4117,11 @@ if (!global.Set) {
 	 * @returns {Array<Rift.DataCell>}
 	 */
 	function bindElement(el, context, opts) {
-		if (el.hasOwnProperty(keyDataCells) && el[keyDataCells]) {
-			return el[keyDataCells];
+		if (el.hasOwnProperty(KEY_DATA_CELLS) && el[KEY_DATA_CELLS]) {
+			return el[KEY_DATA_CELLS];
 		}
 
-		var dcs = el[keyDataCells] = [];
+		var dcs = el[KEY_DATA_CELLS] = [];
 
 		if (el.hasAttribute('rt-bind')) {
 			var applyValues = !opts || opts.applyValues !== false;
@@ -4172,15 +4152,15 @@ if (!global.Set) {
 	 * @param {HTMLElement} el
 	 */
 	function unbindElement(el) {
-		if (el.hasOwnProperty(keyDataCells)) {
-			var dcs = el[keyDataCells];
+		if (el.hasOwnProperty(KEY_DATA_CELLS)) {
+			var dcs = el[KEY_DATA_CELLS];
 
 			if (dcs) {
 				for (var i = dcs.length; i;) {
 					dcs[--i].dispose();
 				}
 
-				el[keyDataCells] = null;
+				el[KEY_DATA_CELLS] = null;
 			}
 		}
 	}
@@ -4247,7 +4227,7 @@ if (!global.Set) {
 
 	var getUID = rt.object.getUID;
 	var execNamespace = rt.namespace.exec;
-	var getHash = rt.value.getHash;
+	var getStamp = rt.value.getStamp;
 	var stringify = rt.value.stringify;
 	var classes = rt.Class.classes;
 	var getClassOrError = rt.Class.getOrError;
@@ -4290,8 +4270,6 @@ if (!global.Set) {
 
 	var reNameClass = /^(.+?):(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
-	var keyView = '_rt-view';
-	var keyViewElementName = '_rt-viewElementName';
 
 	function emptyFn() {}
 
@@ -4425,15 +4403,15 @@ if (!global.Set) {
 	 * @param {HTMLElement} el
 	 */
 	function removeElement(view, el) {
-		if (!el.hasOwnProperty(keyViewElementName) || !el[keyViewElementName] || el[keyView] != view) {
+		if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME] || el[KEY_VIEW] != view) {
 			return;
 		}
 
-		var els = view.elements[el[keyViewElementName]];
+		var els = view.elements[el[KEY_VIEW_ELEMENT_NAME]];
 		els.splice(els.indexOf(el), 1);
 
-		el[keyView] = null;
-		el[keyViewElementName] = undefined;
+		el[KEY_VIEW] = null;
+		el[KEY_VIEW_ELEMENT_NAME] = undefined;
 
 		if (el.parentNode) {
 			el.parentNode.removeChild(el);
@@ -4613,10 +4591,10 @@ if (!global.Set) {
 						block = block[0];
 					}
 
-					if (block.hasOwnProperty(keyView) && block[keyView]) {
+					if (block.hasOwnProperty(KEY_VIEW) && block[KEY_VIEW]) {
 						throw new TypeError(
 							'Element is already used as ' + (
-								block.hasOwnProperty(keyViewElementName) && block[keyViewElementName] ?
+								block.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) && block[KEY_VIEW_ELEMENT_NAME] ?
 									'an element' : 'a block'
 							) + ' of view'
 						);
@@ -4643,7 +4621,7 @@ if (!global.Set) {
 				}
 
 				this.block = $(block);
-				block[keyView] = this;
+				block[KEY_VIEW] = this;
 
 				if (rendered) {
 					var view = this;
@@ -4683,7 +4661,7 @@ if (!global.Set) {
 									var childBlock = blockDict[child._id];
 
 									child.block = $(childBlock);
-									childBlock[keyView] = child;
+									childBlock[KEY_VIEW] = child;
 
 									_(child);
 								}
@@ -5018,7 +4996,7 @@ if (!global.Set) {
 
 				if (initSimilarDescendantElements(this, this.blockName, name)) {
 					els = els.filter(function() {
-						return !this.hasOwnProperty(keyView) || !this[keyView];
+						return !this.hasOwnProperty(KEY_VIEW) || !this[KEY_VIEW];
 					});
 				}
 
@@ -5043,12 +5021,12 @@ if (!global.Set) {
 								outer.firstChild :
 								outer;
 						} else {
-							if (el.hasOwnProperty(keyView) && el[keyView]) {
-								if (!el.hasOwnProperty(keyViewElementName) || !el[keyViewElementName]) {
+							if (el.hasOwnProperty(KEY_VIEW) && el[KEY_VIEW]) {
+								if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME]) {
 									throw new TypeError('Element is already used as a block of view');
 								}
 
-								if (el[keyView] != this || el[keyViewElementName] != name) {
+								if (el[KEY_VIEW] != this || el[KEY_VIEW_ELEMENT_NAME] != name) {
 									throw new TypeError('Element is already used as an element of view');
 								}
 
@@ -5079,8 +5057,8 @@ if (!global.Set) {
 						}
 					}
 
-					el[keyView] = this;
-					el[keyViewElementName] = name;
+					el[KEY_VIEW] = this;
+					el[KEY_VIEW_ELEMENT_NAME] = name;
 
 					els.push(el);
 				} while (++i < argCount);
@@ -5184,7 +5162,7 @@ if (!global.Set) {
 								return inner.call(this, evt);
 							}
 						};
-						outer[keyListenerInner] = inner;
+						outer[KEY_INNER] = inner;
 
 						listener = outer;
 					}
@@ -5198,7 +5176,7 @@ if (!global.Set) {
 							return inner.call(this, evt);
 						}
 					};
-					outer[keyListenerInner] = inner;
+					outer[KEY_INNER] = inner;
 
 					listener = outer;
 				}
@@ -5212,7 +5190,7 @@ if (!global.Set) {
 				type,
 				listener,
 				context,
-				(cl ? (cl === '*' ? '' : getUID(cl)) : '0') + getHash(meta)
+				(cl ? (cl === '*' ? '' : getUID(cl)) : '0') + getStamp(meta)
 			);
 		},
 
@@ -5241,7 +5219,7 @@ if (!global.Set) {
 				type,
 				listener,
 				context,
-				(cl ? (cl === '*' ? '' : getUID(cl)) : '0') + getHash(meta)
+				(cl ? (cl === '*' ? '' : getUID(cl)) : '0') + getStamp(meta)
 			);
 		},
 
@@ -5277,7 +5255,7 @@ if (!global.Set) {
 			}
 
 			if (isClient) {
-				block[keyView] = null;
+				block[KEY_VIEW] = null;
 			}
 
 			BaseView.$super.dispose.call(this);
@@ -5489,7 +5467,7 @@ if (!global.Set) {
 
 					state: route.properties.reduce(function(state, prop, index) {
 						state[prop.name] = prop.type == 1 ?
-							Boolean(match[index + 1]) :
+							!!match[index + 1] :
 							tryStringAsNumber(decodeURIComponent(match[index + 1]));
 
 						return state;

@@ -13,8 +13,8 @@
 	 */
 	var nextTick;
 
-	if (global.process && global.process.nextTick) {
-		nextTick = global.process.nextTick;
+	if (global.process && process.nextTick) {
+		nextTick = process.nextTick;
 	} else if (global.setImmediate) {
 		nextTick = function(cb) {
 			setImmediate(cb);

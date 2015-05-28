@@ -2,32 +2,6 @@
 
 	var Event = rt.Event;
 
-	var keyUsed = '_emt-used';
-
-	/**
-	 * @private
-	 *
-	 * @param {Function} method
-	 * @returns {Function}
-	 */
-	function wrapOnOff(method) {
-		return function _(type, listener, context) {
-			if (typeof type == 'object') {
-				context = listener;
-
-				var types = type;
-
-				for (type in types) {
-					_.call(this, type, types[type], context);
-				}
-			} else {
-				method.call(this, type, listener, context);
-			}
-
-			return this;
-		};
-	}
-
 	/**
 	 * @class Rift.EventEmitter
 	 * @extends {Object}
@@ -50,10 +24,26 @@
 		/**
 		 * @param {string} type
 		 * @param {Function} listener
-		 * @param {Object} [context=this]
+		 * @param {Object} [context]
 		 * @returns {Rift.EventEmitter}
 		 */
-		on: wrapOnOff(function(type, listener, context) {
+		on: function(type, listener, context) {
+			if (typeof type == 'object') {
+				context = listener;
+
+				var types = type;
+
+				for (type in types) {
+					this._on(type, types[type], context);
+				}
+			} else {
+				this._on(type, listener, context);
+			}
+
+			return this;
+		},
+
+		_on: function(type, listener, context) {
 			var events = (this._events || (this._events = new Map())).get(type);
 
 			if (!events) {
@@ -65,15 +55,33 @@
 				listener: listener,
 				context: context || this
 			});
-		}),
+		},
 
 		/**
 		 * @param {string} type
 		 * @param {Function} listener
-		 * @param {Object} [context=this]
+		 * @param {Object} [context]
 		 * @returns {Rift.EventEmitter}
 		 */
-		off: wrapOnOff(function(type, listener, context) {
+		off: function(type, listener, context) {
+			if (type === undefined) {
+				this._events = null;
+			} else if (typeof type == 'object') {
+				context = listener;
+
+				var types = type;
+
+				for (type in types) {
+					this._off(type, types[type], context);
+				}
+			} else {
+				this._off(type, listener, context);
+			}
+
+			return this;
+		},
+
+		_off: function(type, listener, context) {
 			var events = this._events || (this._events = new Map()).get(type);
 
 			if (!events) {
@@ -85,35 +93,35 @@
 			}
 
 			for (var i = events.length; i;) {
-				var evt = events[--i];
+				if (events[--i].context == context) {
+					var lst = events[i].listener;
 
-				if (evt.context == context && (
-					evt.listener == listener ||
-						(evt.listener.hasOwnProperty(keyListenerInner) && evt.listener[keyListenerInner] == listener)
-				)) {
-					events.splice(i, 1);
+					if (lst == listener || (lst.hasOwnProperty(KEY_INNER) && lst[KEY_INNER] == listener)) {
+						events.splice(i, 1);
+						break;
+					}
 				}
 			}
 
 			if (!events.length) {
 				this._events.delete(type);
 			}
-		}),
+		},
 
 		/**
 		 * @param {string} type
 		 * @param {Function} listener
-		 * @param {Object} [context=this]
+		 * @param {Object} [context]
 		 * @returns {Rift.EventEmitter}
 		 */
 		once: function(type, listener, context) {
 			function outer() {
-				this.off(type, outer);
+				this._off(type, outer, context);
 				listener.apply(this, arguments);
 			}
-			outer[keyListenerInner] = listener;
+			outer[KEY_INNER] = listener;
 
-			return this.on(type, outer, context);
+			return this._on(type, outer, context);
 		},
 
 		/**
@@ -124,11 +132,11 @@
 		emit: function(evt, detail) {
 			if (typeof evt == 'string') {
 				evt = new Event(evt);
-			} else if (evt.hasOwnProperty(keyUsed)) {
+			} else if (evt.hasOwnProperty(KEY_USED)) {
 				throw new TypeError('Attempt to use an object that is no longer usable');
 			}
 
-			evt[keyUsed] = true;
+			evt[KEY_USED] = true;
 
 			evt.target = this;
 			evt.timestamp = Date.now();
@@ -166,7 +174,7 @@
 
 					try {
 						if (events[i].listener.call(events[i].context, evt) === false) {
-							evt.isPropagationStopped = true;
+							evt.stopPropagation();
 						}
 					} catch (err) {
 						this._logError(err);

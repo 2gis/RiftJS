@@ -97,7 +97,7 @@
 		},
 
 		checked: function(el, value) {
-			value = Boolean(value);
+			value = !!value;
 
 			if (el.checked != value) {
 				el.checked = value;
@@ -127,7 +127,6 @@
 			'(?:\\([^)]*\\))?:\\s*\\S|$))',
 		'g'
 	);
-	var keyDataCells = '_rt-dataCells';
 
 	/**
 	 * Привязывает элемент к активным свойствам по атрибуту `rt-bind`.
@@ -141,11 +140,11 @@
 	 * @returns {Array<Rift.DataCell>}
 	 */
 	function bindElement(el, context, opts) {
-		if (el.hasOwnProperty(keyDataCells) && el[keyDataCells]) {
-			return el[keyDataCells];
+		if (el.hasOwnProperty(KEY_DATA_CELLS) && el[KEY_DATA_CELLS]) {
+			return el[KEY_DATA_CELLS];
 		}
 
-		var dcs = el[keyDataCells] = [];
+		var dcs = el[KEY_DATA_CELLS] = [];
 
 		if (el.hasAttribute('rt-bind')) {
 			var applyValues = !opts || opts.applyValues !== false;
@@ -176,15 +175,15 @@
 	 * @param {HTMLElement} el
 	 */
 	function unbindElement(el) {
-		if (el.hasOwnProperty(keyDataCells)) {
-			var dcs = el[keyDataCells];
+		if (el.hasOwnProperty(KEY_DATA_CELLS)) {
+			var dcs = el[KEY_DATA_CELLS];
 
 			if (dcs) {
 				for (var i = dcs.length; i;) {
 					dcs[--i].dispose();
 				}
 
-				el[keyDataCells] = null;
+				el[KEY_DATA_CELLS] = null;
 			}
 		}
 	}

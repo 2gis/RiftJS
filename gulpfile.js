@@ -1,1 +1,1 @@
-require('require-dir')('./gulp/tasks');
+require('require-dir')('./build/tasks');

@@ -31,17 +31,7 @@
 		'semi-spacing': 0
 	},
 	globals: {
-		global: true,
-		svz: true,
-		isEmpty: true,
-		hasOwn: true,
-		slice: true,
-		rt: true,
-		isServer: true,
-		isClient: true,
-		logError: true,
-		$: true,
-		keyListenerInner: true
+		//
 	},
 	env: {
 		node: true,

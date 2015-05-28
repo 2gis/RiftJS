@@ -103,7 +103,7 @@
 
 					state: route.properties.reduce(function(state, prop, index) {
 						state[prop.name] = prop.type == 1 ?
-							Boolean(match[index + 1]) :
+							!!match[index + 1] :
 							tryStringAsNumber(decodeURIComponent(match[index + 1]));
 
 						return state;

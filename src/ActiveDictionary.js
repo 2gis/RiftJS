@@ -8,54 +8,48 @@
 	 *
 	 * @param {?(Object|Rift.ActiveDictionary|undefined)} [data]
 	 * @param {Object|boolean} [opts]
-	 * @param {boolean} [opts.handleItemChanges=false]
+	 * @param {boolean} [opts.adoptItemChanges=false]
 	 */
 	var ActiveDictionary = EventEmitter.extend('Rift.ActiveDictionary', /** @lends Rift.ActiveDictionary# */{
-		_inner: null,
+		_data: null,
 		_valueCounts: null,
 
-		_handleItemChanges: false,
+		_adoptItemChanges: false,
 
 		constructor: function(data, opts) {
 			EventEmitter.call(this);
 
-			this._inner = new Map();
-			this._valueCounts = new Map();
-
-			if (typeof opts == 'boolean') {
-				opts = { handleItemChanges: opts };
-			} else if (!opts) {
-				opts = {};
-			}
-
-			if (opts.handleItemChanges) {
-				this._handleItemChanges = true;
-			}
+			var thisData = new Map();
+			var valueCounts = new Map();
+			var adoptItemChanges = typeof opts == 'boolean' ? opts : !!opts && opts.adoptItemChanges;
 
 			if (data) {
 				if (data instanceof ActiveDictionary) {
-					data = data._inner;
+					data = data._data;
 				}
-
-				var inner = this._inner;
-				var valueCounts = this._valueCounts;
-				var handleItemChanges = this._handleItemChanges;
 
 				for (var name in data) {
 					var value = data[name];
 
-					inner.set(name, value);
+					thisData.set(name, value);
 
 					if (valueCounts.has(value)) {
 						valueCounts.set(value, valueCounts.get(value) + 1);
 					} else {
 						valueCounts.set(value, 1);
 
-						if (handleItemChanges && value instanceof EventEmitter) {
+						if (adoptItemChanges && value instanceof EventEmitter) {
 							value.on('change', this._onItemChange, this);
 						}
 					}
 				}
+			}
+
+			this._data = thisData;
+			this._valueCounts = valueCounts;
+
+			if (adoptItemChanges) {
+				this._adoptItemChanges = true;
 			}
 		},
 
@@ -75,7 +69,7 @@
 		 * @returns {boolean}
 		 */
 		has: function(name) {
-			return this._inner.has(name);
+			return this._data.has(name);
 		},
 
 		/**
@@ -85,7 +79,7 @@
 		 * @returns {*}
 		 */
 		get: function(name) {
-			return this._inner.get(name);
+			return this._data.get(name);
 		},
 
 		/**
@@ -105,9 +99,9 @@
 				values = name;
 			}
 
-			var inner = this._inner;
+			var data = this._data;
 			var valueCounts = this._valueCounts;
-			var handleItemChanges = this._handleItemChanges;
+			var adoptItemChanges = this._adoptItemChanges;
 			var changed = false;
 			var removedValueSet = new Set();
 			var removedValues = [];
@@ -118,8 +112,8 @@
 			};
 
 			for (name in values) {
-				var hasName = inner.has(name);
-				var oldValue = inner.get(name);
+				var hasName = data.has(name);
+				var oldValue = data.get(name);
 				var val = values[name];
 
 				if (!hasName || !svz(oldValue, val)) {
@@ -133,7 +127,7 @@
 						} else {
 							valueCounts.delete(oldValue);
 
-							if (handleItemChanges && oldValue instanceof EventEmitter) {
+							if (adoptItemChanges && oldValue instanceof EventEmitter) {
 								oldValue.off('change', this._onItemChange);
 							}
 
@@ -146,7 +140,7 @@
 					} else {
 						valueCounts.set(val, 1);
 
-						if (handleItemChanges && val instanceof EventEmitter) {
+						if (adoptItemChanges && val instanceof EventEmitter) {
 							val.on('change', this._onItemChange, this);
 						}
 
@@ -161,7 +155,7 @@
 						value: val
 					};
 
-					inner.set(name, val);
+					data.set(name, val);
 				}
 			}
 
@@ -183,9 +177,9 @@
 		 * @returns {Rift.ActiveDictionary}
 		 */
 		delete: function() {
-			var inner = this._inner;
+			var data = this._data;
 			var valueCounts = this._valueCounts;
-			var handleItemChanges = this._handleItemChanges;
+			var adoptItemChanges = this._adoptItemChanges;
 			var changed = false;
 			var removedValues = [];
 			var diff = {
@@ -196,13 +190,13 @@
 			for (var i = 0, l = arguments.length; i < l; i++) {
 				var name = arguments[i];
 
-				if (!inner.has(name)) {
+				if (!data.has(name)) {
 					continue;
 				}
 
 				changed = true;
 
-				var value = inner.get(name);
+				var value = data.get(name);
 				var valueCount = valueCounts.get(value) - 1;
 
 				if (valueCount) {
@@ -210,7 +204,7 @@
 				} else {
 					valueCounts.delete(value);
 
-					if (handleItemChanges && value instanceof EventEmitter) {
+					if (adoptItemChanges && value instanceof EventEmitter) {
 						value.off('change', this._onItemChange);
 					}
 
@@ -223,7 +217,7 @@
 					value: undefined
 				};
 
-				inner.delete(name);
+				data.delete(name);
 			}
 
 			if (changed) {
@@ -247,7 +241,7 @@
 		 * @returns {Rift.ActiveDictionary}
 		 */
 		clone: function() {
-			return new this.constructor(this, { handleItemChanges: this._handleItemChanges });
+			return new this.constructor(this, { adoptItemChanges: this._adoptItemChanges });
 		},
 
 		/**
@@ -258,7 +252,7 @@
 		toObject: function() {
 			var obj = {};
 
-			this._inner.forEach(function(value, name) {
+			this._data.forEach(function(value, name) {
 				obj[name] = value;
 			});
 
@@ -270,12 +264,12 @@
 		 * @param {Object} opts
 		 */
 		collectDumpObject: function(data, opts) {
-			this._inner.forEach(function(value, name) {
+			this._data.forEach(function(value, name) {
 				data[name] = value;
 			});
 
-			if (this._handleItemChanges) {
-				opts.handleItemChanges = true;
+			if (this._adoptItemChanges) {
+				opts.adoptItemChanges = true;
 			}
 		},
 
@@ -290,7 +284,7 @@
 		 * Уничтожает инстанс освобождая занятые им ресурсы.
 		 */
 		dispose: function() {
-			if (this._handleItemChanges) {
+			if (this._adoptItemChanges) {
 				var onItemChange = this._onItemChange;
 
 				this._valueCounts.forEach(function(value) {

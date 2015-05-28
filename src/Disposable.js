@@ -1,7 +1,7 @@
 (function() {
 
 	var getUID = rt.object.getUID;
-	var getHash = rt.value.getHash;
+	var getStamp = rt.value.getStamp;
 	var EventEmitter = rt.EventEmitter;
 	var ActiveProperty = rt.ActiveProperty;
 	var autoBind = rt.ActiveProperty.autoBind;
@@ -94,7 +94,7 @@
 		 * @param {Rift.EventEmitter|EventTarget} target
 		 * @param {string} type
 		 * @param {Function} listener
-		 * @param {Object|undefined} [context=this]
+		 * @param {Object|undefined} [context]
 		 * @param {*} [meta]
 		 * @returns {Rift.Disposable}
 		 */
@@ -112,8 +112,8 @@
 
 			var listening = this._listening || (this._listening = new Map());
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(listener.hasOwnProperty(keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
-				getUID(context) + '-' + (meta !== undefined ? getHash(meta) : '');
+				getUID(listener.hasOwnProperty(KEY_INNER) ? listener[KEY_INNER] : listener) + '-' +
+				getUID(context) + '-' + (meta !== undefined ? getStamp(meta) : '');
 
 			if (listening.has(id)) {
 				return;
@@ -146,7 +146,7 @@
 		 * @param {Rift.EventEmitter|EventTarget} target
 		 * @param {string} type
 		 * @param {Function} listener
-		 * @param {Object|undefined} [context=this]
+		 * @param {Object|undefined} [context]
 		 * @param {*} [meta]
 		 * @returns {Rift.Disposable}
 		 */
@@ -169,8 +169,8 @@
 			}
 
 			var id = getUID(target) + '-' + type + '-' +
-				getUID(listener.hasOwnProperty(keyListenerInner) ? listener[keyListenerInner] : listener) + '-' +
-				getUID(context) + '-' + (meta !== undefined ? getHash(meta) : '');
+				getUID(listener.hasOwnProperty(KEY_INNER) ? listener[KEY_INNER] : listener) + '-' +
+				getUID(context) + '-' + (meta !== undefined ? getStamp(meta) : '');
 
 			if (listening.has(id)) {
 				removeListener(listening.get(id));

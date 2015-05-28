@@ -9,7 +9,6 @@
 	var slice = arrayProto.slice;
 	var splice = arrayProto.splice;
 	var map = arrayProto.map;
-	var reduce = arrayProto.reduce;
 
 	/**
 	 * @private
@@ -20,7 +19,7 @@
 	 */
 	function addValues(arr, values) {
 		var valueCounts = arr._valueCounts;
-		var handleItemChanges = arr._handleItemChanges;
+		var adoptItemChanges = arr._adoptItemChanges;
 		var addedValues = [];
 
 		for (var i = 0, l = values.length; i < l; i++) {
@@ -31,7 +30,7 @@
 			} else {
 				valueCounts.set(value, 1);
 
-				if (handleItemChanges && value instanceof EventEmitter) {
+				if (adoptItemChanges && value instanceof EventEmitter) {
 					value.on('change', arr._onItemChange, arr);
 				}
 
@@ -57,7 +56,7 @@
 		} else {
 			arr._valueCounts.delete(value);
 
-			if (arr._handleItemChanges && value instanceof EventEmitter) {
+			if (arr._adoptItemChanges && value instanceof EventEmitter) {
 				value.off('change', arr._onItemChange);
 			}
 
@@ -73,51 +72,48 @@
 	 *
 	 * @param {?(Array|Rift.ActiveArray|undefined)} [data]
 	 * @param {Object|boolean} [opts]
-	 * @param {boolean} [opts.handleItemChanges=false]
+	 * @param {boolean} [opts.adoptItemChanges=false]
 	 */
 	var ActiveArray = EventEmitter.extend('Rift.ActiveArray', /** @lends Rift.ActiveArray# */{
-		_inner: null,
+		_data: null,
 		_valueCounts: null,
 
-		_handleItemChanges: false,
+		_adoptItemChanges: false,
 
 		constructor: function(data, opts) {
 			EventEmitter.call(this);
 
-			this._valueCounts = new Map();
-
-			if (typeof opts == 'boolean') {
-				opts = { handleItemChanges: opts };
-			} else if (!opts) {
-				opts = {};
-			}
-
-			if (opts.handleItemChanges) {
-				this._handleItemChanges = true;
-			}
+			var thisData;
+			var valueCounts = new Map();
+			var adoptItemChanges = typeof opts == 'boolean' ? opts : !!opts && opts.adoptItemChanges;
 
 			if (data) {
-				var inner = this._inner = (data instanceof ActiveArray ? data._inner : data).slice(0);
-				var valueCounts = this._valueCounts;
-				var handleItemChanges = this._handleItemChanges;
+				thisData = (data instanceof ActiveArray ? data._data : data).slice(0);
 
-				for (var i = inner.length; i;) {
-					if (--i in inner) {
-						var value = inner[i];
+				for (var i = thisData.length; i;) {
+					if (--i in thisData) {
+						var value = thisData[i];
 
 						if (valueCounts.has(value)) {
 							valueCounts.set(value, valueCounts.get(value) + 1);
 						} else {
 							valueCounts.set(value, 1);
 
-							if (handleItemChanges && value instanceof EventEmitter) {
+							if (adoptItemChanges && value instanceof EventEmitter) {
 								value.on('change', this._onItemChange, this);
 							}
 						}
 					}
 				}
 			} else {
-				this._inner = [];
+				thisData = [];
+			}
+
+			this._data = thisData;
+			this._valueCounts = valueCounts;
+
+			if (adoptItemChanges) {
+				this._adoptItemChanges = adoptItemChanges;
 			}
 		},
 
@@ -137,7 +133,7 @@
 		 * @returns {*}
 		 */
 		get: function(index) {
-			return this._inner[index];
+			return this._data[index];
 		},
 
 		/**
@@ -148,9 +144,9 @@
 		 * @returns {Rift.ActiveArray}
 		 */
 		set: function(index, value) {
-			var inner = this._inner;
-			var hasIndex = index in inner;
-			var oldValue = inner[index];
+			var data = this._data;
+			var hasIndex = index in data;
+			var oldValue = data[index];
 
 			if (!hasIndex || !svz(oldValue, value)) {
 				var valueCounts = this._valueCounts;
@@ -165,7 +161,7 @@
 					} else {
 						valueCounts.delete(oldValue);
 
-						if (this._handleItemChanges && oldValue instanceof EventEmitter) {
+						if (this._adoptItemChanges && oldValue instanceof EventEmitter) {
 							oldValue.off('change', this._onItemChange);
 						}
 
@@ -178,14 +174,14 @@
 				} else {
 					valueCounts.set(value, 1);
 
-					if (this._handleItemChanges && value instanceof EventEmitter) {
+					if (this._adoptItemChanges && value instanceof EventEmitter) {
 						value.on('change', this._onItemChange, this);
 					}
 
 					addedValues = [value];
 				}
 
-				inner[index] = value;
+				data[index] = value;
 
 				this.emit('change', {
 					diff: {
@@ -205,19 +201,19 @@
 		 * @returns {Rift.ActiveArray}
 		 */
 		delete: function() {
-			var inner = this._inner;
+			var data = this._data;
 			var valueCounts = this._valueCounts;
-			var handleItemChanges = this._handleItemChanges;
+			var adoptItemChanges = this._adoptItemChanges;
 			var changed = false;
 			var removedValues = [];
 
 			for (var i = 0, l = arguments.length; i < l; i++) {
 				var index = arguments[i];
 
-				if (index in inner) {
+				if (index in data) {
 					changed = true;
 
-					var value = inner[index];
+					var value = data[index];
 					var valueCount = valueCounts.get(value) - 1;
 
 					if (valueCount) {
@@ -225,14 +221,14 @@
 					} else {
 						valueCounts.delete(value);
 
-						if (handleItemChanges && value instanceof EventEmitter) {
+						if (adoptItemChanges && value instanceof EventEmitter) {
 							value.off('change', this._onItemChange);
 						}
 
 						removedValues.push(value);
 					}
 
-					delete inner[index];
+					delete data[index];
 				}
 			}
 
@@ -255,11 +251,11 @@
 		 * @writable
 		 */
 		get length() {
-			return this._inner.length;
+			return this._data.length;
 		},
 		set length(len) {
-			var inner = this._inner;
-			var oldLen = inner.length;
+			var data = this._data;
+			var oldLen = data.length;
 
 			if (oldLen != len) {
 				var changed = false;
@@ -267,14 +263,14 @@
 
 				if (len < oldLen) {
 					var valueCounts = this._valueCounts;
-					var handleItemChanges = this._handleItemChanges;
+					var adoptItemChanges = this._adoptItemChanges;
 					var i = len;
 
 					do {
-						if (i in inner) {
+						if (i in data) {
 							changed = true;
 
-							var value = inner[i];
+							var value = data[i];
 							var valueCount = valueCounts.get(value) - 1;
 
 							if (valueCount) {
@@ -282,7 +278,7 @@
 							} else {
 								valueCounts.delete(value);
 
-								if (handleItemChanges && value instanceof EventEmitter) {
+								if (adoptItemChanges && value instanceof EventEmitter) {
 									value.off('change', this._onItemChange);
 								}
 
@@ -292,7 +288,7 @@
 					} while (++i < oldLen);
 				}
 
-				inner.length = len;
+				data.length = len;
 
 				if (changed) {
 					this.emit('change', {
@@ -319,7 +315,7 @@
 		 * @returns {int}
 		 */
 		indexOf: function(value, fromIndex) {
-			return this._inner.indexOf(value, fromIndex);
+			return this._data.indexOf(value, fromIndex);
 		},
 
 		/**
@@ -328,7 +324,7 @@
 		 * @returns {int}
 		 */
 		lastIndexOf: function(value, fromIndex) {
-			return this._inner.lastIndexOf(value, fromIndex);
+			return this._data.lastIndexOf(value, fromIndex);
 		},
 
 		/**
@@ -339,10 +335,10 @@
 		 */
 		push: function() {
 			if (!arguments.length) {
-				return this._inner.length;
+				return this._data.length;
 			}
 
-			push.apply(this._inner, arguments);
+			push.apply(this._data, arguments);
 
 			this.emit('change', {
 				diff: {
@@ -351,27 +347,7 @@
 				}
 			});
 
-			return this._inner.length;
-		},
-
-		/**
-		 * Добавляет один или более элементов в конец массива и возвращает новую длину массива.
-		 * Элементы, уже присутствующие в массиве, добавлены не будут. Повторяющиеся элементы, отсутствующие в массиве,
-		 * будут добавлены один раз.
-		 *
-		 * @param {...*} values - Элементы, добавляемые в конец массива.
-		 * @returns {int}
-		 */
-		pushUnique: function() {
-			var valueCounts = this._valueCounts;
-
-			return this.push.apply(this, reduce.call(arguments, function(values, value) {
-				if (!valueCounts.has(value) && values.indexOf(value) == -1) {
-					values.push(value);
-				}
-
-				return values;
-			}, []));
+			return this._data.length;
 		},
 
 		/**
@@ -380,24 +356,24 @@
 		 * @returns {*}
 		 */
 		shift: function() {
-			var inner = this._inner;
+			var data = this._data;
 
-			if (!inner.length) {
+			if (!data.length) {
 				return;
 			}
 
 			if (!this._valueCounts.size) {
-				inner.length--;
+				data.length--;
 				return;
 			}
 
-			var hasFirst = '0' in inner;
+			var hasFirst = '0' in data;
 			var value;
 
 			if (hasFirst) {
-				value = inner.shift();
+				value = data.shift();
 			} else {
-				inner.shift();
+				data.shift();
 			}
 
 			this.emit('change', {
@@ -429,10 +405,10 @@
 		 */
 		unshift: function() {
 			if (!arguments.length) {
-				return this._inner.length;
+				return this._data.length;
 			}
 
-			unshift.apply(this._inner, arguments);
+			unshift.apply(this._data, arguments);
 
 			this.emit('change', {
 				diff: {
@@ -441,7 +417,7 @@
 				}
 			});
 
-			return this._inner.length;
+			return this._data.length;
 		},
 
 		/**
@@ -450,18 +426,18 @@
 		 * @returns {*}
 		 */
 		pop: function() {
-			var inner = this._inner;
+			var data = this._data;
 
-			if (!inner.length) {
+			if (!data.length) {
 				return;
 			}
 
-			if (!(inner.length - 1 in inner)) {
-				inner.length--;
+			if (!(data.length - 1 in data)) {
+				data.length--;
 				return;
 			}
 
-			var value = inner.pop();
+			var value = data.pop();
 
 			this.emit('change', {
 				diff: {
@@ -480,7 +456,7 @@
 		 * @returns {string}
 		 */
 		join: function(separator) {
-			return this._inner.join(separator);
+			return this._data.join(separator);
 		},
 
 		/**
@@ -489,8 +465,8 @@
 		 */
 		concat: function() {
 			return new this.constructor(
-				concat.apply(this._inner, map.call(arguments, function(value) {
-					return value instanceof ActiveArray ? value._inner : value;
+				concat.apply(this._data, map.call(arguments, function(value) {
+					return value instanceof ActiveArray ? value._data : value;
 				}))
 			);
 		},
@@ -499,11 +475,11 @@
 		 * Создаёт поверхностную копию части массива.
 		 *
 		 * @param {int} [startIndex=0]
-		 * @param {int} [endIndex=this.length]
+		 * @param {int} [endIndex]
 		 * @returns {Array}
 		 */
 		slice: function(startIndex, endIndex) {
-			return this._inner.slice(startIndex, endIndex);
+			return this._data.slice(startIndex, endIndex);
 		},
 
 		/**
@@ -515,8 +491,8 @@
 		 * @returns {Array} - Удалённые элементы.
 		 */
 		splice: function(startIndex, deleteCount) {
-			var inner = this._inner;
-			var removedSlice = splice.apply(inner, arguments);
+			var data = this._data;
+			var removedSlice = splice.apply(data, arguments);
 			var addedSlice = slice.call(arguments, 2);
 			var removedSliceLen = removedSlice.length;
 			var addedSliceLen = addedSlice.length;
@@ -526,7 +502,7 @@
 			}
 
 			var valueCounts = this._valueCounts;
-			var handleItemChanges = this._handleItemChanges;
+			var adoptItemChanges = this._adoptItemChanges;
 			var changed = false;
 			var removedValueSet = new Set();
 			var addedValues = [];
@@ -553,7 +529,7 @@
 						} else {
 							valueCounts.delete(removedValue);
 
-							if (handleItemChanges && removedValue instanceof EventEmitter) {
+							if (adoptItemChanges && removedValue instanceof EventEmitter) {
 								removedValue.off('change', this._onItemChange);
 							}
 
@@ -567,7 +543,7 @@
 						} else {
 							valueCounts.set(addedValue, 1);
 
-							if (handleItemChanges && addedValue instanceof EventEmitter) {
+							if (adoptItemChanges && addedValue instanceof EventEmitter) {
 								addedValue.on('change', this._onItemChange, this);
 							}
 
@@ -580,8 +556,8 @@
 			}
 
 			if (!changed && removedSliceLen > addedSliceLen) {
-				for (var i = startIndex + addedSliceLen, l = inner.length; i < l; i++) {
-					if (i in inner) {
+				for (var i = startIndex + addedSliceLen, l = data.length; i < l; i++) {
+					if (i in data) {
 						changed = true;
 						break;
 					}
@@ -674,7 +650,7 @@
 		 * @returns {Rift.ActiveArray}
 		 */
 		clone: function() {
-			return new this.constructor(this, { handleItemChanges: this._handleItemChanges });
+			return new this.constructor(this, { adoptItemChanges: this._adoptItemChanges });
 		},
 
 		/**
@@ -683,7 +659,7 @@
 		 * @returns {Array}
 		 */
 		toArray: function() {
-			return this._inner.slice(0);
+			return this._data.slice(0);
 		},
 
 		/**
@@ -692,7 +668,7 @@
 		 * @returns {string}
 		 */
 		toString: function() {
-			return this._inner.toString();
+			return this._data.toString();
 		},
 
 		/**
@@ -700,16 +676,12 @@
 		 * @param {Object} opts
 		 */
 		collectDumpObject: function(data, opts) {
-			var inner = this._inner;
+			this._data.forEach(function(value, index) {
+				data[index] = value;
+			});
 
-			for (var i = inner.length; i;) {
-				if (--i in inner) {
-					data[i] = inner[i];
-				}
-			}
-
-			if (this._handleItemChanges) {
-				opts.handleItemChanges = true;
+			if (this._adoptItemChanges) {
+				opts.adoptItemChanges = true;
 			}
 		},
 
@@ -726,7 +698,7 @@
 		 * Уничтожает инстанс освобождая занятые им ресурсы.
 		 */
 		dispose: function() {
-			if (this._handleItemChanges) {
+			if (this._adoptItemChanges) {
 				var onItemChange = this._onItemChange;
 
 				this._valueCounts.forEach(function(value) {
@@ -740,7 +712,7 @@
 
 	['forEach', 'map', 'filter', 'every', 'some', 'reduce', 'reduceRight'].forEach(function(name) {
 		this[name] = function() {
-			return arrayProto[name].apply(this._inner, arguments);
+			return arrayProto[name].apply(this._data, arguments);
 		};
 	}, ActiveArray.prototype);
 
