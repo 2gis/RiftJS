@@ -119,7 +119,7 @@
 	 * @private
 	 *
 	 * @param {Rift#Router} router
-	 * @param {Router~Route} [preferredRoute]
+	 * @param {?Router~Route} [preferredRoute]
 	 * @returns {?{ route: Router~Route, path: string }}
 	 */
 	function tryViewState(router, preferredRoute) {

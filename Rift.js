@@ -3901,17 +3901,17 @@ if (!global.Set) {
 
 	/**
 	 * @param {string} viewClass
-	 * @param {Object} [opts]
+	 * @param {Object} [viewParams]
 	 * @returns {string}
 	 */
-	function include(viewClass, opts) {
+	function include(viewClass, viewParams) {
 		viewClass = getClassOrError(viewClass);
 
-		if (opts) {
-			opts.parent = this;
-			opts.block = null;
+		if (viewParams) {
+			viewParams.parent = this;
+			viewParams.block = null;
 		} else {
-			opts = {
+			viewParams = {
 				parent: this,
 				block: null
 			};
@@ -3921,7 +3921,7 @@ if (!global.Set) {
 		var index = childRenderings.count++;
 		var mark = childRenderings.marks[index] = '{{_' + nextUID() + '}}';
 
-		new viewClass(opts).render(function(html) {
+		new viewClass(viewParams).render(function(html) {
 			childRenderings.results[index] = html;
 
 			if (childRenderings.count == ++childRenderings.readyCount && childRenderings.onallready) {
@@ -5483,7 +5483,7 @@ if (!global.Set) {
 	 * @private
 	 *
 	 * @param {Rift#Router} router
-	 * @param {Router~Route} [preferredRoute]
+	 * @param {?Router~Route} [preferredRoute]
 	 * @returns {?{ route: Router~Route, path: string }}
 	 */
 	function tryViewState(router, preferredRoute) {
