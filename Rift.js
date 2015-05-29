@@ -5893,6 +5893,8 @@ if (!global.Set) {
 				var route = this.currentRoute = this.routes[state.routeIndex];
 				var path = this.currentPath = state.path;
 
+				this.currentState(route.state);
+
 				this.app.viewState.updateFromSerializedData(state.viewStateData);
 
 				if (route.callback) {
@@ -5908,6 +5910,7 @@ if (!global.Set) {
 				} else {
 					this.currentRoute = null;
 					this.currentPath = undefined;
+					this.currentState(undefined);
 				}
 			}
 		},
