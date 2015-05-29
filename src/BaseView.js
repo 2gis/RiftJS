@@ -484,8 +484,12 @@
 			if (params.app) {
 				this.app = params.app;
 				delete params.app;
+			} else {
+				var parent = this._parent;
 
-				this.model = this.app.model;
+				if (parent && parent.app) {
+					this.app = parent.app;
+				}
 			}
 
 			var model = params.model;
@@ -502,6 +506,12 @@
 
 				if (parent && parent.model) {
 					this.model = parent.model;
+				} else {
+					var app = this.app;
+
+					if (app && app.model) {
+						this.model = app.model;
+					}
 				}
 			}
 
@@ -519,7 +529,7 @@
 			}
 
 			if (isServer && this.onlyClient) {
-				cb(this._renderOpenTag(true) + (selfClosingTags.has(this.tagName) ? '' : '</' + this.tagName + '>'));
+				cb(this._renderOpenTag() + (selfClosingTags.has(this.tagName) ? '' : '</' + this.tagName + '>'));
 				return;
 			}
 
@@ -528,11 +538,11 @@
 			receiveData(this, function() {
 				if (selfClosingTags.has(this.tagName)) {
 					this._currentlyRendering = false;
-					cb(this._renderOpenTag(false));
+					cb(this._renderOpenTag());
 				} else {
 					this._renderInner(function(html) {
 						this._currentlyRendering = false;
-						cb(this._renderOpenTag(false) + html + '</' + this.tagName + '>');
+						cb(this._renderOpenTag() + html + '</' + this.tagName + '>');
 					});
 				}
 			});
@@ -545,22 +555,14 @@
 		 * @returns {string}
 		 */
 		_renderOpenTag: function(billet) {
-			var attribs;
+			var attrs = this.attrs;
+			var attribs = [
+				'class="' + (pushMods([this.blockName], this.mods).join(' ') + ' ' + (attrs.class || '')).trim() + '"'
+			];
 
-			if (billet) {
-				attribs = '';
-			} else {
-				var attrs = this.attrs;
-
-				attribs = [
-					'class="' +
-						(pushMods([this.blockName], this.mods).join(' ') + ' ' + (attrs.class || '')).trim() + '"'
-				];
-
-				for (var name in attrs) {
-					if (name != 'class') {
-						attribs.push(name + '="' + attrs[name] + '"');
-					}
+			for (var name in attrs) {
+				if (name != 'class') {
+					attribs.push(name + '="' + attrs[name] + '"');
 				}
 			}
 
@@ -568,7 +570,7 @@
 				' ' + attribs.join(' ') +
 				' rt-d="' + [
 					this.constructor.__class,
-					billet ? '' : this._id,
+					isServer && this.onlyClient ? '' : this._id,
 					isEmpty(this._params) ? '' : escapeHTML(stringify(this._params).slice(1, -1))
 				] + '"' +
 				(this._parent ? ' rt-p="' + this._parent._id + '"' : '') +
