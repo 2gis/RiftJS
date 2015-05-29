@@ -5447,6 +5447,7 @@ if (!global.Set) {
 	 *     properties: Array<{ type: int, name: string }>,
 	 *     requiredProperties: Array<string>,
 	 *     pathMap: Array<{ requiredProperties: Array<string>, pathPart: string|undefined, prop: string|undefined }>,
+	 *     state: string,
 	 *     callback: Function
 	 * }} Router~Route
 	 */
@@ -5592,6 +5593,8 @@ if (!global.Set) {
 			}
 		}
 
+		router.currentState(route.state);
+
 		if (route.callback) {
 			route.callback.call(router.app, path);
 		}
@@ -5636,6 +5639,11 @@ if (!global.Set) {
 		currentPath: undefined,
 
 		/**
+		 * @type {string|undefined}
+		 */
+		currentState: rt.observable(),
+
+		/**
 		 * @type {boolean}
 		 */
 		started: false,
@@ -5663,7 +5671,7 @@ if (!global.Set) {
 					route = { path: route };
 				}
 
-				this.addRoute(route.path, route.callback);
+				this.addRoute(route.path, route.state, route.callback);
 			}, this);
 
 			return this;
@@ -5671,10 +5679,11 @@ if (!global.Set) {
 
 		/**
 		 * @param {string} path
+		 * @param {string|undefined} [state]
 		 * @param {Function|undefined} [callback]
 		 * @returns {Rift.Router}
 		 */
-		addRoute: function(path, callback) {
+		addRoute: function(path, state, callback) {
 			if (this.started) {
 				throw new TypeError('Router is already started');
 			}
@@ -5786,6 +5795,7 @@ if (!global.Set) {
 				properties: props,
 				requiredProperties: requiredProps,
 				pathMap: pathMap,
+				state: state,
 				callback: callback
 			});
 
