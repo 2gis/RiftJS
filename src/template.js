@@ -7,7 +7,7 @@
 
 	/**
 	 * @param {string} viewClass
-	 * @param {Object} [viewParams]
+	 * @param {?Object} [viewParams]
 	 * @returns {string}
 	 */
 	function include(viewClass, viewParams) {

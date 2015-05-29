@@ -3460,31 +3460,35 @@ if (!global.Set) {
 				for (var i = target.length; i;) {
 					_.call(this, target[--i], type, listener, context, meta);
 				}
-			} else if (typeof target == 'function' && target.constructor == ActiveProperty) {
-				target = target('dataCell', 0);
-			} else if (typeof type == 'object') {
-				meta = context;
-				context = listener;
-
-				var types = type;
-
-				for (type in types) {
-					_.call(this, target, type, types[type], context, meta);
-				}
-			} else if (Array.isArray(listener)) {
-				var listeners = listener;
-
-				for (var i = 0, l = listeners.length; i < l; i++) {
-					_.call(this, target, type, listeners[i], context, meta);
-				}
-			} else if (typeof listener == 'object') {
-				var props = listener;
-
-				for (var name in props) {
-					_.call(this, target[name]('dataCell', 0), type, props[name], context, meta);
-				}
 			} else {
-				method.call(this, target, type, listener, context, meta);
+				if (typeof target == 'function' && target.constructor == ActiveProperty) {
+					target = target('dataCell', 0);
+				}
+
+				if (typeof type == 'object') {
+					meta = context;
+					context = listener;
+
+					var types = type;
+
+					for (type in types) {
+						_.call(this, target, type, types[type], context, meta);
+					}
+				} else if (Array.isArray(listener)) {
+					var listeners = listener;
+
+					for (var i = 0, l = listeners.length; i < l; i++) {
+						_.call(this, target, type, listeners[i], context, meta);
+					}
+				} else if (typeof listener == 'object') {
+					var props = listener;
+
+					for (var name in props) {
+						_.call(this, target[name]('dataCell', 0), type, props[name], context, meta);
+					}
+				} else {
+					method.call(this, target, type, listener, context, meta);
+				}
 			}
 
 			return this;
@@ -3901,7 +3905,7 @@ if (!global.Set) {
 
 	/**
 	 * @param {string} viewClass
-	 * @param {Object} [viewParams]
+	 * @param {?Object} [viewParams]
 	 * @returns {string}
 	 */
 	function include(viewClass, viewParams) {
