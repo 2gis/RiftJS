@@ -4,8 +4,7 @@
 	var execNamespace = rt.namespace.exec;
 	var getStamp = rt.value.getStamp;
 	var stringify = rt.value.stringify;
-	var classes = rt.Class.classes;
-	var getClassOrError = rt.Class.getOrError;
+	var extend = rt.Class.extend;
 	var Disposable = rt.Disposable;
 	var escapeHTML = rt.html.escape;
 	var bindDOM = rt.domBinding.bind;
@@ -42,6 +41,30 @@
 		'stop',
 		'use'
 	]);
+
+	var viewClasses = Object.create(null);
+
+	function getViewClassOrError(name) {
+		if (!(name in viewClasses)) {
+			throw new TypeError('ViewClass "' + name + '" is not defined');
+		}
+
+		return viewClasses[name];
+	}
+
+	function registerViewClass(name, viewClass) {
+		if (name in viewClasses) {
+			throw new TypeError('ViewClass "' + name + '" is already registered');
+		}
+
+		Object.defineProperty(viewClass, '__viewClass', {
+			value: name
+		});
+
+		viewClasses[name] = viewClass;
+
+		return viewClass;
+	}
 
 	var reNameClass = /^(.+?):(.+)$/;
 	var reViewData = /([^,]*),([^,]*),(.*)/;
@@ -209,6 +232,17 @@
 	 * @param {boolean} [params.onlyClient=false] - Рендерить только на клиенте.
 	 */
 	var BaseView = Disposable.extend(/** @lends Rift.BaseView# */{
+		static: {
+			viewClasses: viewClasses,
+
+			getViewClassOrError: getViewClassOrError,
+			registerViewClass: registerViewClass,
+
+			extend: function(name, declaration) {
+				return registerViewClass(name, extend.call(this, undefined, declaration));
+			}
+		},
+
 		_params: null,
 
 		_id: undefined,
@@ -332,7 +366,7 @@
 					viewClass = viewClass.$super.constructor;
 				}
 
-				viewClass.prototype.blockName = viewClass.__class;
+				viewClass.prototype.blockName = viewClass.__viewClass;
 			}
 
 			var block;
@@ -404,7 +438,7 @@
 					this.block
 						.find('[rt-p=' + this._id + ']')
 						.each(function() {
-							new classes[this.getAttribute('rt-d').match(reViewData)[1]]({
+							new viewClasses[this.getAttribute('rt-d').match(reViewData)[1]]({
 								parent: view,
 								block: this
 							});
@@ -569,7 +603,7 @@
 			return '<' + this.tagName +
 				' ' + attribs.join(' ') +
 				' rt-d="' + [
-					this.constructor.__class,
+					this.constructor.__viewClass,
 					isServer && this.onlyClient ? '' : this._id,
 					isEmpty(this._params) ? '' : escapeHTML(stringify(this._params).slice(1, -1))
 				] + '"' +
@@ -907,7 +941,7 @@
 			if (cl == '*') {
 				children = children.slice(0);
 			} else {
-				cl = getClassOrError(cl);
+				cl = getViewClassOrError(cl);
 
 				children = children.filter(function(child) {
 					return child instanceof cl;
@@ -931,7 +965,7 @@
 					cl = RegExp.$2;
 
 					if (cl != '*') {
-						cl = getClassOrError(cl);
+						cl = getViewClassOrError(cl);
 
 						var inner = listener;
 						var outer = function(evt) {
@@ -981,7 +1015,7 @@
 					cl = RegExp.$2;
 
 					if (cl != '*') {
-						cl = getClassOrError(cl);
+						cl = getViewClassOrError(cl);
 					}
 				} else {
 					type = evt;

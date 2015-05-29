@@ -1,7 +1,6 @@
 (function() {
 
 	var nextUID = rt.uid.next;
-	var getClassOrError = rt.Class.getOrError;
 	var ActiveDictionary = rt.ActiveDictionary;
 	var ActiveArray = rt.ActiveArray;
 
@@ -11,7 +10,7 @@
 	 * @returns {string}
 	 */
 	function include(viewClass, viewParams) {
-		viewClass = getClassOrError(viewClass);
+		viewClass = rt.BaseView.getViewClassOrError(viewClass);
 
 		if (viewParams) {
 			viewParams.parent = this;
