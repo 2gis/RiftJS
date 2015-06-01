@@ -98,7 +98,6 @@ if (!global.Map) {
 					context = global;
 				}
 
-				var entries = this._entries;
 				var entry = this._first;
 
 				while (entry) {
@@ -106,7 +105,7 @@ if (!global.Map) {
 
 					do {
 						entry = entry.next;
-					} while (entry && !(entry.keyStamp in entries));
+					} while (entry && !(entry.keyStamp in this._entries));
 				}
 			},
 

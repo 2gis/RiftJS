@@ -128,7 +128,7 @@
 							valueCounts.delete(oldValue);
 
 							if (adoptItemChanges && oldValue instanceof EventEmitter) {
-								oldValue.off('change', this._onItemChange);
+								oldValue.off('change', this._onItemChange, this);
 							}
 
 							removedValueSet.add(oldValue);
@@ -205,7 +205,7 @@
 					valueCounts.delete(value);
 
 					if (adoptItemChanges && value instanceof EventEmitter) {
-						value.off('change', this._onItemChange);
+						value.off('change', this._onItemChange, this);
 					}
 
 					removedValues.push(value);
@@ -289,9 +289,9 @@
 
 				this._valueCounts.forEach(function(value) {
 					if (value instanceof EventEmitter) {
-						value.off('change', onItemChange);
+						value.off('change', onItemChange, this);
 					}
-				});
+				}, this);
 			}
 		}
 	});

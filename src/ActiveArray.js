@@ -57,7 +57,7 @@
 			arr._valueCounts.delete(value);
 
 			if (arr._adoptItemChanges && value instanceof EventEmitter) {
-				value.off('change', arr._onItemChange);
+				value.off('change', arr._onItemChange, arr);
 			}
 
 			return [value];
@@ -162,7 +162,7 @@
 						valueCounts.delete(oldValue);
 
 						if (this._adoptItemChanges && oldValue instanceof EventEmitter) {
-							oldValue.off('change', this._onItemChange);
+							oldValue.off('change', this._onItemChange, this);
 						}
 
 						removedValues = [oldValue];
@@ -222,7 +222,7 @@
 						valueCounts.delete(value);
 
 						if (adoptItemChanges && value instanceof EventEmitter) {
-							value.off('change', this._onItemChange);
+							value.off('change', this._onItemChange, this);
 						}
 
 						removedValues.push(value);
@@ -279,7 +279,7 @@
 								valueCounts.delete(value);
 
 								if (adoptItemChanges && value instanceof EventEmitter) {
-									value.off('change', this._onItemChange);
+									value.off('change', this._onItemChange, this);
 								}
 
 								removedValues.push(value);
@@ -530,7 +530,7 @@
 							valueCounts.delete(removedValue);
 
 							if (adoptItemChanges && removedValue instanceof EventEmitter) {
-								removedValue.off('change', this._onItemChange);
+								removedValue.off('change', this._onItemChange, this);
 							}
 
 							removedValueSet.add(removedValue);
@@ -703,9 +703,9 @@
 
 				this._valueCounts.forEach(function(value) {
 					if (value instanceof EventEmitter) {
-						value.off('change', onItemChange);
+						value.off('change', onItemChange, this);
 					}
-				});
+				}, this);
 			}
 		}
 	});

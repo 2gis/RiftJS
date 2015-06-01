@@ -951,7 +951,6 @@ if (!global.Map) {
 					context = global;
 				}
 
-				var entries = this._entries;
 				var entry = this._first;
 
 				while (entry) {
@@ -959,7 +958,7 @@ if (!global.Map) {
 
 					do {
 						entry = entry.next;
-					} while (entry && !(entry.keyStamp in entries));
+					} while (entry && !(entry.keyStamp in this._entries));
 				}
 			},
 
@@ -1517,7 +1516,7 @@ if (!global.Set) {
 							valueCounts.delete(oldValue);
 
 							if (adoptItemChanges && oldValue instanceof EventEmitter) {
-								oldValue.off('change', this._onItemChange);
+								oldValue.off('change', this._onItemChange, this);
 							}
 
 							removedValueSet.add(oldValue);
@@ -1594,7 +1593,7 @@ if (!global.Set) {
 					valueCounts.delete(value);
 
 					if (adoptItemChanges && value instanceof EventEmitter) {
-						value.off('change', this._onItemChange);
+						value.off('change', this._onItemChange, this);
 					}
 
 					removedValues.push(value);
@@ -1678,9 +1677,9 @@ if (!global.Set) {
 
 				this._valueCounts.forEach(function(value) {
 					if (value instanceof EventEmitter) {
-						value.off('change', onItemChange);
+						value.off('change', onItemChange, this);
 					}
-				});
+				}, this);
 			}
 		}
 	});
@@ -1748,7 +1747,7 @@ if (!global.Set) {
 			arr._valueCounts.delete(value);
 
 			if (arr._adoptItemChanges && value instanceof EventEmitter) {
-				value.off('change', arr._onItemChange);
+				value.off('change', arr._onItemChange, arr);
 			}
 
 			return [value];
@@ -1853,7 +1852,7 @@ if (!global.Set) {
 						valueCounts.delete(oldValue);
 
 						if (this._adoptItemChanges && oldValue instanceof EventEmitter) {
-							oldValue.off('change', this._onItemChange);
+							oldValue.off('change', this._onItemChange, this);
 						}
 
 						removedValues = [oldValue];
@@ -1913,7 +1912,7 @@ if (!global.Set) {
 						valueCounts.delete(value);
 
 						if (adoptItemChanges && value instanceof EventEmitter) {
-							value.off('change', this._onItemChange);
+							value.off('change', this._onItemChange, this);
 						}
 
 						removedValues.push(value);
@@ -1970,7 +1969,7 @@ if (!global.Set) {
 								valueCounts.delete(value);
 
 								if (adoptItemChanges && value instanceof EventEmitter) {
-									value.off('change', this._onItemChange);
+									value.off('change', this._onItemChange, this);
 								}
 
 								removedValues.push(value);
@@ -2221,7 +2220,7 @@ if (!global.Set) {
 							valueCounts.delete(removedValue);
 
 							if (adoptItemChanges && removedValue instanceof EventEmitter) {
-								removedValue.off('change', this._onItemChange);
+								removedValue.off('change', this._onItemChange, this);
 							}
 
 							removedValueSet.add(removedValue);
@@ -2394,9 +2393,9 @@ if (!global.Set) {
 
 				this._valueCounts.forEach(function(value) {
 					if (value instanceof EventEmitter) {
-						value.off('change', onItemChange);
+						value.off('change', onItemChange, this);
 					}
-				});
+				}, this);
 			}
 		}
 	});
