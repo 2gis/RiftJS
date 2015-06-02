@@ -147,7 +147,7 @@
 			var value = mods[name];
 
 			if (value != null && value !== false) {
-				cls.push('__' + name + (value === true ? '' : '_' + value));
+				cls.push('_' + name + (value === true ? '' : '_' + value));
 			}
 		}
 
@@ -785,9 +785,9 @@
 		 * this.$('btnSend'); // получение элемента(ов) по имени
 		 *
 		 * @example
-		 * // создаёт новый элемент `<li class="Module_element __selected">Hi!</li>`,
+		 * // создаёт новый элемент `<li class="Module_element _selected">Hi!</li>`,
 		 * // добавляет его в коллекцию `element` и возвращает коллекцию с новым элементом
-		 * this.$('item', '<li class="__selected">Hi!</li>');
+		 * this.$('item', '<li class="_selected">Hi!</li>');
 		 *
 		 * @example
 		 * // то же, что и в предыдущем примере, но описание элемента в виде объекта

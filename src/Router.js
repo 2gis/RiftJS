@@ -529,6 +529,10 @@
 				}
 
 				el = el.parentNode;
+
+				if (!el) {
+					return;
+				}
 			}
 
 			var href = el.getAttribute('href');

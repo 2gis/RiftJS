@@ -36,7 +36,7 @@ module.exports = ExtendedUserCard;
 ```
 Этот модуль будет генерировать следующий html (`blockName` остался от родителя):
 ```html
-<div class="UserCard __extended" ... > ... </div>
+<div class="UserCard _extended" ... > ... </div>
 ```
 Стили `UserCard`-а кладутся в его директорию и не содержат никаких `.ExtendedUserCard`:
 ```css
@@ -47,14 +47,14 @@ module.exports = ExtendedUserCard;
 ```
 А в директории модуля `ExtendedUserCard` можно переопределять унаследованные стили с использованием модификатора:
 ```css
-.UserCard.__extended {
+.UserCard._extended {
 	color: red;
 	font-size: 1.2em;
 }
 ```
 При дальнейшем наследовании добавляется больше модификаторов:
 ```css
-.UserCard.__extended.__more {
+.UserCard._extended._more {
 	font-size: 1.5em;
 }
 ```
