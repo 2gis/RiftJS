@@ -676,7 +676,7 @@
 		_afterDataReceiving: emptyFn,
 
 		/**
-		 * //
+		 * @typesign (): Rift.BaseView;
 		 */
 		initClient: function() {
 			if (this.isClientInited) {
@@ -711,6 +711,8 @@
 			} catch (err) {
 				this._logError(err);
 			}
+
+			return this;
 		},
 
 		/**
@@ -928,30 +930,35 @@
 				cl = '*';
 			}
 
-			if (name == '*') {
-				children = this.children;
-			} else {
-				if (!hasOwn.call(this.children, name)) {
-					return [];
+			var descendants = [];
+
+			(function _(children) {
+				if (name != '*') {
+					if (!hasOwn.call(children, name)) {
+						return;
+					}
+
+					children = children[name];
 				}
 
-				children = this.children[name];
-			}
+				for (var i = 0, l = children.length; i < l; i++) {
+					descendants.push(children[i]);
+					_(children[i].children);
+				}
+			})(this.children);
 
-			if (cl == '*') {
-				children = children.slice(0);
-			} else {
+			if (cl != '*') {
 				cl = getViewClassOrError(cl);
 
-				children = children.filter(function(child) {
-					return child instanceof cl;
+				descendants = descendants.filter(function(descendant) {
+					return descendant instanceof cl;
 				});
 			}
 
 			var args = slice.call(arguments, 2);
 
-			return children.map(function(child) {
-				return child[method].apply(child, args);
+			return descendants.map(function(descendant) {
+				return descendant[method].apply(descendant, args);
 			});
 		},
 

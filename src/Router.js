@@ -473,10 +473,10 @@
 
 			var viewState = this.app.viewState;
 			var onViewStatePropertyChange = this._onViewStatePropertyChange;
-			var props = viewState.properties;
+			var propList = viewState.propertyList;
 
-			for (var i = props.length; i;) {
-				this.listen(viewState[props[--i]], 'change', onViewStatePropertyChange);
+			for (var i = propList.length; i;) {
+				this.listen(viewState[propList[--i]], 'change', onViewStatePropertyChange);
 			}
 		},
 

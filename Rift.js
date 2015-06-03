@@ -4903,7 +4903,7 @@ if (!global.Set) {
 		_afterDataReceiving: emptyFn,
 
 		/**
-		 * //
+		 * @typesign (): Rift.BaseView;
 		 */
 		initClient: function() {
 			if (this.isClientInited) {
@@ -4938,6 +4938,8 @@ if (!global.Set) {
 			} catch (err) {
 				this._logError(err);
 			}
+
+			return this;
 		},
 
 		/**
@@ -5155,30 +5157,35 @@ if (!global.Set) {
 				cl = '*';
 			}
 
-			if (name == '*') {
-				children = this.children;
-			} else {
-				if (!hasOwn.call(this.children, name)) {
-					return [];
+			var descendants = [];
+
+			(function _(children) {
+				if (name != '*') {
+					if (!hasOwn.call(children, name)) {
+						return;
+					}
+
+					children = children[name];
 				}
 
-				children = this.children[name];
-			}
+				for (var i = 0, l = children.length; i < l; i++) {
+					descendants.push(children[i]);
+					_(children[i].children);
+				}
+			})(this.children);
 
-			if (cl == '*') {
-				children = children.slice(0);
-			} else {
+			if (cl != '*') {
 				cl = getViewClassOrError(cl);
 
-				children = children.filter(function(child) {
-					return child instanceof cl;
+				descendants = descendants.filter(function(descendant) {
+					return descendant instanceof cl;
 				});
 			}
 
 			var args = slice.call(arguments, 2);
 
-			return children.map(function(child) {
-				return child[method].apply(child, args);
+			return descendants.map(function(descendant) {
+				return descendant[method].apply(descendant, args);
 			});
 		},
 
@@ -5321,12 +5328,12 @@ if (!global.Set) {
 		/**
 		 * @type {Array<string>}
 		 */
-		properties: null,
+		propertyList: null,
 
 		constructor: function(props) {
 			Disposable.call(this);
 
-			this.properties = Object.keys(props);
+			this.propertyList = Object.keys(props);
 
 			for (var name in props) {
 				var prop = (typeof props[name] == 'function' ? props[name] : new ActiveProperty(props[name]))
@@ -5346,17 +5353,17 @@ if (!global.Set) {
 		 * @returns {Object<string>}
 		 */
 		serializeData: function() {
-			var props = this.properties;
+			var propList = this.propertyList;
 			var data = {};
 
-			for (var i = props.length; i;) {
-				var dc = this[props[--i]]('dataCell', 0);
+			for (var i = propList.length; i;) {
+				var dc = this[propList[--i]]('dataCell', 0);
 
 				if (!dc.computable) {
 					var value = dc.value;
 
 					if (value === Object(value) ? dc.changed : dc.initialValue !== value) {
-						data[props[i]] = serialize({ v: value });
+						data[propList[i]] = serialize({ v: value });
 					}
 				}
 			}
@@ -5385,11 +5392,19 @@ if (!global.Set) {
 		 * @returns {Rift.ViewState}
 		 */
 		update: function(data) {
-			var props = this.properties;
+			var propList = this.propertyList;
+			var oldData = {};
 
-			for (var i = props.length; i;) {
-				var name = props[--i];
-				this[name](hasOwn.call(data, name) ? data[name] : this[name]('dataCell', 0).initialValue);
+			for (var i = propList.length; i;) {
+				oldData[propList[--i]] = this[propList[i]]();
+			}
+
+			for (var i = propList.length; i;) {
+				var prop = propList[--i];
+
+				if (oldData[prop] === this[prop]()) {
+					this[prop](hasOwn.call(data, prop) ? data[prop] : this[prop]('dataCell', 0).initialValue);
+				}
 			}
 
 			return this;
@@ -5875,10 +5890,10 @@ if (!global.Set) {
 
 			var viewState = this.app.viewState;
 			var onViewStatePropertyChange = this._onViewStatePropertyChange;
-			var props = viewState.properties;
+			var propList = viewState.propertyList;
 
-			for (var i = props.length; i;) {
-				this.listen(viewState[props[--i]], 'change', onViewStatePropertyChange);
+			for (var i = propList.length; i;) {
+				this.listen(viewState[propList[--i]], 'change', onViewStatePropertyChange);
 			}
 		},
 
