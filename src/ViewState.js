@@ -8,8 +8,7 @@
 	/**
 	 * @class Rift.ViewState
 	 * @extends {Rift.Disposable}
-	 *
-	 * @param {Object} props
+	 * @typesign new (props: Object): Rift.ViewState;
 	 */
 	var ViewState = Disposable.extend('Rift.ViewState', /** @lends Rift.ViewState# */{
 		/**
@@ -37,7 +36,7 @@
 		},
 
 		/**
-		 * @returns {Object<string>}
+		 * @typesign (): Object<string>;
 		 */
 		serializeData: function() {
 			var propList = this.propertyList;
@@ -59,8 +58,7 @@
 		},
 
 		/**
-		 * @param {Object<string>} data
-		 * @returns {Rift.ViewState}
+		 * @typesign (data: Object<string>): Rift.ViewState;
 		 */
 		updateFromSerializedData: function(data) {
 			var deserialized = {};
@@ -75,8 +73,7 @@
 		},
 
 		/**
-		 * @param {Object} data
-		 * @returns {Rift.ViewState}
+		 * @typesign (data: Object): Rift.ViewState;
 		 */
 		update: function(data) {
 			var propList = this.propertyList;
@@ -87,10 +84,10 @@
 			}
 
 			for (var i = propList.length; i;) {
-				var prop = propList[--i];
+				var name = propList[--i];
 
-				if (oldData[prop] === this[prop]()) {
-					this[prop](hasOwn.call(data, prop) ? data[prop] : this[prop]('dataCell', 0).initialValue);
+				if (oldData[name] === this[name]()) {
+					this[name](hasOwn.call(data, name) ? data[name] : this[name]('dataCell', 0).initialValue);
 				}
 			}
 
