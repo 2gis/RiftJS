@@ -203,9 +203,7 @@
 
 		/**
 		 * Регистрирует колбэк.
-		 *
-		 * @param {Function} cb
-		 * @returns {Function}
+		 * @typesign (cb: Function): Function;
 		 */
 		registerCallback: function(cb) {
 			var callbacks = this._callbacks || (this._callbacks = new Map());
@@ -222,7 +220,8 @@
 				}
 
 				callbacks.delete(cb);
-				cb.apply(disposable, arguments);
+
+				return cb.apply(disposable, arguments);
 			}
 
 			callbacks.set(cb, outer);
@@ -232,9 +231,7 @@
 
 		/**
 		 * Отменяет регистрацию колбэка.
-		 *
-		 * @param {Function} cb
-		 * @returns {Rift.Disposable}
+		 * @typesign (cb: Function): Rift.Disposable;
 		 */
 		unregisterCallback: function(cb) {
 			var callbacks = this._callbacks;
@@ -249,8 +246,7 @@
 
 		/**
 		 * Отменяет все колбэки.
-		 *
-		 * @returns {Rift.Disposable}
+		 * @typesign (): Rift.Disposable;
 		 */
 		unregisterAllCallbacks: function() {
 			var callbacks = this._callbacks;
