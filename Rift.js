@@ -3898,12 +3898,12 @@ if (!global.Set) {
 	var ActiveArray = rt.ActiveArray;
 
 	/**
-	 * @param {string} viewClass
-	 * @param {?Object} [viewParams]
-	 * @returns {string}
+	 * @typesign (viewClass: Function|string, viewParams?: Object): string;
 	 */
 	function include(viewClass, viewParams) {
-		viewClass = rt.BaseView.getViewClassOrError(viewClass);
+		if (typeof viewClass == 'string') {
+			viewClass = rt.BaseView.getViewClassOrError(viewClass);
+		}
 
 		if (viewParams) {
 			viewParams.parent = this;
@@ -4778,11 +4778,42 @@ if (!global.Set) {
 		},
 
 		/**
+		 * @protected
+		 *
+		 * @param {Function} [cb]
+		 * @returns {Promise|undefined}
+		 */
+		_receiveData: emptyFn,
+
+		/**
+		 * @protected
+		 */
+		_beforeDataReceiving: emptyFn,
+
+		/**
+		 * @protected
+		 */
+		_afterDataReceiving: emptyFn,
+
+		/**
+		 * @protected
+		 */
+		_beforeRendering: emptyFn,
+
+		/**
 		 * @param {Function} cb
 		 */
 		render: function(cb) {
 			if (this._currentlyRendering) {
 				throw new TypeError('Cannot run the rendering when it is in process');
+			}
+
+			if (this._beforeRendering != emptyFn) {
+				try {
+					this._beforeRendering();
+				} catch (err) {
+					this._logError(err);
+				}
 			}
 
 			if (isServer && this.onlyClient) {
@@ -4879,24 +4910,6 @@ if (!global.Set) {
 				childRenderings.onallready();
 			}
 		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Function} [cb]
-		 * @returns {Promise|undefined}
-		 */
-		_receiveData: emptyFn,
-
-		/**
-		 * @protected
-		 */
-		_beforeDataReceiving: emptyFn,
-
-		/**
-		 * @protected
-		 */
-		_afterDataReceiving: emptyFn,
 
 		/**
 		 * @typesign (): Rift.BaseView;

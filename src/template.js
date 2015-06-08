@@ -5,12 +5,12 @@
 	var ActiveArray = rt.ActiveArray;
 
 	/**
-	 * @param {string} viewClass
-	 * @param {?Object} [viewParams]
-	 * @returns {string}
+	 * @typesign (viewClass: Function|string, viewParams?: Object): string;
 	 */
 	function include(viewClass, viewParams) {
-		viewClass = rt.BaseView.getViewClassOrError(viewClass);
+		if (typeof viewClass == 'string') {
+			viewClass = rt.BaseView.getViewClassOrError(viewClass);
+		}
 
 		if (viewParams) {
 			viewParams.parent = this;
