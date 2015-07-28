@@ -1,26 +1,17 @@
 (function() {
-
 	var mixin = rt.object.mixin;
 
-	/**
-	 * @namespace Rift.Class
-	 */
 	var Class;
 
 	/**
-	 * @property {Object<Function>}
-	 * @memberOf Rift.Class
+	 * @type {Object<Function>}
 	 */
-	var classes = Object.create(null);
+	var classes = rt.classes = Object.create(null);
 
 	/**
-	 * @function getOrError
-	 * @memberOf Rift.Class
-	 *
-	 * @param {string} name
-	 * @returns {Function}
+	 * @typesign (name: string): Function;
 	 */
-	function getClassOrError(name) {
+	function getClass(name) {
 		if (!(name in classes)) {
 			throw new TypeError('Class "' + name + '" is not defined');
 		}
@@ -28,20 +19,17 @@
 		return classes[name];
 	}
 
+	rt.getClass = getClass;
+
 	/**
-	 * @function register
-	 * @memberOf Rift.Class
-	 *
-	 * @param {string} name
-	 * @param {Function} cl
-	 * @returns {Function}
+	 * @typesign (name: string, cl: Function): Function;
 	 */
 	function registerClass(name, cl) {
 		if (name in classes) {
 			throw new TypeError('Class "' + name + '" is already registered');
 		}
 
-		Object.defineProperty(cl, '__class', {
+		Object.defineProperty(cl, '$className', {
 			value: name
 		});
 
@@ -50,15 +38,11 @@
 		return cl;
 	}
 
+	rt.registerClass = registerClass;
+
 	/**
-	 * @memberOf Rift.Class
-	 *
-	 * @this {Function} - Родительский класс.
-	 * @param {string} [name] - Внутреннее имя.
-	 * @param {Object} declaration - Объект-объявление.
-	 * @param {Object} [declaration.static] - Статические свойства.
-	 * @param {Function} [declaration.constructor] - Конструктор.
-	 * @returns {Function}
+	 * @typesign (declaration: { static?: Object, constructor?: Function }): Function;
+	 * @typesign (name?: string, declaration: { static?: Object, constructor?: Function }): Function;
 	 */
 	function extend(name, declaration) {
 		if (typeof name == 'object') {
@@ -84,11 +68,6 @@
 
 		constr.prototype = proto;
 
-		Object.defineProperty(constr, '$super', {
-			writable: true,
-			value: parent.prototype
-		});
-
 		Object.defineProperty(proto, 'constructor', {
 			configurable: true,
 			writable: true,
@@ -104,7 +83,7 @@
 			delete declaration.static;
 		}
 
-		if (constr.extend === undefined) {
+		if (!constr.extend) {
 			constr.extend = extend;
 		}
 
@@ -117,13 +96,14 @@
 		return constr;
 	}
 
+	rt.EventEmitter.extend = extend;
+
 	Class = {
 		classes: classes,
-		getOrError: getClassOrError,
+		get: getClass,
 		register: registerClass,
 		extend: extend
 	};
 
 	rt.Class = Class;
-
 })();

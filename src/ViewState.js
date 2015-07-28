@@ -1,8 +1,6 @@
 (function() {
-
 	var serialize = rt.dump.serialize;
 	var deserialize = rt.dump.deserialize;
-	var ActiveProperty = rt.ActiveProperty;
 	var Disposable = rt.Disposable;
 
 	/**
@@ -10,7 +8,7 @@
 	 * @extends {Rift.Disposable}
 	 * @typesign new (props: Object): Rift.ViewState;
 	 */
-	var ViewState = Disposable.extend('Rift.ViewState', /** @lends Rift.ViewState# */{
+	var ViewState = Disposable.extend('Rift.ViewState', {
 		/**
 		 * @type {Array<string>}
 		 */
@@ -21,54 +19,39 @@
 
 			this.propertyList = Object.keys(props);
 
-			for (var name in props) {
-				var prop = (typeof props[name] == 'function' ? props[name] : new ActiveProperty(props[name]))
-					.bind(this);
-
-				Object.defineProperty(prop, 'constructor', {
-					configurable: true,
-					writable: true,
-					value: ActiveProperty
-				});
-
-				this[name] = prop;
-			}
+			this.propertyList.forEach(function(name) {
+				this[name] = (typeof props[name] == 'function' ? props[name] : cellx(props[name])).bind(this);
+				this[name].constructor = cellx;
+			}, this);
 		},
 
 		/**
-		 * @typesign (): Object<string>;
+		 * @typesign (): Object;
 		 */
 		serializeData: function() {
-			var propList = this.propertyList;
+			var propertyList = this.propertyList;
 			var data = {};
 
-			for (var i = propList.length; i;) {
-				var dc = this[propList[--i]]('dataCell', 0);
+			for (var i = propertyList.length; i;) {
+				var cell = this[propertyList[--i]]('unwrap', 0);
 
-				if (!dc.computable) {
-					var value = dc.value;
+				if (!cell.computable) {
+					var value = cell.read();
 
-					if (value === Object(value) ? dc.changed : dc.initialValue !== value) {
-						data[propList[i]] = serialize({ v: value });
+					if (value === Object(value) ? cell.changed() : cell.initialValue !== value) {
+						data[propertyList[i]] = value;
 					}
 				}
 			}
 
-			return data;
+			return serialize(data);
 		},
 
 		/**
-		 * @typesign (data: Object<string>): Rift.ViewState;
+		 * @typesign (data: Object): Rift.ViewState;
 		 */
 		updateFromSerializedData: function(data) {
-			var deserialized = {};
-
-			for (var name in data) {
-				deserialized[name] = deserialize(data[name]).v;
-			}
-
-			this.update(deserialized);
-
+			this.update(deserialize(data));
 			return this;
 		},
 
@@ -76,18 +59,24 @@
 		 * @typesign (data: Object): Rift.ViewState;
 		 */
 		update: function(data) {
-			var propList = this.propertyList;
-			var oldData = {};
+			var propertyList = this.propertyList;
+			var name;
 
-			for (var i = propList.length; i;) {
-				oldData[propList[--i]] = this[propList[i]]();
+			for (var i = propertyList.length; i;) {
+				name = propertyList[--i];
+
+				var cell = this[name]('unwrap', 0);
+
+				if (!cell.computable) {
+					cell.write(cell.initialValue);
+				}
 			}
 
-			for (var i = propList.length; i;) {
-				var name = propList[--i];
+			for (var j = propertyList.length; j;) {
+				name = propertyList[--j];
 
-				if (oldData[name] === this[name]()) {
-					this[name](hasOwn.call(data, name) ? data[name] : this[name]('dataCell', 0).initialValue);
+				if (hasOwn.call(data, name)) {
+					this[name](data[name]);
 				}
 			}
 
@@ -96,5 +85,4 @@
 	});
 
 	rt.ViewState = ViewState;
-
 })();

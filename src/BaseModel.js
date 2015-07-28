@@ -1,50 +1,55 @@
 (function() {
-
-	var ActiveProperty = rt.ActiveProperty;
+	var bindCells = rt.bindCells;
 	var Disposable = rt.Disposable;
 
 	/**
 	 * @class Rift.BaseModel
 	 * @extends {Rift.Disposable}
 	 * @abstract
-	 *
-	 * @param {?(Object|undefined)} [data] - Начальные данные.
-	 * @param {Object} [opts]
+	 * @typesign new (data?: Object): Rift.BaseModel;
 	 */
-	var BaseModel = Disposable.extend(/** @lends Rift.BaseModel# */{
-		_options: null,
-
-		constructor: function(data, opts) {
+	var BaseModel = Disposable.extend({
+		constructor: function(data) {
 			Disposable.call(this);
 
-			this._options = opts || {};
-
-			if (data) {
-				this.setData(data);
+			if (this._initAssets) {
+				this._initAssets(data || {});
+				bindCells(this);
 			}
 		},
 
 		/**
-		 * @param {Object} data
+		 * @typesign (data: Object);
 		 */
-		setData: function(data) {
-			for (var name in data) {
-				if (typeof this[name] == 'function' && this[name].constructor == ActiveProperty) {
-					this[name](data[name]);
+		collectDumpObject: function(data) {
+			var names = Object.keys(this);
+
+			for (var i = 0, l = names.length; i < l; i++) {
+				var value = Object.getOwnPropertyDescriptor(this, names[i]).value;
+
+				if (typeof value == 'function' && value.constructor == cellx) {
+					var cell = value('unwrap', 0);
+
+					if (!cell.computed) {
+						var cellValue = cell.read();
+
+						if (cellValue === Object(cellValue) ? cell.changed() : cell.initialValue !== cellValue) {
+							data[names[i]] = cellValue;
+						}
+					}
 				}
 			}
 		},
 
 		/**
-		 * @param {Object} data
-		 * @param {Object} opts
+		 * @typesign (data: Object);
 		 */
-		collectDumpObject: function(data, opts) {
-			BaseModel.$super.collectDumpObject.call(this, data);
-			Object.assign(opts, this._options);
+		expandFromDumpObject: function(data) {
+			for (var name in data) {
+				this[name](data[name]);
+			}
 		}
 	});
 
 	rt.BaseModel = BaseModel;
-
 })();

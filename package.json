@@ -1,6 +1,6 @@
 {
   "name": "riftjs",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "description": "The experimental javascript framework",
   "main": "Rift.js",
   "scripts": {
@@ -16,34 +16,20 @@
     "url": "https://github.com/2gis/RiftJS/issues"
   },
   "homepage": "https://github.com/2gis/RiftJS",
+  "dependencies": {
+    "cellx": "^0.11.5"
+  },
   "devDependencies": {
-    "chai": "^2.3.0",
-    "del": "^1.2.0",
     "gulp": "^3.8.11",
-    "gulp-concat": "^2.5.2",
     "gulp-eslint": "^0.12.0",
+    "gulp-include": "^2.0.1",
     "gulp-jscs": "^1.6.0",
-    "gulp-jsdoc": "^0.1.4",
-    "gulp-karma": "0.0.4",
     "gulp-load-plugins": "^0.10.0",
     "gulp-plumber": "^1.0.1",
     "gulp-rename": "^1.2.2",
     "gulp-uglify": "^1.2.0",
     "gulp-util": "^3.0.4",
-    "karma": "^0.12.32",
-    "karma-chai": "^0.1.0",
-    "karma-chrome-launcher": "^0.1.7",
-    "karma-coverage": "^0.3.1",
-    "karma-firefox-launcher": "^0.1.4",
-    "karma-ie-launcher": "^0.1.5",
-    "karma-mocha": "^0.1.10",
-    "karma-mocha-reporter": "^1.0.2",
-    "karma-opera-launcher": "^0.1.0",
-    "karma-safari-launcher": "^0.1.1",
-    "karma-sinon": "^1.0.4",
-    "mocha": "^2.2.5",
     "node-notifier": "^4.2.1",
-    "require-dir": "^0.3.0",
-    "sinon": "^1.14.1"
+    "require-dir": "^0.3.0"
   }
 }

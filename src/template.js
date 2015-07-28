@@ -1,15 +1,15 @@
 (function() {
-
 	var nextUID = rt.uid.next;
-	var ActiveDictionary = rt.ActiveDictionary;
-	var ActiveArray = rt.ActiveArray;
+	var ActiveMap = rt.ActiveMap;
+	var ActiveList = rt.ActiveList;
+	var getViewClass = rt.getViewClass;
 
 	/**
 	 * @typesign (viewClass: Function|string, viewParams?: Object): string;
 	 */
 	function include(viewClass, viewParams) {
 		if (typeof viewClass == 'string') {
-			viewClass = rt.BaseView.getViewClassOrError(viewClass);
+			viewClass = getViewClass(viewClass);
 		}
 
 		if (viewParams) {
@@ -24,7 +24,7 @@
 
 		var childRenderings = this._childRenderings;
 		var index = childRenderings.count++;
-		var mark = childRenderings.marks[index] = '{{_' + nextUID() + '}}';
+		var childTrace = childRenderings.childTraces[index] = '{{' + nextUID() + '}}';
 
 		new viewClass(viewParams).render(function(html) {
 			childRenderings.results[index] = html;
@@ -34,48 +34,43 @@
 			}
 		});
 
-		return mark;
+		return childTrace;
 	}
 
 	/**
-	 * @param {Object|Array|Rift.ActiveDictionary|Rift.ActiveArray} [target]
-	 * @param {Function} cb
-	 * @param {Object} context
+	 * @typesign (obj?: Object|Array|Rift.ActiveMap|Rift.ActiveList, cb: (value, key), context: Object);
 	 */
-	function each(target, cb, context) {
-		if (!target) {
+	function each(obj, cb, context) {
+		if (!obj) {
 			return;
 		}
 
-		if (target instanceof ActiveDictionary) {
-			target = target.toObject();
-		} else if (target instanceof ActiveArray) {
-			target = target.toArray();
+		if (obj instanceof ActiveMap) {
+			obj = obj.toObject();
+		} else if (obj instanceof ActiveList) {
+			obj = obj.toArray();
 		}
 
-		if (Array.isArray(target)) {
-			for (var i = 0, l = target.length; i < l; i++) {
-				if (i in target) {
-					cb.call(context, target[i], i);
+		if (Array.isArray(obj)) {
+			for (var i = 0, l = obj.length; i < l; i++) {
+				if (i in obj) {
+					cb.call(context, obj[i], i);
 				}
 			}
 		} else {
-			for (var name in target) {
-				if (hasOwn.call(target, name)) {
-					cb.call(context, target[name], name);
+			for (var name in obj) {
+				if (hasOwn.call(obj, name)) {
+					cb.call(context, obj[name], name);
 				}
 			}
 		}
 	}
 
-	/**
-	 * @namespace Rift.template
-	 */
 	rt.template = {
 		defaults: {
 			include: include,
+			helpers: {},
 			each: each
 		}
 	};
-
 })();

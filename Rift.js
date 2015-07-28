@@ -1,6160 +1,5404 @@
 (function(undefined) {
-'use strict';
+	'use strict';
 
-var global = Function('return this;')();
+	var hasOwn = Object.prototype.hasOwnProperty;
+	var toString = Object.prototype.toString;
+	var slice = Array.prototype.slice;
+	var reduce = Array.prototype.reduce;
 
-/**
- * @namespace Rift
- */
-var rt;
+	var global = Function('return this;')();
 
-if (typeof exports != 'undefined') {
-	rt = exports;
-} else {
-	rt = global.Rift = global.rt = {};
-}
+	var rt;
 
-rt.global = global;
-
-var KEY_INNER = rt.KEY_INNER = '_rt-inner';
-var KEY_USED = rt.KEY_USED = '_rt-used';
-var KEY_DATA_CELLS = '_rt-dataCells';
-var KEY_VIEW = '_rt-view';
-var KEY_VIEW_ELEMENT_NAME = '_rt-viewElementName';
-
-var isServer = rt.isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
-var isClient = rt.isClient = !isServer;
-
-var $ = rt.$ = isClient ? global.jQuery || global.Zepto || global.ender || global.$ : undefined;
-
-var hasOwn = Object.prototype.hasOwnProperty;
-var slice = Array.prototype.slice;
-
-/**
- * @memberOf Rift
- *
- * @param {*} err
- */
-function logError(err) {
-	console.error(err === Object(err) && err.stack || err);
-}
-
-rt.logError = logError;
-
-/*!
- * https://people.mozilla.org/~jorendorff/es6-draft.html#sec-samevaluezero
- */
-function svz(a, b) {
-	return a === b || (a != a && b != b);
-}
-
-function isEmpty(obj) {
-	/* eslint-disable no-unused-vars */
-	for (var any in obj) {
-		return false;
-	}
-	/* eslint-enable no-unused-vars */
-
-	return true;
-}
-
-/*!
- * https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertySymbols
- */
-if (!Object.getOwnPropertySymbols) {
-	Object.getOwnPropertySymbols = function(obj) {
-		return [];
-	};
-}
-
-/*!
- * https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Object/assign
- */
-if (!Object.assign) {
-	Object.defineProperty(Object, 'assign', {
-		configurable: true,
-		writable: true,
-		value: function(obj, source) {
-			if (obj == null) {
-				throw new TypeError('Can\'t convert ' + obj + ' to an object');
-			}
-
-			obj = Object(obj);
-
-			for (var i = 1, l = arguments.length; i < l; i++) {
-				var src = arguments[i];
-
-				if (src == null) {
-					throw new TypeError('Can\'t convert ' + src + ' to an object');
-				}
-
-				src = Object(src);
-
-				var keys = Object.keys(src);
-
-				for (var j = 0, m = keys.length; j < m; j++) {
-					obj[keys[j]] = src[keys[j]];
-				}
-
-				var symbols = Object.getOwnPropertySymbols(src);
-
-				for (var j = 0, m = symbols.length; j < m; j++) {
-					obj[symbols[j]] = src[symbols[j]];
-				}
-			}
-
-			return obj;
-		}
-	});
-}
-
-(function() {
-
-	var uidCounter = 0;
-
-	/**
-	 * Генерирует уникальный идентификатор.
-	 *
-	 * @function next
-	 * @memberOf Rift.uid
-	 *
-	 * @example
-	 * nextUID(); // '1'
-	 * nextUID(); // '2'
-	 * nextUID(); // '3'
-	 *
-	 * @param {string} [prefix='']
-	 * @returns {string}
-	 */
-	function nextUID(prefix) {
-		if (uidCounter == 2176782335/* 'zzzzzz' */) {
-			uidCounter = 0;
-		}
-
-		return (prefix || '') + (++uidCounter).toString(36);
-	}
-
-	/**
-	 * @namespace Rift.uid
-	 */
-	rt.uid = {
-		next: nextUID
-	};
-
-})();
-
-(function() {
-
-	var nextUID = rt.uid.next;
-
-	/**
-	 * Получает уникальный идентификатор объекта.
-	 *
-	 * @function
-	 * @memberOf Rift.object
-	 *
-	 * @param {Object} obj
-	 * @param {string} [prefix]
-	 * @returns {string}
-	 */
-	var getUID;
-
-	if (typeof Symbol == 'function' && typeof Symbol.iterator == 'symbol') {
-		var uidKey = Symbol('uid');
-
-		getUID = function getUID(obj, prefix) {
-			return obj[uidKey] || (obj[uidKey] = nextUID(prefix));
-		};
+	if (typeof exports == 'object') {
+		rt = exports;
 	} else {
-		var uidKey = '_rt-uid';
+		rt = global.Rift = global.rt = {};
+	}
 
-		getUID = function getUID(obj, prefix) {
-			if (!hasOwn.call(obj, uidKey)) {
-				Object.defineProperty(obj, uidKey, {
-					value: nextUID(prefix)
+	rt.global = global;
+
+	var cellx = (function(exports, module) {
+		// gulp-include
+		(function(undefined) {
+			'use strict';
+		
+			var hasOwn = Object.prototype.hasOwnProperty;
+			var toString = Object.prototype.toString;
+			var push = Array.prototype.push;
+			var slice = Array.prototype.slice;
+			var splice = Array.prototype.splice;
+		
+			var global = Function('return this;')();
+		
+			var invokeCell;
+		
+			/**
+			 * @typesign (value?, opts?: {
+			 *     read?: (value): *,
+			 *     validate?: (value): *,
+			 *     computed?: false
+			 * }): cellx;
+			 *
+			 * @typesign (formula: (): *, opts?: {
+			 *     read?: (value): *,
+			 *     write?: (value),
+			 *     validate?: (value): *,
+			 *     computed?: true
+			 * }): cellx;
+			 */
+			function cellx(value, opts) {
+				if (!opts) {
+					opts = {};
+				}
+		
+				var initialValue = value;
+		
+				function cell(value) {
+					return invokeCell(cell, initialValue, opts, this, value, slice.call(arguments, 1), arguments.length);
+				}
+				cell.constructor = cellx;
+		
+				return cell;
+			}
+		
+			if (typeof exports == 'object') {
+				if (typeof module == 'object') {
+					module.exports = cellx;
+				} else {
+					exports.cellx = cellx;
+				}
+			} else {
+				global.cellx = cellx;
+			}
+		
+			var KEY_UID = '__cellx_uid__';
+			var KEY_INNER = '__cellx_inner__';
+			var KEY_CELLS = '__cellx_cells__';
+		
+			if (global.Symbol && typeof Symbol.iterator == 'symbol') {
+				KEY_UID = Symbol(KEY_UID);
+				KEY_INNER = Symbol(KEY_INNER);
+				KEY_CELLS = Symbol(KEY_CELLS);
+			}
+		
+			cellx.KEY_UID = KEY_UID;
+			cellx.KEY_INNER = KEY_INNER;
+			cellx.KEY_CELLS = KEY_CELLS;
+		
+			var uidCounter = 0;
+		
+			/**
+			 * @typesign (fn: Function): boolean;
+			 */
+			function isNative(fn) {
+				return fn.toString().indexOf('[native code]') != -1;
+			}
+		
+			/**
+			 * @typesign (err);
+			 */
+			var logError;
+		
+			if (global.console) {
+				if (console.error) {
+					logError = function(err) {
+						console.error(err === Object(err) && err.stack || err);
+					};
+				} else {
+					logError = function(err) {
+						console.log('!!! ' + (err === Object(err) && err.stack || err));
+					};
+				}
+			} else {
+				logError = function() {};
+			}
+		
+			cellx.logError = logError;
+		
+			/**
+			 * @typesign (child: Function, parent: Function): Function;
+			 */
+			function extend(child, parent) {
+				function F() {
+					this.constructor = child;
+				}
+				F.prototype = parent.prototype;
+		
+				child.prototype = new F();
+				return child;
+			}
+		
+			/**
+			 * @typesign (proto: Object): Object;
+			 */
+			var create = Object.create || function(proto) {
+				function F() {}
+				F.prototype = proto;
+				return new F();
+			};
+		
+			/**
+			 * @typesign (target: Object, source: Object): Object;
+			 */
+			var assign = Object.assign || function assign(target, source) {
+				for (var name in source) {
+					if (hasOwn.call(source, name)) {
+						target[name] = source[name];
+					}
+				}
+		
+				return target;
+			};
+		
+			/**
+			 * https://people.mozilla.org/~jorendorff/es6-draft.html#sec-samevaluezero
+			 * @typesign (a, b): boolean;
+			 */
+			var is = Object.is || function(a, b) {
+				return a === b || (a != a && b != b);
+			};
+		
+			/**
+			 * @typesign (value): boolean;
+			 */
+			var isArray = Array.isArray || function(value) {
+				return toString.call(value) == '[object Array]';
+			};
+		
+			// gulp-include
+			(function() {
+				var create = Object.create;
+			
+				/**
+				 * @class cellx.Dictionary
+				 * @typesign new (): cellx.Dictionary;
+				 */
+				var Dictionary;
+			
+				if (create && isNative(create)) {
+					Dictionary = function() {
+						return create(null);
+					};
+				} else {
+					// IE8
+					Dictionary = function() {
+						var iframe = document.createElement('iframe');
+						var container = document.body || document.documentElement;
+			
+						iframe.style.display = 'none';
+						container.appendChild(iframe);
+						iframe.src = 'javascript:';
+			
+						var empty = iframe.contentWindow.Object.prototype;
+			
+						container.removeChild(iframe);
+						iframe = null;
+			
+						delete empty.constructor;
+						delete empty.isPrototypeOf;
+						delete empty.hasOwnProperty;
+						delete empty.propertyIsEnumerable;
+						delete empty.valueOf;
+						delete empty.toString;
+						delete empty.toLocaleString;
+			
+						Dictionary = function() {};
+						Dictionary.prototype = empty;
+			
+						return new Dictionary();
+					};
+				}
+			
+				cellx.Dictionary = Dictionary;
+			})();
+			
+		
+			(function() {
+				var Map = global.Map;
+			
+				if (!Map) {
+					var Dictionary = cellx.Dictionary;
+			
+					var entryStub = { value: undefined };
+			
+					Map = function Map(entries) {
+						this._entries = new Dictionary();
+						this._objectStamps = {};
+			
+						this._first = null;
+						this._last = null;
+			
+						this.size = 0;
+			
+						if (entries) {
+							for (var i = 0, l = entries.length; i < l; i++) {
+								this.set(entries[i][0], entries[i][1]);
+							}
+						}
+					};
+			
+					assign(Map.prototype, {
+						has: function(key) {
+							return !!this._entries[this._getValueStamp(key)];
+						},
+			
+						get: function(key) {
+							return (this._entries[this._getValueStamp(key)] || entryStub).value;
+						},
+			
+						set: function(key, value) {
+							var entries = this._entries;
+							var keyStamp = this._getValueStamp(key);
+			
+							if (entries[keyStamp]) {
+								entries[keyStamp].value = value;
+							} else {
+								var entry = entries[keyStamp] = {
+									key: key,
+									keyStamp: keyStamp,
+									value: value,
+									prev: this._last,
+									next: null
+								};
+			
+								if (this.size++) {
+									this._last.next = entry;
+								} else {
+									this._first = entry;
+								}
+			
+								this._last = entry;
+							}
+			
+							return this;
+						},
+			
+						'delete': function(key) {
+							var keyStamp = this._getValueStamp(key);
+							var entry = this._entries[keyStamp];
+			
+							if (!entry) {
+								return false;
+							}
+			
+							if (--this.size) {
+								var prev = entry.prev;
+								var next = entry.next;
+			
+								if (prev) {
+									prev.next = next;
+								} else {
+									this._first = next;
+								}
+			
+								if (next) {
+									next.prev = prev;
+								} else {
+									this._last = prev;
+								}
+							} else {
+								this._first = null;
+								this._last = null;
+							}
+			
+							delete this._entries[keyStamp];
+							delete this._objectStamps[keyStamp];
+			
+							return true;
+						},
+			
+						clear: function() {
+							var entries = this._entries;
+			
+							for (var stamp in entries) {
+								delete entries[stamp];
+							}
+			
+							this._objectStamps = {};
+			
+							this._first = null;
+							this._last = null;
+			
+							this.size = 0;
+						},
+			
+						_getValueStamp: function(value) {
+							switch (typeof value) {
+								case 'undefined': {
+									return 'undefined';
+								}
+								case 'object': {
+									if (value === null) {
+										return 'null';
+									}
+			
+									break;
+								}
+								case 'boolean': {
+									return '?' + value;
+								}
+								case 'number': {
+									return '+' + value;
+								}
+								case 'string': {
+									return ',' + value;
+								}
+							}
+			
+							return this._getObjectStamp(value);
+						},
+			
+						_getObjectStamp: (function() {
+							// for non-extensible objects and IE8
+							function getObjectStamp(obj) {
+								var stamps = this._objectStamps;
+								var stamp;
+			
+								for (stamp in stamps) {
+									if (stamps[stamp] == obj) {
+										return stamp;
+									}
+								}
+			
+								stamp = String(++uidCounter);
+								stamps[stamp] = obj;
+								return stamp;
+							}
+			
+							if (
+								Object.defineProperty && isNative(Object.defineProperty) &&
+									Object.isExtensible && isNative(Object.isExtensible)
+							) {
+								return function(obj) {
+									if (!hasOwn.call(obj, KEY_UID)) {
+										if (!Object.isExtensible(obj)) {
+											return getObjectStamp.call(this, obj);
+										}
+			
+										Object.defineProperty(obj, KEY_UID, {
+											value: String(++uidCounter)
+										});
+									}
+			
+									return obj[KEY_UID];
+								};
+							}
+			
+							return getObjectStamp;
+						})(),
+			
+						forEach: function(cb, context) {
+							if (context == null) {
+								context = global;
+							}
+			
+							var entry = this._first;
+			
+							while (entry) {
+								cb.call(context, entry.value, entry.key, this);
+			
+								do {
+									entry = entry.next;
+								} while (entry && !this._entries[entry.keyStamp]);
+							}
+						},
+			
+						toString: function() {
+							return '[object Map]';
+						}
+					});
+			
+					var iterators = [
+						['keys', function(entry) {
+							return entry.key;
+						}],
+						['values', function(entry) {
+							return entry.value;
+						}],
+						['entries', function(entry) {
+							return [entry.key, entry.value];
+						}]
+					];
+			
+					for (var i = 0, l = iterators.length; i < l; i++) {
+						Map.prototype[iterators[i][0]] = (function(getStepValue) {
+							return function() {
+								var entries = this._entries;
+								var entry;
+								var done = false;
+								var map = this;
+			
+								return {
+									next: function() {
+										if (!done) {
+											if (entry) {
+												do {
+													entry = entry.next;
+												} while (entry && !entries[entry.keyStamp]);
+											} else {
+												entry = map._first;
+											}
+			
+											if (entry) {
+												return {
+													value: getStepValue(entry),
+													done: false
+												};
+											}
+			
+											done = true;
+										}
+			
+										return {
+											value: undefined,
+											done: true
+										};
+									}
+								};
+							};
+						})(iterators[i][1]);
+					}
+				}
+			
+				cellx.Map = Map;
+			})();
+			
+		
+			(function() {
+				/**
+				 * @example
+				 * nextTick(function() {
+				 *     console.log('nextTick');
+				 * });
+				 *
+				 * @typesign (cb: ());
+				 */
+				var nextTick;
+			
+				if (global.process && process.toString() == '[object process]' && process.nextTick) {
+					nextTick = process.nextTick;
+				} else if (global.setImmediate) {
+					nextTick = function(cb) {
+						setImmediate(cb);
+					};
+				} else if (global.Promise && isNative(Promise)) {
+					var prm = Promise.resolve();
+			
+					nextTick = function(cb) {
+						prm.then(function() {
+							cb();
+						});
+					};
+				} else if (global.postMessage && !global.ActiveXObject) {
+					var queue;
+			
+					global.addEventListener('message', function() {
+						if (queue) {
+							var q = queue;
+			
+							queue = null;
+			
+							for (var i = 0, l = q.length; i < l; i++) {
+								try {
+									q[i]();
+								} catch (err) {
+									cellx.logError(err);
+								}
+							}
+						}
+					}, false);
+			
+					nextTick = function(cb) {
+						if (queue) {
+							queue.push(cb);
+						} else {
+							queue = [cb];
+							global.postMessage('__tic__', '*');
+						}
+					};
+				} else {
+					nextTick = function(cb) {
+						setTimeout(cb, 1);
+					};
+				}
+			
+				cellx.nextTick = nextTick;
+			})();
+			
+		
+			/**
+			 * @typedef {{ target?: Object, type: string }} cellx~Event
+			 */
+			
+			(function() {
+				var Dictionary = cellx.Dictionary;
+			
+				/**
+				 * @class cellx.EventEmitter
+				 * @extends {Object}
+				 * @typesign new (): cellx.EventEmitter;
+				 */
+				function EventEmitter() {
+					/**
+					 * @type {cellx.EventEmitter}
+					 */
+					this.parent = null;
+			
+					/**
+					 * @type {cellx.Dictionary<Array<{ listener: (evt: cellx~Event): boolean|undefined, context: Object }>>}
+					 */
+					this._events = new Dictionary();
+				}
+			
+				assign(EventEmitter.prototype, {
+					/**
+					 * @typesign (
+					 *     type: string,
+					 *     listener: (evt: cellx~Event): boolean|undefined,
+					 *     context?: Object
+					 * ): cellx.EventEmitter;
+					 *
+					 * @typesign (
+					 *     listeners: Object<(evt: cellx~Event): boolean|undefined>,
+					 *     context?: Object
+					 * ): cellx.EventEmitter;
+					 */
+					on: function(type, listener, context) {
+						if (typeof type == 'object') {
+							context = listener;
+			
+							var listeners = type;
+			
+							for (type in listeners) {
+								this._on(type, listeners[type], context);
+							}
+						} else {
+							this._on(type, listener, context);
+						}
+			
+						return this;
+					},
+					/**
+					 * @typesign (
+					 *     type: string,
+					 *     listener: (evt: cellx~Event): boolean|undefined,
+					 *     context?: Object
+					 * ): cellx.EventEmitter;
+					 *
+					 * @typesign (
+					 *     listeners: Object<(evt: cellx~Event): boolean|undefined>,
+					 *     context?: Object
+					 * ): cellx.EventEmitter;
+					 *
+					 * @typesign (): cellx.EventEmitter;
+					 */
+					off: function(type, listener, context) {
+						if (type) {
+							if (typeof type == 'object') {
+								context = listener;
+			
+								var listeners = type;
+			
+								for (type in listeners) {
+									this._off(type, listeners[type], context);
+								}
+							} else {
+								this._off(type, listener, context);
+							}
+						} else if (this._events) {
+							this._events = new Dictionary();
+						}
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (
+					 *     type: string,
+					 *     listener: (evt: cellx~Event): boolean|undefined,
+					 *     context?: Object
+					 * );
+					 */
+					_on: function(type, listener, context) {
+						var events = (this._events || (this._events = new Dictionary()))[type];
+			
+						if (!events) {
+							events = this._events[type] = [];
+						}
+			
+						events.push({
+							listener: listener,
+							context: context || this
+						});
+					},
+					/**
+					 * @typesign (
+					 *     type: string,
+					 *     listener: (evt: cellx~Event): boolean|undefined,
+					 *     context?: Object
+					 * );
+					 */
+					_off: function(type, listener, context) {
+						var events = this._events && this._events[type];
+			
+						if (!events) {
+							return;
+						}
+			
+						if (!context) {
+							context = this;
+						}
+			
+						for (var i = events.length; i;) {
+							if (events[--i].context == context) {
+								var lst = events[i].listener;
+			
+								if (lst == listener || (lst.hasOwnProperty(KEY_INNER) && lst[KEY_INNER] == listener)) {
+									events.splice(i, 1);
+									break;
+								}
+							}
+						}
+			
+						if (!events.length) {
+							delete this._events[type];
+						}
+					},
+			
+					/**
+					 * @typesign (
+					 *     type: string,
+					 *     listener: (evt: cellx~Event): boolean|undefined,
+					 *     context?: Object
+					 * ): cellx.EventEmitter;
+					 */
+					once: function(type, listener, context) {
+						function wrapper() {
+							this._off(type, wrapper, context);
+							return listener.apply(this, arguments);
+						}
+						wrapper[KEY_INNER] = listener;
+			
+						this._on(type, wrapper, context);
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (evt: { type: string }): cellx~Event;
+					 * @typesign (type: string): cellx~Event;
+					 */
+					emit: function(evt) {
+						if (typeof evt == 'string') {
+							evt = {
+								target: this,
+								type: evt
+							};
+						} else if (evt.target === undefined) {
+							evt.target = this;
+						}
+			
+						this._handleEvent(evt);
+			
+						return evt;
+					},
+			
+					/**
+					 * @typesign (evt: { target: cellx.EventEmitter, type: string });
+					 */
+					_handleEvent: function(evt) {
+						var events = this._events && this._events[evt.type];
+			
+						if (events) {
+							events = events.slice();
+			
+							for (var i = 0, l = events.length; i < l; i++) {
+								try {
+									if (events[i].listener.call(events[i].context, evt) === false) {
+										evt.isPropagationStopped = true;
+									}
+								} catch (err) {
+									this._logError(err);
+								}
+							}
+						}
+			
+						if (this.parent && evt.bubbles !== false && !evt.isPropagationStopped) {
+							this.parent._handleEvent(evt);
+						}
+					},
+			
+					/**
+					 * @typesign (err);
+					 */
+					_logError: function(err) {
+						cellx.logError(err);
+					}
 				});
-			}
-
-			return obj[uidKey];
-		};
-	}
-
-	/**
-	 * @memberOf Rift.object
-	 *
-	 * @param {Object} obj
-	 * @param {Object} source
-	 * @returns {Object}
-	 */
-	function mixin(obj, source) {
-		var names = Object.getOwnPropertyNames(source);
-
-		for (var i = names.length; i;) {
-			Object.defineProperty(obj, names[--i], Object.getOwnPropertyDescriptor(source, names[i]));
-		}
-
-		return obj;
-	}
-
-	/**
-	 * @function clone
-	 * @memberOf Rift.object
-	 *
-	 * @param {Object} obj
-	 * @returns {Object}
-	 */
-	function cloneObject(obj) {
-		return mixin(Object.create(Object.getPrototypeOf(obj)), obj);
-	}
-
-	/**
-	 * @namespace Rift.object
-	 */
-	rt.object = {
-		getUID: getUID,
-		mixin: mixin,
-		clone: cloneObject
-	};
-
-})();
-
-(function() {
-
-	/**
-	 * Создаёт простанство имён или возвращает существующее.
-	 *
-	 * @function create
-	 * @memberOf Rift.namespace
-	 *
-	 * @param {string|Array} id - Имена, разделённые точкой, или массив имён.
-	 * @param {Object} [root=global]
-	 * @returns {Object}
-	 */
-	function createNamespace(id, root) {
-		if (typeof id == 'string') {
-			id = id.split('.');
-		}
-
-		var ns = root || global;
-
-		for (var i = 0, l = id.length; i < l; i++) {
-			var value = ns[id[i]];
-
-			if (value !== Object(value)) {
-				do {
-					ns = ns[id[i]] = {};
-				} while (++i < l);
-
-				break;
-			}
-
-			ns = value;
-		}
-
-		return ns;
-	}
-
-	/**
-	 * @function exec
-	 * @memberOf Rift.namespace
-	 *
-	 * @param {string} id
-	 * @param {Object} [root=global]
-	 * @returns {*}
-	 */
-	function execNamespace(id, root) {
-		return Function('return this.' + id + ';').call(root || global);
-	}
-
-	/**
-	 * @namespace Rift.namespace
-	 */
-	rt.namespace = {
-		create: createNamespace,
-		exec: execNamespace
-	};
-
-})();
-
-(function() {
-
-	var reEscapableChars = /([?+|$(){}[^.\-\]\/\\*])/g;
-
-	/**
-	 * Экранирует спецсимволы регулярного выражения.
-	 *
-	 * @function escape
-	 * @memberOf Rift.regex
-	 *
-	 * @example
-	 * var re = 'Hello?!*`~World+()[]';
-	 * re = new RegExp(escapeRegExp(re));
-	 * console.log(re);
-	 * // => /Hello\?!\*`~World\+\(\)\[\]/
-	 *
-	 * @param {string} str
-	 * @returns {string}
-	 */
-	function escapeRegExp(str) {
-		return str.replace(reEscapableChars, '\\$1');
-	}
-
-	/**
-	 * Вызывает колбэк для каждого найденого в строке совпадения.
-	 * Первым аргументом колбэк получает всё совпадение, остальными - запомненные подстроки.
-	 *
-	 * @function forEach
-	 * @memberOf Rift.regex
-	 *
-	 * @example
-	 * forEachMatch(/(\w+)\-(\d+)/g, 'a-1 b-2 c-3', function(pair, name, value) {
-	 *     console.log(name + '=' + value);
-	 * });
-	 * // => a=1
-	 * // => b=2
-	 * // => c=3
-	 *
-	 * @param {RegExp} re - Регулярное выражение.
-	 * @param {string} str - Строка, в которой будет происходить поиск совпадений.
-	 * @param {Function} cb - Колбэк, который будет вызван для каждого найденного совпадения.
-	 */
-	function forEachMatch(re, str, cb) {
-		if (re.global) {
-			re.lastIndex = 0;
-
-			for (var match; match = re.exec(str);) {
-				if (cb.apply(global, match) === false) {
-					break;
-				}
-			}
-		} else {
-			var match = re.exec(str);
-
-			if (match) {
-				cb.apply(global, match);
-			}
-		}
-	}
-
-	/**
-	 * @namespace Rift.regex
-	 */
-	rt.regex = {
-		escape: escapeRegExp,
-		forEach: forEachMatch
-	};
-
-})();
-
-(function() {
-
-	var getUID = rt.object.getUID;
-
-	/**
-	 * @memberOf Rift.value
-	 *
-	 * @param {*} value
-	 * @returns {string}
-	 */
-	function getStamp(value) {
-		switch (typeof value) {
-			case 'undefined': {
-				return 'undefined';
-			}
-			case 'object': {
-				if (value === null) {
-					return 'null';
-				}
-
-				break;
-			}
-			case 'boolean': {
-				return '?' + value;
-			}
-			case 'number': {
-				return '+' + value;
-			}
-			case 'string': {
-				return ',' + value;
-			}
-		}
-
-		return '#' + getUID(value);
-	}
-
-	var reEscapableChars = RegExp(
-		'[' +
-			'\\\\' +
-			'\'' +
-			'\\x00-\\x1f' +
-			'\\x7f-\\x9f' +
-			'\\u00ad' +
-			'\\u0600-\\u0604' +
-			'\\u070f\\u17b4\\u17b5' +
-			'\\u200c-\\u200f' +
-			'\\u2028-\\u202f' +
-			'\\u2060-\\u206f' +
-			'\\ufeff' +
-			'\\ufff0-\\uffff' +
-		']',
-		'g'
-	);
-	var conversionDict = Object.assign(Object.create(null), {
-		'\b': '\\b',
-		'\t': '\\t',
-		'\n': '\\n',
-		'\f': '\\f',
-		'\r': '\\r',
-		'\'': '\\\'',
-		'\\': '\\\\'
-	});
-
-	/**
-	 * @private
-	 *
-	 * @param {string} str
-	 * @returns {string}
-	 */
-	function escapeString(str) {
-		return str.replace(reEscapableChars, function(chr) {
-			return conversionDict[chr] || '\\u' + ('0000' + chr.charCodeAt(0).toString(16)).slice(-4);
-		});
-	}
-
-	var reUnquotableProp = /^[$_a-zA-Z][$\w]*$/;
-	var reZeros = /0+$/;
-	var reScriptTagEnd = /<\/(script\b[^>]*)>/gi;
-
-	/**
-	 * @memberOf Rift.value
-	 *
-	 * @param {*} value
-	 * @returns {string}
-	 */
-	function stringify(value) {
-		if (value === undefined) {
-			return 'void 0';
-		}
-		if (value === null) {
-			return 'null';
-		}
-
-		var type = typeof value;
-
-		if (type == 'object') {
-			var js = [];
-
-			if (Array.isArray(value)) {
-				for (var i = value.length; i;) {
-					js[--i] = i in value ? stringify(value[i]) : '';
-				}
-
-				js = '[' + js.join(',') + (js[js.length - 1] == '' ? ',]' : ']');
-			} else {
-				for (var name in value) {
-					if (hasOwn.call(value, name)) {
-						js.push(
-							(reUnquotableProp.test(name) ? name : '\'' + escapeString(name) + '\'') + ':' +
-								stringify(value[name])
-						);
+			
+				cellx.EventEmitter = EventEmitter;
+			})();
+			
+		
+			var MActiveCollection;
+			
+			(function() {
+				var EventEmitter = cellx.EventEmitter;
+			
+				MActiveCollection = {
+					/**
+					 * @typesign (evt: cellx~Event);
+					 */
+					_onItemChange: function(evt) {
+						this._handleEvent(evt);
+					},
+			
+					/**
+					 * @typesign (value);
+					 */
+					_registerValue: function(value) {
+						var valueCounts = this._valueCounts;
+						var valueCount = valueCounts.get(value);
+			
+						if (valueCount) {
+							valueCounts.set(value, valueCount + 1);
+						} else {
+							valueCounts.set(value, 1);
+			
+							if (this.adoptsItemChanges && value instanceof EventEmitter) {
+								value.on('change', this._onItemChange, this);
+							}
+						}
+					},
+			
+					/**
+					 * @typesign (value);
+					 */
+					_unregisterValue: function(value) {
+						var valueCounts = this._valueCounts;
+						var valueCount = valueCounts.get(value);
+			
+						if (valueCount > 1) {
+							valueCounts.set(value, valueCount - 1);
+						} else {
+							valueCounts['delete'](value);
+			
+							if (this.adoptsItemChanges && value instanceof EventEmitter) {
+								value.off('change', this._onItemChange, this);
+							}
+						}
+					},
+			
+					/**
+					 * Уничтожает инстанс освобождая занятые им ресурсы.
+					 * @typesign ();
+					 */
+					dispose: function() {
+						if (this.adoptsItemChanges) {
+							var onItemChange = this._onItemChange;
+			
+							this._valueCounts.forEach(function(value) {
+								if (value instanceof EventEmitter) {
+									value.off('change', onItemChange, this);
+								}
+							}, this);
+						}
 					}
-				}
-
-				js = '{' + js + '}';
-			}
-
-			return js.replace(reScriptTagEnd, "</'+'$1>");
-		}
-
-		if (type == 'string') {
-			return '\'' + escapeString(value).replace(reScriptTagEnd, "</'+'$1>") + '\'';
-		}
-
-		if (type == 'number' && value && value % 1000 == 0) {
-			return String(value).replace(reZeros, function(zeros) {
-				return 'e' + zeros.length;
-			});
-		}
-
-		return String(value);
-	}
-
-	/**
-	 * @namespace Rift.value
-	 */
-	rt.value = {
-		getStamp: getStamp,
-		stringify: stringify
-	};
-
-})();
-
-(function() {
-
-	/**
-	 * @function
-	 * @memberOf Rift.process
-	 *
-	 * @example
-	 * nextTick(function() {
-	 *     console.log('nextTick');
-	 * });
-	 *
-	 * @param {Function} cb - Колбэк, который запустится после освобождения потока выполнения.
-	 */
-	var nextTick;
-
-	if (global.process && process.nextTick) {
-		nextTick = process.nextTick;
-	} else if (global.setImmediate) {
-		nextTick = function(cb) {
-			setImmediate(cb);
-		};
-	} else if (global.Promise) {
-		var prm = Promise.resolve();
-
-		nextTick = function(cb) {
-			prm.then(function() {
-				cb();
-			});
-		};
-	} else if (global.postMessage && !global.ActiveXObject) {
-		var queue;
-
-		global.addEventListener('message', function() {
-			if (queue) {
-				var q = queue;
-
-				queue = null;
-
-				for (var i = 0, l = q.length; i < l; i++) {
-					try {
-						q[i]();
-					} catch (err) {
-						rt.logError(err);
-					}
-				}
-			}
-		}, false);
-
-		nextTick = function(cb) {
-			if (queue) {
-				queue.push(cb);
-			} else {
-				queue = [cb];
-				global.postMessage('__tic__', '*');
-			}
-		};
-	} else {
-		nextTick = function(cb) {
-			setTimeout(cb, 1);
-		};
-	}
-
-	/**
-	 * @namespace Rift.process
-	 */
-	rt.process = {
-		nextTick: nextTick
-	};
-
-})();
-
-(function() {
-
-	var mixin = rt.object.mixin;
-
-	/**
-	 * @namespace Rift.Class
-	 */
-	var Class;
-
-	/**
-	 * @property {Object<Function>}
-	 * @memberOf Rift.Class
-	 */
-	var classes = Object.create(null);
-
-	/**
-	 * @function getOrError
-	 * @memberOf Rift.Class
-	 *
-	 * @param {string} name
-	 * @returns {Function}
-	 */
-	function getClassOrError(name) {
-		if (!(name in classes)) {
-			throw new TypeError('Class "' + name + '" is not defined');
-		}
-
-		return classes[name];
-	}
-
-	/**
-	 * @function register
-	 * @memberOf Rift.Class
-	 *
-	 * @param {string} name
-	 * @param {Function} cl
-	 * @returns {Function}
-	 */
-	function registerClass(name, cl) {
-		if (name in classes) {
-			throw new TypeError('Class "' + name + '" is already registered');
-		}
-
-		Object.defineProperty(cl, '__class', {
-			value: name
-		});
-
-		classes[name] = cl;
-
-		return cl;
-	}
-
-	/**
-	 * @memberOf Rift.Class
-	 *
-	 * @this {Function} - Родительский класс.
-	 * @param {string} [name] - Внутреннее имя.
-	 * @param {Object} declaration - Объект-объявление.
-	 * @param {Object} [declaration.static] - Статические свойства.
-	 * @param {Function} [declaration.constructor] - Конструктор.
-	 * @returns {Function}
-	 */
-	function extend(name, declaration) {
-		if (typeof name == 'object') {
-			declaration = name;
-			name = undefined;
-		}
-
-		var parent = this == Class ? Object : this;
-		var constr;
-
-		if (hasOwn.call(declaration, 'constructor')) {
-			constr = declaration.constructor;
-			delete declaration.constructor;
-		} else {
-			constr = parent == Object ?
-				function() {} :
-				function() {
-					return parent.apply(this, arguments);
 				};
-		}
+			})();
+			
+		
+			(function() {
+				var Map = cellx.Map;
+			
+				/**
+				 * @class cellx.ActiveMap
+				 * @extends {cellx.EventEmitter}
+				 *
+				 * @typesign new (entries?: Object|Array<{ 0, 1 }>|cellx.ActiveMap, opts?: {
+				 *     adoptsItemChanges: boolean = true
+				 * }): cellx.ActiveMap;
+				 */
+				function ActiveMap(entries, opts) {
+					this._entries = new Map();
+					/**
+					 * @type {Map<*, uint>}
+					 */
+					this._valueCounts = new Map();
+			
+					this.size = 0;
+			
+					/**
+					 * @type {boolean}
+					 */
+					this.adoptsItemChanges = !opts || opts.adoptsItemChanges !== false;
+			
+					if (entries) {
+						var thisEntries = this._entries;
+			
+						if (entries instanceof ActiveMap) {
+							entries._entries.forEach(function(value, key) {
+								thisEntries.set(key, value);
+								this._registerValue(value);
+							}, this);
+						} else if (isArray(entries)) {
+							for (var i = 0, l = entries.length; i < l; i++) {
+								var entry = entries[i];
+			
+								thisEntries.set(entry[0], entry[1]);
+								this._registerValue(entry[1]);
+							}
+						} else {
+							for (var key in entries) {
+								thisEntries.set(key, entries[key]);
+								this._registerValue(entries[key]);
+							}
+						}
+			
+						this.size = thisEntries.size;
+					}
+				}
+				extend(ActiveMap, cellx.EventEmitter);
+			
+				assign(ActiveMap.prototype, MActiveCollection);
+				assign(ActiveMap.prototype, {
+					/**
+					 * @typesign (key): boolean;
+					 */
+					has: function(key) {
+						return this._entries.has(key);
+					},
+			
+					/**
+					 * @typesign (value): boolean;
+					 */
+					contains: function(value) {
+						return this._valueCounts.has(value);
+					},
+			
+					/**
+					 * @typesign (key): *;
+					 */
+					get: function(key) {
+						return this._entries.get(key);
+					},
+			
+					/**
+					 * @typesign (key, value): cellx.ActiveMap;
+					 */
+					set: function(key, value) {
+						var entries = this._entries;
+						var hasKey = entries.has(key);
+						var oldValue;
+			
+						if (hasKey) {
+							oldValue = entries.get(key);
+			
+							if (is(oldValue, value)) {
+								return this;
+							}
+			
+							this._unregisterValue(oldValue);
+						}
+			
+						entries.set(key, value);
+						this._registerValue(value);
+			
+						if (!hasKey) {
+							this.size++;
+						}
+			
+						this.emit({
+							type: 'change',
+							subtype: hasKey ? 'update' : 'add',
+							key: key,
+							oldValue: oldValue,
+							value: value
+						});
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (key): boolean;
+					 */
+					'delete': function(key) {
+						var entries = this._entries;
+			
+						if (!entries.has(key)) {
+							return false;
+						}
+			
+						var value = entries.get(key);
+			
+						entries['delete'](key);
+						this._unregisterValue(value);
+			
+						this.size--;
+			
+						this.emit({
+							type: 'change',
+							subtype: 'delete',
+							key: key,
+							oldValue: value,
+							value: undefined
+						});
+			
+						return true;
+					},
+			
+					/**
+					 * @typesign (): cellx.ActiveMap;
+					 */
+					clear: function() {
+						if (!this.size) {
+							return this;
+						}
+			
+						this._entries.clear();
+						this._valueCounts.clear();
+						this.size = 0;
+			
+						this.emit({
+							type: 'change',
+							subtype: 'clear'
+						});
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (cb: (value, key, map: cellx.ActiveMap), context?: Object);
+					 */
+					forEach: function(cb, context) {
+						if (context == null) {
+							context = global;
+						}
+			
+						this._entries.forEach(function(value, key) {
+							cb.call(context, value, key, this);
+						}, this);
+					},
+			
+					/**
+					 * @typesign (): { next: (): { value, done: boolean } };
+					 */
+					keys: function() {
+						return this._entries.keys();
+					},
+			
+					/**
+					 * @typesign (): { next: (): { value, done: boolean } };
+					 */
+					values: function() {
+						return this._entries.values();
+					},
+			
+					/**
+					 * @typesign (): { next: (): { value: { 0, 1 }, done: boolean } };
+					 */
+					entries: function() {
+						return this._entries.entries();
+					},
+			
+					/**
+					 * @typesign (): cellx.ActiveMap;
+					 */
+					clone: function() {
+						return new this.constructor(this, {
+							adoptsItemChanges: this.adoptsItemChanges
+						});
+					}
+				});
+			
+				cellx.ActiveMap = ActiveMap;
+			
+				/**
+				 * @typesign (entries?: Object|Array<{ 0, 1 }>|cellx.ActiveMap, opts?: {
+				 *     adoptsItemChanges: boolean = true
+				 * }): cellx.ActiveMap;
+				 *
+				 * @typesign (entries?: Object|Array<{ 0, 1 }>|cellx.ActiveMap, adoptsItemChanges: boolean = true): cellx.ActiveMap;
+				 */
+				function map(entries, opts) {
+					return new ActiveMap(entries, typeof opts == 'boolean' ? { adoptsItemChanges: opts } : opts);
+				}
+			
+				cellx.map = map;
+			})();
+			
+		
+			(function() {
+				var Map = cellx.Map;
+			
+				var arrayProto = Array.prototype;
+			
+				/**
+				 * @typesign (a, b): enum[-1, 1, 0];
+				 */
+				function defaultComparator(a, b) {
+					if (a < b) {
+						return -1;
+					}
+					if (a > b) {
+						return 1;
+					}
+					return 0;
+				}
+			
+				/**
+				 * @typesign (list: cellx.ActiveList, items: Array);
+				 */
+				function addRange(list, items) {
+					var listItems = list._items;
+			
+					if (list.sorted) {
+						var comparator = list.comparator;
+			
+						for (var i = 0, l = items.length; i < l; i++) {
+							var item = items[i];
+							var low = 0;
+							var high = listItems.length;
+			
+							while (low != high) {
+								var mid = (low + high) >> 1;
+			
+								if (comparator(item, listItems[mid]) < 0) {
+									high = mid;
+								} else {
+									low = mid + 1;
+								}
+							}
+			
+							listItems.splice(low, 0, item);
+							list._registerValue(item);
+						}
+					} else {
+						push.apply(listItems, items);
+			
+						for (var j = items.length; j;) {
+							list._registerValue(items[--j]);
+						}
+					}
+			
+					list.length = listItems.length;
+				}
+			
+				/**
+				 * @class cellx.ActiveList
+				 * @extends {cellx.EventEmitter}
+				 *
+				 * @typesign new (items?: Array|cellx.ActiveList, opts?: {
+				 *     adoptsItemChanges: boolean = true,
+				 *     comparator?: (a, b): int,
+				 *     sorted?: boolean
+				 * }): cellx.ActiveList;
+				 */
+				function ActiveList(items, opts) {
+					if (!opts) {
+						opts = {};
+					}
+			
+					this._items = [];
+					/**
+					 * @type {Map<*, uint>}
+					 */
+					this._valueCounts = new Map();
+			
+					this.length = 0;
+			
+					/**
+					 * @type {boolean}
+					 */
+					this.adoptsItemChanges = opts.adoptsItemChanges !== false;
+			
+					/**
+					 * @type {?Function}
+					 */
+					this.comparator = null;
+			
+					this.sorted = false;
+			
+					if (opts.sorted || (opts.comparator && opts.sorted !== false)) {
+						this.comparator = opts.comparator || defaultComparator;
+						this.sorted = true;
+					}
+			
+					if (items) {
+						addRange(this, items instanceof ActiveList ? items._items : items);
+					}
+				}
+				extend(ActiveList, cellx.EventEmitter);
+			
+				assign(ActiveList.prototype, MActiveCollection);
+				assign(ActiveList.prototype, {
+					/**
+					 * @typesign (index: int, endIndex: boolean = false): uint|undefined;
+					 */
+					_validateIndex: function(index, endIndex) {
+						if (index === undefined) {
+							return index;
+						}
+			
+						if (index < 0) {
+							index += this.length;
+			
+							if (index < 0) {
+								throw new RangeError('Index out of range');
+							}
+						} else if (index >= (this.length + (endIndex ? 1 : 0))) {
+							throw new RangeError('Index out of range');
+						}
+			
+						return index;
+					},
+			
+					/**
+					 * @typesign (value): boolean;
+					 */
+					contains: function(value) {
+						return this._valueCounts.has(value);
+					},
+			
+					/**
+					 * @typesign (value, fromIndex: int = 0): int;
+					 */
+					indexOf: function(value, fromIndex) {
+						return this._items.indexOf(value, this._validateIndex(fromIndex));
+					},
+			
+					/**
+					 * @typesign (value, fromIndex: int = -1): int;
+					 */
+					lastIndexOf: function(value, fromIndex) {
+						return this._items.lastIndexOf(value, this._validateIndex(fromIndex));
+					},
+			
+					/**
+					 * @typesign (index: int): *;
+					 */
+					get: function(index) {
+						return this._items[this._validateIndex(index)];
+					},
+			
+					/**
+					 * @typesign (index: int = 0, count?: uint): Array;
+					 */
+					getRange: function(index, count) {
+						index = this._validateIndex(index || 0, true);
+			
+						var items = this._items;
+			
+						if (count === undefined) {
+							return items.slice(index);
+						}
+			
+						if (index + count > items.length) {
+							throw new RangeError('"index" and "count" do not denote a valid range');
+						}
+			
+						return items.slice(index, index + count);
+					},
+			
+					/**
+					 * @typesign (index: int, value): cellx.ActiveList;
+					 */
+					set: function(index, value) {
+						if (this.sorted) {
+							throw new TypeError('Can\'t set to sorted list');
+						}
+			
+						index = this._validateIndex(index);
+			
+						var items = this._items;
+			
+						if (is(items[index], value)) {
+							return this;
+						}
+			
+						this._unregisterValue(items[index]);
+			
+						items[index] = value;
+						this._registerValue(value);
+			
+						this.emit('change');
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (index: int, items: Array): cellx.ActiveList;
+					 */
+					setRange: function(index, items) {
+						if (this.sorted) {
+							throw new TypeError('Can\'t set to sorted list');
+						}
+			
+						index = this._validateIndex(index);
+			
+						var itemCount = items.length;
+			
+						if (!itemCount) {
+							return this;
+						}
+			
+						if (index + itemCount > this.length) {
+							throw new RangeError('"index" and length of "items" do not denote a valid range');
+						}
+			
+						var thisItems = this._items;
+						var changed = false;
+			
+						for (var i = index + itemCount; i > index;) {
+							var item = items[--i];
+			
+							if (!is(thisItems[i], item)) {
+								this._unregisterValue(thisItems[i]);
+			
+								thisItems[i] = item;
+								this._registerValue(item);
+			
+								changed = true;
+							}
+						}
+			
+						if (changed) {
+							this.emit('change');
+						}
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (item): cellx.ActiveList;
+					 */
+					add: function(item) {
+						this.addRange([item]);
+						return this;
+					},
+			
+					/**
+					 * @typesign (items: Array): cellx.ActiveList;
+					 */
+					addRange: function(items) {
+						if (!items.length) {
+							return this;
+						}
+			
+						addRange(this, items);
+						this.emit('change');
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (index: int, item): cellx.ActiveList;
+					 */
+					insert: function(index, item) {
+						this.insertRange(index, [item]);
+						return this;
+					},
+			
+					/**
+					 * @typesign (index: int, items: Array): cellx.ActiveList;
+					 */
+					insertRange: function(index, items) {
+						if (this.sorted) {
+							throw new TypeError('Can\'t insert to sorted list');
+						}
+			
+						index = this._validateIndex(index, true);
+			
+						var itemCount = items.length;
+			
+						if (!itemCount) {
+							return this;
+						}
+			
+						splice.apply(this._items, [].concat(index, 0, items));
+			
+						for (var i = itemCount; i;) {
+							this._registerValue(items[--i]);
+						}
+			
+						this.length += itemCount;
+			
+						this.emit('change');
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (item, fromIndex: int = 0): cellx.ActiveList;
+					 */
+					remove: function(item, fromIndex) {
+						var index = this._items.indexOf(item, this._validateIndex(fromIndex));
+			
+						if (index == -1) {
+							return this;
+						}
+			
+						this._items.splice(index, 1);
+						this._unregisterValue(item);
+			
+						this.length--;
+			
+						this.emit('change');
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (item, fromIndex: int = 0): cellx.ActiveList;
+					 */
+					removeAll: function(item, fromIndex) {
+						var items = this._items;
+						var index = this._validateIndex(fromIndex);
+						var changed = false;
+			
+						while ((index = items.indexOf(item, index)) != -1) {
+							items.splice(index, 1);
+							this._unregisterValue(item);
+			
+							changed = true;
+						}
+			
+						if (changed) {
+							this.length = items.length;
+							this.emit('change');
+						}
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (index: int): cellx.ActiveList;
+					 */
+					removeAt: function(index) {
+						this._unregisterValue(this._items.splice(this._validateIndex(index), 1)[0]);
+						this.length--;
+			
+						this.emit('change');
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (index: int = 0, count?: uint): cellx.ActiveList;
+					 */
+					removeRange: function(index, count) {
+						index = this._validateIndex(index || 0, true);
+			
+						var items = this._items;
+			
+						if (count === undefined) {
+							count = items.length - index;
+						} else if (index + count > items.length) {
+							throw new RangeError('"index" and "count" do not denote a valid range');
+						}
+			
+						if (!count) {
+							return this;
+						}
+			
+						for (var i = index + count; i > index;) {
+							this._unregisterValue(items[--i]);
+						}
+						items.splice(index, count);
+			
+						this.length -= count;
+			
+						this.emit('change');
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (): cellx.ActiveList;
+					 */
+					clear: function() {
+						if (this.length) {
+							this._items.length = 0;
+							this._valueCounts.clear();
+			
+							this.length = 0;
+			
+							this.emit('change');
+						}
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (separator: string = ','): string;
+					 */
+					join: function(separator) {
+						return this._items.join(separator);
+					},
+			
+					/**
+					 * @typesign (cb: (item, index: uint, arr: cellx.ActiveList), context: Object = global);
+					 */
+					forEach: null,
+			
+					/**
+					 * @typesign (cb: (item, index: uint, arr: cellx.ActiveList): *, context: Object = global): Array;
+					 */
+					map: null,
+			
+					/**
+					 * @typesign (cb: (item, index: uint, arr: cellx.ActiveList): boolean, context: Object = global): Array;
+					 */
+					filter: null,
+			
+					/**
+					 * @typesign (cb: (item, index: uint, arr: cellx.ActiveList): boolean, context: Object = global): boolean;
+					 */
+					every: null,
+			
+					/**
+					 * @typesign (cb: (item, index: uint, arr: cellx.ActiveList): boolean, context: Object = global): boolean;
+					 */
+					some: null,
+			
+					/**
+					 * @typesign (cb: (accumulator: *, item, index: uint, arr: cellx.ActiveList): *, initialValue?): *;
+					 */
+					reduce: null,
+			
+					/**
+					 * @typesign (cb: (accumulator: *, item, index: uint, arr: cellx.ActiveList): *, initialValue?): *;
+					 */
+					reduceRight: null,
+			
+					/**
+					 * @typesign (): cellx.ActiveList;
+					 */
+					clone: function() {
+						return new this.constructor(this, {
+							adoptsItemChanges: this.adoptsItemChanges,
+							comparator: this.comparator,
+							sorted: this.sorted
+						});
+					},
+			
+					/**
+					 * @typesign (): Array;
+					 */
+					toArray: function() {
+						return this._items.slice();
+					},
+			
+					/**
+					 * @typesign (): string;
+					 */
+					toString: function() {
+						return this._items.join();
+					}
+				});
+			
+				var methods = ['forEach', 'map', 'filter', 'every', 'some', 'reduce', 'reduceRight'];
+			
+				for (var i = methods.length; i;) {
+					(function(name) {
+						ActiveList.prototype[name] = function() {
+							return arrayProto[name].apply(this._items, arguments);
+						};
+					})(methods[--i]);
+				}
+			
+				cellx.ActiveList = ActiveList;
+			
+				/**
+				 * @typesign (items?: Array|cellx.ActiveList, opts?: {
+				 *     adoptsItemChanges: boolean = true,
+				 *     comparator?: (a, b): int,
+				 *     sorted?: boolean
+				 * }): cellx.ActiveList;
+				 *
+				 * @typesign (items?: Array|cellx.ActiveList, adoptsItemChanges: boolean = true): cellx.ActiveList;
+				 */
+				function list(items, opts) {
+					return new ActiveList(items, typeof opts == 'boolean' ? { adoptsItemChanges: opts } : opts);
+				}
+			
+				cellx.list = list;
+			})();
+			
+		
+			(function() {
+				var nextTick = cellx.nextTick;
+				var EventEmitter = cellx.EventEmitter;
+			
+				var error = {
+					original: null
+				};
+			
+				var currentlyRelease = false;
+			
+				/**
+				 * @type {Array<Array<cellx.Cell>|null>}
+				 */
+				var releasePlan = [[]];
+			
+				var releasePlanIndex = 0;
+				var maxLevel = -1;
+			
+				var calculatedCell = null;
+			
+				var releaseVersion = 1;
+			
+				function release() {
+					if (releasePlanIndex > maxLevel) {
+						return;
+					}
+			
+					currentlyRelease = true;
+			
+					do {
+						var bundle = releasePlan[releasePlanIndex];
+			
+						if (bundle) {
+							var cell = bundle.shift();
+			
+							if (releasePlanIndex) {
+								var index = releasePlanIndex;
+			
+								cell._recalc();
+			
+								if (!releasePlan[index].length) {
+									releasePlan[index] = null;
+			
+									if (releasePlanIndex) {
+										releasePlanIndex++;
+									}
+								}
+							} else {
+								var changeEvent = cell._changeEvent;
+			
+								cell._fixedValue = cell._value;
+								cell._changeEvent = null;
+			
+								cell._changed = true;
+			
+								if (cell._events.change) {
+									cell._handleEvent(changeEvent);
+								}
+			
+								var slaves = cell._slaves;
+			
+								for (var i = slaves.length; i;) {
+									var slave = slaves[--i];
+			
+									if (slave._fixed) {
+										(releasePlan[1] || (releasePlan[1] = [])).push(slave);
+			
+										if (!maxLevel) {
+											maxLevel = 1;
+										}
+			
+										slave._fixed = false;
+									}
+								}
+			
+								if (!releasePlan[0].length) {
+									releasePlanIndex++;
+								}
+							}
+						} else {
+							releasePlanIndex++;
+						}
+					} while (releasePlanIndex <= maxLevel);
+			
+					maxLevel = -1;
+			
+					releaseVersion++;
+			
+					currentlyRelease = false;
+				}
+			
+				/**
+				 * @class cellx.Cell
+				 * @extends {cellx.EventEmitter}
+				 *
+				 * @example
+				 * var a = new Cell(1);
+				 * var b = new Cell(2);
+				 * var c = new Cell(function() {
+				 *     return a.read() + b.read();
+				 * });
+				 *
+				 * c.on('change', function() {
+				 *     console.log('c = ' + c.read());
+				 * });
+				 *
+				 * console.log(c.read());
+				 * // => 3
+				 *
+				 * a.write(5);
+				 * b.write(10);
+				 * // => 'c = 15'
+				 *
+				 * @typesign new (value?, opts?: {
+				 *     owner?: Object,
+				 *     read?: (value): *,
+				 *     validate?: (value): *,
+				 *     onchange?: (evt: cellx~Event): boolean|undefined,
+				 *     onerror?: (evt: cellx~Event): boolean|undefined,
+				 *     computed?: false
+				 * }): cellx.Cell;
+				 *
+				 * @typesign new (formula: (): *, opts?: {
+				 *     owner?: Object,
+				 *     read?: (value): *,
+				 *     write?: (value),
+				 *     validate?: (value): *,
+				 *     onchange?: (evt: cellx~Event): boolean|undefined,
+				 *     onerror?: (evt: cellx~Event): boolean|undefined,
+				 *     computed?: true
+				 * }): cellx.Cell;
+				 */
+				function Cell(value, opts) {
+					EventEmitter.call(this);
+			
+					if (!opts) {
+						opts = {};
+					}
+			
+					this.owner = opts.owner || null;
+			
+					this.computed = typeof value == 'function' &&
+						(opts.computed !== undefined ? opts.computed : value.constructor == Function);
+			
+					this._value = undefined;
+					this._fixedValue = undefined;
+					this.initialValue = undefined;
+					this._formula = null;
+			
+					this._read = opts.read || null;
+					this._write = opts.write || null;
+			
+					this._validate = opts.validate || null;
+			
+					/**
+					 * Ведущие ячейки.
+					 * @type {?Array<cellx.Cell>}
+					 */
+					this._masters = null;
+					/**
+					 * Ведомые ячейки.
+					 * @type {Array<cellx.Cell>}
+					 */
+					this._slaves = [];
+			
+					/**
+					 * @type {uint|undefined}
+					 */
+					this._level = 0;
+			
+					this._active = !this.computed;
+			
+					this._changeEvent = null;
+					this._isChangeCancellable = true;
+			
+					this._lastErrorEvent = null;
+			
+					this._fixed = true;
+			
+					this._version = 0;
+			
+					this._changed = false;
+			
+					this._circularityCounter = 0;
+			
+					if (this.computed) {
+						this._formula = value;
+					} else {
+						if (this._validate) {
+							this._validate.call(this.owner || this, value);
+						}
+			
+						this._value = this._fixedValue = this.initialValue = value;
+			
+						if (value instanceof EventEmitter) {
+							value.on('change', this._onValueChange, this);
+						}
+					}
+			
+					if (opts.onchange) {
+						this.on('change', opts.onchange);
+					}
+					if (opts.onerror) {
+						this.on('error', opts.onerror);
+					}
+				}
+				extend(Cell, EventEmitter);
+			
+				assign(Cell.prototype, {
+					/**
+					 * @typesign (): boolean;
+					 */
+					changed: function() {
+						if (!currentlyRelease) {
+							release();
+						}
+			
+						return this._changed;
+					},
+			
+					/**
+					 * @override cellx.EventEmitter#on
+					 */
+					on: function(type, listener, context) {
+						if (!currentlyRelease) {
+							release();
+						}
+			
+						if (this.computed && !this._events.change && !this._slaves.length) {
+							this._activate();
+						}
+			
+						EventEmitter.prototype.on.call(this, type, listener, context);
+			
+						return this;
+					},
+					/**
+					 * @override cellx.EventEmitter#off
+					 */
+					off: function(type, listener, context) {
+						if (!currentlyRelease) {
+							release();
+						}
+			
+						EventEmitter.prototype.off.call(this, type, listener, context);
+			
+						if (this.computed && !this._events.change && !this._slaves.length) {
+							this._deactivate();
+						}
+			
+						return this;
+					},
+			
+					/**
+					 * @override cellx.EventEmitter#_on
+					 */
+					_on: function(type, listener, context) {
+						EventEmitter.prototype._on.call(this, type, listener, context || this.owner);
+					},
+					/**
+					 * @override cellx.EventEmitter#_off
+					 */
+					_off: function(type, listener, context) {
+						EventEmitter.prototype._off.call(this, type, listener, context || this.owner);
+					},
+			
+					/**
+					 * @typesign (listener: (err: Error, evt: cellx~Event): boolean|undefined): cellx.Cell;
+					 */
+					subscribe: function(listener) {
+						function wrapper(evt) {
+							return listener.call(this, evt.error || null, evt);
+						}
+						wrapper[KEY_INNER] = listener;
+			
+						this
+							.on('change', wrapper)
+							.on('error', wrapper);
+			
+						return this;
+					},
+					/**
+					 * @typesign (listener: (err: Error, evt: cellx~Event): boolean|undefined): cellx.Cell;
+					 */
+					unsubscribe: function(listener) {
+						this
+							.off('change', listener)
+							.off('error', listener);
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign (slave: cellx.Cell);
+					 */
+					_registerSlave: function(slave) {
+						if (this.computed && !this._events.change && !this._slaves.length) {
+							this._activate();
+						}
+			
+						this._slaves.push(slave);
+					},
+					/**
+					 * @typesign (slave: cellx.Cell);
+					 */
+					_unregisterSlave: function(slave) {
+						this._slaves.splice(this._slaves.indexOf(slave), 1);
+			
+						if (this.computed && !this._events.change && !this._slaves.length) {
+							this._deactivate();
+						}
+					},
+			
+					/**
+					 * @typesign ();
+					 */
+					_activate: function() {
+						if (this._version != releaseVersion) {
+							this._masters = null;
+							this._level = 0;
+			
+							var value = this._tryFormula();
+			
+							if (value === error) {
+								this._handleError(error.original);
+							} else if (!is(this._value, value)) {
+								this._value = value;
+								this._changed = true;
+							}
+			
+							this._version = releaseVersion;
+						}
+			
+						var masters = this._masters || [];
+			
+						for (var i = masters.length; i;) {
+							masters[--i]._registerSlave(this);
+						}
+			
+						this._active = true;
+					},
+					/**
+					 * @typesign ();
+					 */
+					_deactivate: function() {
+						var masters = this._masters || [];
+			
+						for (var i = masters.length; i;) {
+							masters[--i]._unregisterSlave(this);
+						}
+			
+						this._active = false;
+					},
+			
+					/**
+					 * @typesign (evt: cellx~Event);
+					 */
+					_onValueChange: function(evt) {
+						if (this._changeEvent) {
+							evt.prev = this._changeEvent;
+			
+							this._changeEvent = evt;
+			
+							if (this._value === this._fixedValue) {
+								this._isChangeCancellable = false;
+							}
+						} else {
+							releasePlan[0].push(this);
+			
+							releasePlanIndex = 0;
+			
+							if (maxLevel == -1) {
+								maxLevel = 0;
+							}
+			
+							evt.prev = null;
+			
+							this._changeEvent = evt;
+							this._isChangeCancellable = false;
+			
+							if (!currentlyRelease) {
+								nextTick(release);
+							}
+						}
+					},
+			
+					/**
+					 * @typesign (hidden: boolean = false): *;
+					 */
+					read: function(hidden) {
+						if (!hidden && calculatedCell) {
+							if (calculatedCell._masters) {
+								if (calculatedCell._masters.indexOf(this) == -1) {
+									calculatedCell._masters.push(this);
+			
+									if (calculatedCell._level <= this._level) {
+										calculatedCell._level = this._level + 1;
+									}
+								}
+							} else {
+								calculatedCell._masters = [this];
+								calculatedCell._level = this._level + 1;
+							}
+						}
+			
+						if (!currentlyRelease) {
+							release();
+						}
+			
+						if (this.computed && !this._active && this._version != releaseVersion) {
+							this._masters = null;
+							this._level = 0;
+			
+							var value = this._tryFormula();
+			
+							if (value === error) {
+								this._handleError(error.original);
+							} else {
+								var oldValue = this._value;
+			
+								if (!is(oldValue, value)) {
+									this._value = value;
+									this._changed = true;
+								}
+							}
+			
+							this._version = releaseVersion;
+						}
+			
+						return this._read ? this._read.call(this.owner || this, this._value) : this._value;
+					},
+			
+					/**
+					 * @typesign (value): boolean;
+					 */
+					write: function(value) {
+						if (this.computed && !this._write) {
+							throw new TypeError('Cannot write to read-only cell');
+						}
+			
+						var oldValue = this._value;
+			
+						if (is(oldValue, value)) {
+							return false;
+						}
+			
+						if (this._validate) {
+							this._validate.call(this.owner || this, value);
+						}
+			
+						if (this.computed) {
+							this._write.call(this.owner || this, value);
+						} else {
+							this._value = value;
+			
+							if (oldValue instanceof EventEmitter) {
+								oldValue.off('change', this._onValueChange, this);
+							}
+							if (value instanceof EventEmitter) {
+								value.on('change', this._onValueChange, this);
+							}
+			
+							if (this._changeEvent) {
+								if (is(value, this._fixedValue) && this._isChangeCancellable) {
+									if (releasePlan[0].length == 1) {
+										releasePlan[0].pop();
+			
+										if (!maxLevel) {
+											maxLevel = -1;
+										}
+									} else {
+										releasePlan[0].splice(releasePlan[0].indexOf(this), 1);
+									}
+			
+									this._changeEvent = null;
+								} else {
+									this._changeEvent = {
+										target: this,
+										type: 'change',
+										oldValue: oldValue,
+										value: value,
+										prev: this._changeEvent
+									};
+								}
+							} else {
+								releasePlan[0].push(this);
+			
+								releasePlanIndex = 0;
+			
+								if (maxLevel == -1) {
+									maxLevel = 0;
+								}
+			
+								this._changeEvent = {
+									target: this,
+									type: 'change',
+									oldValue: oldValue,
+									value: value,
+									prev: null
+								};
+								this._isChangeCancellable = true;
+			
+								if (!currentlyRelease) {
+									nextTick(release);
+								}
+							}
+						}
+			
+						return true;
+					},
+			
+					/**
+					 * @typesign ();
+					 */
+					_recalc: function() {
+						if (this._version == releaseVersion + 1) {
+							if (++this._circularityCounter == 10) {
+								this._fixed = true;
+								this._version = releaseVersion + 1;
+			
+								this._handleError(new RangeError('Circular dependency detected'));
+			
+								return;
+							}
+						} else {
+							this._circularityCounter = 1;
+						}
+			
+						var oldMasters = this._masters;
+						this._masters = null;
+			
+						var oldLevel = this._level;
+						this._level = 0;
+			
+						var value = this._tryFormula();
+			
+						var masters = this._masters || [];
+						var haveRemovedMasters = false;
+			
+						for (var i = oldMasters.length; i;) {
+							var oldMaster = oldMasters[--i];
+			
+							if (masters.indexOf(oldMaster) == -1) {
+								oldMaster._unregisterSlave(this);
+								haveRemovedMasters = true;
+							}
+						}
+			
+						if (haveRemovedMasters || oldMasters.length < masters.length) {
+							for (var j = masters.length; j;) {
+								var master = masters[--j];
+			
+								if (oldMasters.indexOf(master) == -1) {
+									master._registerSlave(this);
+								}
+							}
+			
+							var level = this._level;
+			
+							if (level > oldLevel) {
+								(releasePlan[level] || (releasePlan[level] = [])).push(this);
+			
+								if (maxLevel < level) {
+									maxLevel = level;
+								}
+			
+								return;
+							}
+						}
+			
+						this._fixed = true;
+						this._version = releaseVersion + 1;
+			
+						if (value === error) {
+							this._handleError(error.original);
+						} else {
+							var oldValue = this._value;
+			
+							if (!is(oldValue, value) || value instanceof EventEmitter) {
+								this._value = value;
+								this._changed = true;
+			
+								if (this._events.change) {
+									this.emit({
+										type: 'change',
+										oldValue: oldValue,
+										value: value,
+										prev: null
+									});
+								}
+			
+								var slaves = this._slaves;
+			
+								for (var k = slaves.length; k;) {
+									var slave = slaves[--k];
+			
+									if (slave._fixed) {
+										var slaveLevel = slave._level;
+			
+										(releasePlan[slaveLevel] || (releasePlan[slaveLevel] = [])).push(slave);
+			
+										if (maxLevel < slaveLevel) {
+											maxLevel = slaveLevel;
+										}
+			
+										slave._fixed = false;
+									}
+								}
+							}
+						}
+					},
+			
+					/**
+					 * @typesign (): *;
+					 */
+					_tryFormula: function() {
+						var prevCalculatedCell = calculatedCell;
+						calculatedCell = this;
+			
+						try {
+							var value = this._formula.call(this.owner || this);
+			
+							if (this._validate) {
+								this._validate.call(this.owner || this, value);
+							}
+			
+							return value;
+						} catch (err) {
+							error.original = err;
+							return error;
+						} finally {
+							calculatedCell = prevCalculatedCell;
+						}
+					},
+			
+					/**
+					 * @typesign (err: Error);
+					 */
+					_handleError: function(err) {
+						this._logError(err);
+			
+						this._handleErrorEvent({
+							type: 'error',
+							error: err
+						});
+					},
+			
+					/**
+					 * @typesign (evt: cellx~Event);
+					 */
+					_handleErrorEvent: function(evt) {
+						if (this._lastErrorEvent === evt) {
+							return;
+						}
+			
+						this._lastErrorEvent = evt;
+			
+						this._handleEvent(evt);
+			
+						var slaves = this._slaves;
+			
+						for (var i = slaves.length; i;) {
+							if (evt.isPropagationStopped) {
+								break;
+							}
+			
+							slaves[--i]._handleErrorEvent(evt);
+						}
+					},
+			
+					/**
+					 * @typesign (): cellx.Cell;
+					 */
+					dispose: function() {
+						if (!currentlyRelease) {
+							release();
+						}
+			
+						this._dispose();
+			
+						return this;
+					},
+			
+					/**
+					 * @typesign ();
+					 */
+					_dispose: function() {
+						this.off();
+			
+						if (this._active) {
+							var slaves = this._slaves;
+			
+							for (var i = slaves.length; i;) {
+								slaves[--i]._dispose();
+							}
+						}
+					}
+				});
+			
+				cellx.Cell = Cell;
+			})();
+			
+		
+			(function() {
+				var Map = cellx.Map;
+				var Cell = cellx.Cell;
+			
+				var cellProto = Cell.prototype;
+			
+				invokeCell = function(wrapper, initialValue, opts, owner, firstArg, otherArgs, argCount) {
+					if (!owner || owner == global) {
+						owner = wrapper;
+					}
+			
+					if (!hasOwn.call(owner, KEY_CELLS)) {
+						Object.defineProperty(owner, KEY_CELLS, {
+							value: new Map()
+						});
+					}
+			
+					var cell = owner[KEY_CELLS].get(wrapper);
+			
+					if (!cell) {
+						if (initialValue != null && typeof initialValue == 'object') {
+							if (typeof initialValue.clone == 'function') {
+								initialValue = initialValue.clone();
+							} else if (isArray(initialValue)) {
+								initialValue = initialValue.slice();
+							} else if (initialValue.constructor === Object) {
+								initialValue = assign({}, initialValue);
+							} else {
+								switch (toString.call(initialValue)) {
+									case '[object Date]': {
+										initialValue = new Date(initialValue);
+										break;
+									}
+									case '[object RegExp]': {
+										initialValue = new RegExp(initialValue);
+										break;
+									}
+								}
+							}
+						}
+			
+						opts = create(opts);
+						opts.owner = owner;
+			
+						cell = new Cell(initialValue, opts);
+						owner[KEY_CELLS].set(wrapper, cell);
+					}
+			
+					switch (argCount) {
+						case 0: {
+							return cell.read();
+						}
+						case 1: {
+							return cell.write(firstArg);
+						}
+						default: {
+							if (firstArg === 'bind') {
+								wrapper = wrapper.bind(owner);
+								wrapper.constructor = cellx;
+								return wrapper;
+							}
+							if (firstArg === 'unwrap') {
+								return cell;
+							}
+			
+							return cellProto[firstArg].apply(cell, otherArgs);
+						}
+					}
+				};
+			})();
+			
+		
+		})();
+		
 
-		var proto = Object.create(parent.prototype);
+		return exports.cellx;
+	})({});
 
-		constr.prototype = proto;
+	rt.nextTick = cellx.nextTick;
+	rt.EventEmitter = cellx.EventEmitter;
 
-		Object.defineProperty(constr, '$super', {
-			writable: true,
-			value: parent.prototype
-		});
+	rt.ActiveMap = cellx.ActiveMap;
+	rt.map = cellx.map;
+	rt.ActiveList = cellx.ActiveList;
+	rt.list = cellx.list;
 
-		Object.defineProperty(proto, 'constructor', {
-			configurable: true,
-			writable: true,
-			value: constr
-		});
+	rt.cellx = cellx;
+	rt.cell = cellx;
 
-		Object.keys(parent).forEach(function(name) {
-			Object.defineProperty(constr, name, Object.getOwnPropertyDescriptor(parent, name));
-		});
+	rt.Cell = cellx.Cell;
 
-		if (hasOwn.call(declaration, 'static')) {
-			mixin(constr, declaration.static);
-			delete declaration.static;
-		}
+	var KEY_UID = '__rt_uid__';
+	var KEY_DATA_CELLS = '__rt_dataCells__';
+	var KEY_VIEW = '__rt_view__';
+	var KEY_VIEW_ELEMENT_NAME = '__rt_viewElementName__';
 
-		if (constr.extend === undefined) {
-			constr.extend = extend;
-		}
-
-		mixin(proto, declaration);
-
-		if (name) {
-			registerClass(name, constr);
-		}
-
-		return constr;
+	if (global.Symbol && typeof Symbol.iterator == 'symbol') {
+		KEY_UID = Symbol(KEY_UID);
+		KEY_DATA_CELLS = Symbol(KEY_DATA_CELLS);
+		KEY_VIEW = Symbol(KEY_VIEW);
+		KEY_VIEW_ELEMENT_NAME = Symbol(KEY_VIEW_ELEMENT_NAME);
 	}
 
-	Class = {
-		classes: classes,
-		getOrError: getClassOrError,
-		register: registerClass,
-		extend: extend
-	};
+	rt.KEY_UID = KEY_UID;
+	rt.KEY_DATA_CELLS = KEY_DATA_CELLS;
+	rt.KEY_VIEW = KEY_VIEW;
+	rt.KEY_VIEW_ELEMENT_NAME = KEY_VIEW_ELEMENT_NAME;
 
-	rt.Class = Class;
+	var isServer = rt.isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
+	var isClient = rt.isClient = !isServer;
 
-})();
-
-(function() {
-
-	var getUID = rt.object.getUID;
-	var stringify = rt.value.stringify;
-	var classes = rt.Class.classes;
-	var registerClass = rt.Class.register;
-
-	registerClass('Array', Array);
-	registerClass('Date', Date);
-
-	Object.defineProperties(Date.prototype, {
-		collectDumpObject: {
-			configurable: true,
-			writable: true,
-			value: function(data) {
-				data.utc = this.toString();
-			}
-		},
-
-		expandFromDumpObject: {
-			configurable: true,
-			writable: true,
-			value: function(data) {
-				this.setTime(new Date(data.utc));
-			}
-		}
-	});
+	var $ = rt.$ = isClient ? global.jQuery || global.Zepto || global.ender || global.$ : undefined;
 
 	/**
-	 * @private
-	 *
-	 * @param {Object} obj
-	 * @param {Object} objects
-	 * @returns {string}
+	 * @typesign (err);
 	 */
-	function collectDump(obj, objects) {
-		var id = getUID(obj);
+	function logError(err) {
+		console.error(err === Object(err) && err.stack || err);
+	}
 
-		if (objects.hasOwnProperty(id)) {
-			return id;
-		}
+	rt.logError = logError;
 
-		var data = {};
-		var opts = {};
-
-		if (obj.constructor.hasOwnProperty('__class')) {
-			if (obj.collectDumpObject) {
-				obj.collectDumpObject(data, opts);
-			} else {
-				Object.assign(data, obj);
+	// gulp-include
+	(function() {
+		var uidCounter = 0;
+	
+		/**
+		 * Генерирует уникальный идентификатор.
+		 *
+		 * @example
+		 * nextUID(); // '1'
+		 * nextUID(); // '2'
+		 * nextUID('uid-'); // 'uid-3'
+		 *
+		 * @typesign (prefix: string = ''): string;
+		 */
+		function nextUID(prefix) {
+			if (uidCounter == 2176782335/* 'zzzzzz' */) {
+				uidCounter = 0;
 			}
-
-			objects[id] = {
-				c: obj.constructor.__class
+	
+			return (prefix || '') + (++uidCounter).toString(36);
+		}
+	
+		rt.uid = {
+			next: nextUID
+		};
+	})();
+	
+	(function() {
+		var nextUID = rt.uid.next;
+	
+		/**
+		 * Получает уникальный идентификатор объекта.
+		 * @typesign (obj: Object, prefix: string = ''): string;
+		 */
+		var getUID;
+	
+		if (typeof KEY_UID == 'symbol') {
+			getUID = function getUID(obj, prefix) {
+				return obj[KEY_UID] || (obj[KEY_UID] = nextUID(prefix));
 			};
 		} else {
-			Object.assign(data, obj);
-			objects[id] = {};
+			getUID = function getUID(obj, prefix) {
+				if (!hasOwn.call(obj, KEY_UID)) {
+					Object.defineProperty(obj, KEY_UID, {
+						value: nextUID(prefix)
+					});
+				}
+	
+				return obj[KEY_UID];
+			};
 		}
-
-		if (!isEmpty(data)) {
+	
+		/**
+		 * @typesign (obj: Object, source: Object): Object;
+		 */
+		var assign = Object.assign || function assign(obj, source) {
+			var keys = Object.keys(source);
+	
+			for (var i = keys.length; i;) {
+				obj[keys[--i]] = source[keys[i]];
+			}
+	
+			return obj;
+		};
+	
+		/**
+		 * @typesign (obj: Object, source: Object): Object;
+		 */
+		function mixin(obj, source) {
+			var names = Object.getOwnPropertyNames(source);
+	
+			for (var i = names.length; i;) {
+				Object.defineProperty(obj, names[--i], Object.getOwnPropertyDescriptor(source, names[i]));
+			}
+	
+			return obj;
+		}
+	
+		rt.object = {
+			getUID: getUID,
+			assign: assign,
+			mixin: mixin
+		};
+	})();
+	
+	(function() {
+		var reEscapableChars = /([?+|$(){}[^.\-\]\/\\*])/g;
+	
+		/**
+		 * Экранирует спецсимволы регулярного выражения.
+		 *
+		 * @example
+		 * var re = 'Hello?!*`~World+()[]';
+		 * re = new RegExp(escapeRegExp(re));
+		 * console.log(re);
+		 * // => /Hello\?!\*`~World\+\(\)\[\]/
+		 *
+		 * @typesign (str: string): string;
+		 */
+		function escapeRegExp(str) {
+			return str.replace(reEscapableChars, '\\$1');
+		}
+	
+		rt.regex = {
+			escape: escapeRegExp
+		};
+	})();
+	
+	(function() {
+		var mixin = rt.object.mixin;
+	
+		var Class;
+	
+		/**
+		 * @type {Object<Function>}
+		 */
+		var classes = rt.classes = Object.create(null);
+	
+		/**
+		 * @typesign (name: string): Function;
+		 */
+		function getClass(name) {
+			if (!(name in classes)) {
+				throw new TypeError('Class "' + name + '" is not defined');
+			}
+	
+			return classes[name];
+		}
+	
+		rt.getClass = getClass;
+	
+		/**
+		 * @typesign (name: string, cl: Function): Function;
+		 */
+		function registerClass(name, cl) {
+			if (name in classes) {
+				throw new TypeError('Class "' + name + '" is already registered');
+			}
+	
+			Object.defineProperty(cl, '$className', {
+				value: name
+			});
+	
+			classes[name] = cl;
+	
+			return cl;
+		}
+	
+		rt.registerClass = registerClass;
+	
+		/**
+		 * @typesign (declaration: { static?: Object, constructor?: Function }): Function;
+		 * @typesign (name?: string, declaration: { static?: Object, constructor?: Function }): Function;
+		 */
+		function extend(name, declaration) {
+			if (typeof name == 'object') {
+				declaration = name;
+				name = undefined;
+			}
+	
+			var parent = this == Class ? Object : this;
+			var constr;
+	
+			if (hasOwn.call(declaration, 'constructor')) {
+				constr = declaration.constructor;
+				delete declaration.constructor;
+			} else {
+				constr = parent == Object ?
+					function() {} :
+					function() {
+						return parent.apply(this, arguments);
+					};
+			}
+	
+			var proto = Object.create(parent.prototype);
+	
+			constr.prototype = proto;
+	
+			Object.defineProperty(proto, 'constructor', {
+				configurable: true,
+				writable: true,
+				value: constr
+			});
+	
+			Object.keys(parent).forEach(function(name) {
+				Object.defineProperty(constr, name, Object.getOwnPropertyDescriptor(parent, name));
+			});
+	
+			if (hasOwn.call(declaration, 'static')) {
+				mixin(constr, declaration.static);
+				delete declaration.static;
+			}
+	
+			if (!constr.extend) {
+				constr.extend = extend;
+			}
+	
+			mixin(proto, declaration);
+	
+			if (name) {
+				registerClass(name, constr);
+			}
+	
+			return constr;
+		}
+	
+		rt.EventEmitter.extend = extend;
+	
+		Class = {
+			classes: classes,
+			get: getClass,
+			register: registerClass,
+			extend: extend
+		};
+	
+		rt.Class = Class;
+	})();
+	
+	(function() {
+		var getUID = rt.object.getUID;
+		var assign = rt.object.assign;
+		var classes = rt.classes;
+		var ActiveMap = rt.ActiveMap;
+		var ActiveList = rt.ActiveList;
+	
+		ActiveMap.prototype.collectDumpObject = function(data, opts) {
+			var entries = data.entries = [];
+	
+			this._entries.forEach(function(value, key) {
+				entries.push([key, value]);
+			});
+	
+			if (this.adoptsItemChanges) {
+				opts.adoptsItemChanges = true;
+			}
+		};
+	
+		ActiveMap.prototype.expandFromDumpObject = function(data) {
+			data.entries.forEach(function(entry) {
+				this.set(entry[0], entry[1]);
+			}, this);
+		};
+	
+		ActiveList.prototype.collectDumpObject = function(data, opts) {
+			data.items = this.toArray();
+	
+			if (this.adoptsItemChanges) {
+				opts.adoptsItemChanges = true;
+			}
+			if (this.sorted) {
+				opts.sorted = true;
+			}
+		};
+	
+		ActiveList.prototype.expandFromDumpObject = function(data) {
+			this.addRange(data.items);
+		};
+	
+		rt.registerClass('ActiveMap', ActiveMap);
+		rt.registerClass('ActiveList', ActiveList);
+	
+		/**
+		 * @typesign (obj: Object, dumpData: Object): string;
+		 */
+		function collectDump(obj, dumpData) {
+			var id = getUID(obj);
+	
+			if (dumpData.hasOwnProperty(id)) {
+				return id;
+			}
+	
+			var data;
+			var object = dumpData[id] = {};
+	
+			if (Array.isArray(obj)) {
+				object.t = 0;
+			} else if (toString.call(obj) == '[object Date]') {
+				object.t = 1;
+				object.s = obj.toString();
+	
+				return id;
+			} else if (obj.constructor.hasOwnProperty('$className')) {
+				object.c = obj.constructor.$className;
+	
+				if (obj.collectDumpObject) {
+					data = {};
+					var opts = {};
+	
+					obj.collectDumpObject(data, opts);
+	
+					if (Object.keys(opts).length) {
+						object.o = opts;
+					}
+				}
+			}
+	
+			if (!data) {
+				data = assign({}, obj);
+			}
+	
+			var isDataEmpty = true;
+	
 			for (var name in data) {
+				isDataEmpty = false;
+	
 				var value = data[name];
-
+	
 				if (value === Object(value)) {
-					data[name] = collectDump(value, objects);
+					data[name] = collectDump(value, dumpData);
 				} else {
 					data[name] = value === undefined ? {} : { v: value };
 				}
 			}
-
-			objects[id].d = data;
+	
+			if (!isDataEmpty) {
+				object.d = data;
+			}
+	
+			return id;
 		}
-
-		if (!isEmpty(opts)) {
-			objects[id].o = opts;
-		}
-
-		return id;
-	}
-
-	/**
-	 * Сериализует объект в дамп.
-	 *
-	 * @memberOf Rift.dump
-	 *
-	 * @param {Object} obj
-	 * @returns {string}
-	 */
-	function serialize(obj) {
-		var objects = {};
-
-		return stringify({
-			s: objects,
-			r: collectDump(obj, objects)
-		});
-	}
-
-	/**
-	 * Восстанавливает объект из дампа.
-	 *
-	 * @memberOf Rift.dump
-	 *
-	 * @param {string|Object} dump
-	 * @returns {Object}
-	 */
-	function deserialize(dump) {
-		if (typeof dump == 'string') {
-			dump = Function('return ' + dump + ';')();
-		}
-
-		var objects = dump.s;
-
-		for (var id in objects) {
-			var obj = objects[id];
-
-			if (obj.hasOwnProperty('c')) {
-				var cl = classes[obj.c];
-				obj.instance = obj.hasOwnProperty('o') ? new cl(undefined, obj.o) : new cl();
-			} else {
-				obj.instance = {};
-			}
-		}
-
-		for (var id in objects) {
-			var obj = objects[id];
-
-			if (obj.hasOwnProperty('d')) {
-				var data = obj.d;
-
-				for (var name in data) {
-					var item = data[name];
-
-					if (typeof item == 'object') {
-						data[name] = item.hasOwnProperty('v') ? item.v : undefined;
-					} else {
-						data[name] = objects[item].instance;
-					}
-				}
-
-				if (obj.hasOwnProperty('c') && obj.instance.expandFromDumpObject) {
-					obj.instance.expandFromDumpObject(data);
-				} else {
-					Object.assign(obj.instance, data);
-				}
-			}
-		}
-
-		return objects[dump.r].instance;
-	}
-
-	/**
-	 * @namespace Rift.dump
-	 */
-	rt.dump = {
-		serialize: serialize,
-		deserialize: deserialize
-	};
-
-})();
-
-if (!global.Map) {
-	(function() {
-
-		var getStamp = rt.value.getStamp;
-
-		var entryStub = {
-			value: undefined
-		};
-
-		function Map(arr) {
-			this._entries = Object.create(null);
-
-			if (arr) {
-				for (var i = 0, l = arr.length; i < l; i++) {
-					this.set(arr[i][0], arr[i][1]);
-				}
-			}
-		}
-
-		rt.object.mixin(Map.prototype, {
-			_entries: null,
-
-			_first: null,
-			_last: null,
-
-			size: 0,
-
-			has: function(key) {
-				return getStamp(key) in this._entries;
-			},
-
-			get: function(key) {
-				return (this._entries[getStamp(key)] || entryStub).value;
-			},
-
-			set: function(key, value) {
-				var entries = this._entries;
-				var stamp = getStamp(key);
-
-				if (stamp in entries) {
-					entries[stamp].value = value;
-				} else {
-					var entry = entries[stamp] = {
-						key: key,
-						keyStamp: stamp,
-						value: value,
-						prev: this._last,
-						next: null
-					};
-
-					if (this.size++) {
-						this._last.next = entry;
-					} else {
-						this._first = entry;
-					}
-
-					this._last = entry;
-				}
-
-				return this;
-			},
-
-			delete: function(key) {
-				var entries = this._entries;
-				var stamp = getStamp(key);
-
-				if (!(stamp in entries)) {
-					return false;
-				}
-
-				if (--this.size) {
-					var prev = entries[stamp].prev;
-					var next = entries[stamp].next;
-
-					if (prev) {
-						prev.next = next;
-					} else {
-						this._first = next;
-					}
-
-					if (next) {
-						next.prev = prev;
-					} else {
-						this._last = prev;
-					}
-				} else {
-					this._first = null;
-					this._last = null;
-				}
-
-				delete entries[stamp];
-
-				return true;
-			},
-
-			forEach: function(cb, context) {
-				if (context == null) {
-					context = global;
-				}
-
-				var entry = this._first;
-
-				while (entry) {
-					cb.call(context, entry.value, entry.key, this);
-
-					do {
-						entry = entry.next;
-					} while (entry && !(entry.keyStamp in this._entries));
-				}
-			},
-
-			clear: function() {
-				var entries = this._entries;
-
-				for (var stamp in entries) {
-					delete entries[stamp];
-				}
-
-				this._first = null;
-				this._last = null;
-
-				this.size = 0;
-			}
-		});
-
-		[
-			['keys', function(entry) {
-				return entry.key;
-			}],
-			['values', function(entry) {
-				return entry.value;
-			}],
-			['entries', function(entry) {
-				return [entry.key, entry.value];
-			}]
-		].forEach(function(iterator) {
-			Map.prototype[iterator[0]] = (function(getStepValue) {
-				return function() {
-					var entries = this._entries;
-					var entry;
-					var done = false;
-					var map = this;
-
-					return {
-						next: function() {
-							if (!done) {
-								if (entry) {
-									do {
-										entry = entry.next;
-									} while (entry && !(entry.keyStamp in entries));
-								} else {
-									entry = map._first;
-								}
-
-								if (entry) {
-									return {
-										value: getStepValue(entry),
-										done: false
-									};
-								}
-
-								done = true;
-							}
-
-							return {
-								value: undefined,
-								done: true
-							};
-						}
-					};
-				};
-			})(iterator[1]);
-		});
-
-		global.Map = Map;
-
-	})();
-}
-
-if (!global.Set) {
-	(function() {
-
-		function Set(arr) {
-			this._entries = new Map();
-
-			if (arr) {
-				for (var i = 0, l = arr.length; i < l; i++) {
-					this.add(arr[i]);
-				}
-			}
-		}
-
-		rt.object.mixin(Set.prototype, {
-			_entries: null,
-
-			get size() {
-				return this._entries.size;
-			},
-
-			has: function(value) {
-				return this._entries.has(value);
-			},
-
-			add: function(value) {
-				this._entries.set(value, value);
-				return this;
-			},
-
-			delete: function(value) {
-				return this._entries.delete(value);
-			},
-
-			forEach: function(cb, context) {
-				if (context == null) {
-					context = global;
-				}
-
-				this._entries.forEach(function(value) {
-					cb.call(context, value, value, this);
-				}, this);
-			},
-
-			keys: function() {
-				return this._entries.keys();
-			},
-
-			values: function() {
-				return this._entries.values();
-			},
-
-			entries: function() {
-				return this._entries.entries();
-			},
-
-			clear: function() {
-				this._entries.clear();
-			}
-		});
-
-		global.Set = Set;
-
-	})();
-}
-
-(function() {
-
-	/**
-	 * @class Rift.Event
-	 * @extends {Object}
-	 *
-	 * @param {string} type - Тип.
-	 * @param {boolean} [canBubble=true] - Может всплывать.
-	 */
-	var Event = rt.Class.extend(/** @lends Rift.Event# */{
+	
 		/**
-		 * Объект, к которому применено событие.
-		 *
-		 * @type {?Object}
-		 * @writable
+		 * Сериализует объект в дамп.
+		 * @typesign (obj: Object): string;
 		 */
-		target: null,
-
-		/**
-		 * Тип события.
-		 *
-		 * @type {string}
-		 */
-		type: undefined,
-
-		/**
-		 * @type {int|undefined}
-		 * @writable
-		 */
-		timestamp: undefined,
-
-		/**
-		 * Дополнительная информация по событию.
-		 *
-		 * @type {?Object}
-		 * @writable
-		 */
-		detail: null,
-
-		/**
-		 * Является ли событие всплывающим.
-		 *
-		 * @type {boolean}
-		 */
-		bubbles: true,
-
-		/**
-		 * Распространение события на другие объекты остановлено.
-		 *
-		 * @type {boolean}
-		 */
-		isPropagationStopped: false,
-
-		/**
-		 * Распространение события на другие объекты и его обработка на текущем остановлены.
-		 *
-		 * @type {boolean}
-		 */
-		isImmediatePropagationStopped: false,
-
-		constructor: function(type, canBubble) {
-			this.type = type;
-
-			if (canBubble === false) {
-				this.bubbles = false;
-			}
-		},
-
-		/**
-		 * Останавливает распространение события на другие объекты.
-		 */
-		stopPropagation: function() {
-			this.isPropagationStopped = true;
-		},
-
-		/**
-		 * Останавливает распространение события на другие объекты, а также его обработку на текущем.
-		 */
-		stopImmediatePropagation: function() {
-			this.isPropagationStopped = true;
-			this.isImmediatePropagationStopped = true;
-		}
-	});
-
-	rt.Event = Event;
-
-})();
-
-(function() {
-
-	var Event = rt.Event;
-
-	/**
-	 * @class Rift.EventEmitter
-	 * @extends {Object}
-	 */
-	var EventEmitter = rt.Class.extend(/** @lends Rift.EventEmitter# */{
-		_events: null,
-
-		/**
-		 * @type {?Rift.EventEmitter}
-		 * @writable
-		 */
-		parent: null,
-
-		/**
-		 * @type {boolean}
-		 * @writable
-		 */
-		silent: false,
-
-		/**
-		 * @param {string} type
-		 * @param {Function} listener
-		 * @param {Object} [context]
-		 * @returns {Rift.EventEmitter}
-		 */
-		on: function(type, listener, context) {
-			if (typeof type == 'object') {
-				context = listener;
-
-				var types = type;
-
-				for (type in types) {
-					this._on(type, types[type], context);
-				}
-			} else {
-				this._on(type, listener, context);
-			}
-
-			return this;
-		},
-
-		_on: function(type, listener, context) {
-			var events = (this._events || (this._events = new Map())).get(type);
-
-			if (!events) {
-				events = [];
-				this._events.set(type, events);
-			}
-
-			events.push({
-				listener: listener,
-				context: context || this
+		function serialize(obj) {
+			var dumpData = {};
+	
+			return JSON.stringify({
+				d: dumpData,
+				r: collectDump(obj, dumpData)
 			});
-		},
-
-		/**
-		 * @param {string} type
-		 * @param {Function} listener
-		 * @param {Object} [context]
-		 * @returns {Rift.EventEmitter}
-		 */
-		off: function(type, listener, context) {
-			if (type === undefined) {
-				this._events = null;
-			} else if (typeof type == 'object') {
-				context = listener;
-
-				var types = type;
-
-				for (type in types) {
-					this._off(type, types[type], context);
-				}
-			} else {
-				this._off(type, listener, context);
-			}
-
-			return this;
-		},
-
-		_off: function(type, listener, context) {
-			var events = this._events || (this._events = new Map()).get(type);
-
-			if (!events) {
-				return;
-			}
-
-			if (!context) {
-				context = this;
-			}
-
-			for (var i = events.length; i;) {
-				if (events[--i].context == context) {
-					var lst = events[i].listener;
-
-					if (lst == listener || (lst.hasOwnProperty(KEY_INNER) && lst[KEY_INNER] == listener)) {
-						events.splice(i, 1);
-						break;
-					}
-				}
-			}
-
-			if (!events.length) {
-				this._events.delete(type);
-			}
-		},
-
-		/**
-		 * @param {string} type
-		 * @param {Function} listener
-		 * @param {Object} [context]
-		 * @returns {Rift.EventEmitter}
-		 */
-		once: function(type, listener, context) {
-			function outer() {
-				this._off(type, outer, context);
-				listener.apply(this, arguments);
-			}
-			outer[KEY_INNER] = listener;
-
-			return this._on(type, outer, context);
-		},
-
-		/**
-		 * @param {Rift.Event|string} evt
-		 * @param {Object} [detail]
-		 * @returns {Rift.Event}
-		 */
-		emit: function(evt, detail) {
-			if (typeof evt == 'string') {
-				evt = new Event(evt);
-			} else if (evt.hasOwnProperty(KEY_USED)) {
-				throw new TypeError('Attempt to use an object that is no longer usable');
-			}
-
-			evt[KEY_USED] = true;
-
-			evt.target = this;
-			evt.timestamp = Date.now();
-
-			if (detail) {
-				evt.detail = detail;
-			}
-
-			this._handleEvent(evt);
-
-			return evt;
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Rift.Event} evt
-		 */
-		_handleEvent: function(evt) {
-			if (!this.silent || evt.target != this) {
-				var type = evt.type;
-				var events = (this._events && this._events.get(type) || []).slice(0);
-
-				if (typeof this['on' + type] == 'function') {
-					events.push({
-						listener: this['on' + type],
-						context: this
-					});
-				}
-
-				for (var i = 0, l = events.length; i < l; i++) {
-					if (evt.isImmediatePropagationStopped) {
-						break;
-					}
-
-					try {
-						if (events[i].listener.call(events[i].context, evt) === false) {
-							evt.stopPropagation();
-						}
-					} catch (err) {
-						this._logError(err);
-					}
-				}
-			}
-
-			if (this.parent && evt.bubbles && !evt.isPropagationStopped) {
-				this.parent._handleEvent(evt);
-			}
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {*} err
-		 */
-		_logError: function(err) {
-			rt.logError(err);
 		}
-	});
-
-	rt.EventEmitter = EventEmitter;
-
-})();
-
-(function() {
-
-	var EventEmitter = rt.EventEmitter;
-
-	/**
-	 * @class Rift.ActiveDictionary
-	 * @extends {Rift.EventEmitter}
-	 *
-	 * @param {?(Object|Rift.ActiveDictionary|undefined)} [data]
-	 * @param {Object|boolean} [opts]
-	 * @param {boolean} [opts.adoptItemChanges=false]
-	 */
-	var ActiveDictionary = EventEmitter.extend('Rift.ActiveDictionary', /** @lends Rift.ActiveDictionary# */{
-		_data: null,
-		_valueCounts: null,
-
-		_adoptItemChanges: false,
-
-		constructor: function(data, opts) {
-			EventEmitter.call(this);
-
-			var thisData = new Map();
-			var valueCounts = new Map();
-			var adoptItemChanges = typeof opts == 'boolean' ? opts : !!opts && opts.adoptItemChanges;
-
-			if (data) {
-				if (data instanceof ActiveDictionary) {
-					data = data._data;
-				}
-
-				for (var name in data) {
-					var value = data[name];
-
-					thisData.set(name, value);
-
-					if (valueCounts.has(value)) {
-						valueCounts.set(value, valueCounts.get(value) + 1);
-					} else {
-						valueCounts.set(value, 1);
-
-						if (adoptItemChanges && value instanceof EventEmitter) {
-							value.on('change', this._onItemChange, this);
-						}
-					}
+	
+		/**
+		 * Восстанавливает объект из дампа.
+		 * @typesign (dump: string|Object): Object;
+		 */
+		function deserialize(dump) {
+			if (typeof dump == 'string') {
+				dump = JSON.parse(dump);
+			}
+	
+			var dumpData = dump.d;
+			var id;
+			var obj;
+	
+			for (id in dumpData) {
+				obj = dumpData[id];
+	
+				if (obj.hasOwnProperty('t')) {
+					obj.instance = obj.t ? new Date(obj.s) : [];
+				} else if (obj.hasOwnProperty('c')) {
+					var cl = classes[obj.c];
+					obj.instance = obj.hasOwnProperty('o') ? new cl(undefined, obj.o) : new cl();
+				} else {
+					obj.instance = {};
 				}
 			}
-
-			this._data = thisData;
-			this._valueCounts = valueCounts;
-
-			if (adoptItemChanges) {
-				this._adoptItemChanges = true;
-			}
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Rift.Event} evt
-		 */
-		_onItemChange: function(evt) {
-			this._handleEvent(evt);
-		},
-
-		/**
-		 * Проверяет, имеет ли словарь запись с указанным именем.
-		 *
-		 * @param {string} name
-		 * @returns {boolean}
-		 */
-		has: function(name) {
-			return this._data.has(name);
-		},
-
-		/**
-		 * Получает значение записи.
-		 *
-		 * @param {string} name
-		 * @returns {*}
-		 */
-		get: function(name) {
-			return this._data.get(name);
-		},
-
-		/**
-		 * Устанавлиет значение записи.
-		 *
-		 * @param {string} name
-		 * @param {*} value
-		 * @returns {Rift.ActiveDictionary}
-		 */
-		set: function(name, value) {
-			var values;
-
-			if (typeof name == 'string') {
-				values = {};
-				values[name] = value;
-			} else {
-				values = name;
-			}
-
-			var data = this._data;
-			var valueCounts = this._valueCounts;
-			var adoptItemChanges = this._adoptItemChanges;
-			var changed = false;
-			var removedValueSet = new Set();
-			var removedValues = [];
-			var addedValues = [];
-			var diff = {
-				$removedValues: removedValues,
-				$addedValues: addedValues
-			};
-
-			for (name in values) {
-				var hasName = data.has(name);
-				var oldValue = data.get(name);
-				var val = values[name];
-
-				if (!hasName || !svz(oldValue, val)) {
-					changed = true;
-
-					if (hasName) {
-						var oldValueCount = valueCounts.get(oldValue) - 1;
-
-						if (oldValueCount) {
-							valueCounts.set(oldValue, oldValueCount);
+	
+			for (id in dumpData) {
+				obj = dumpData[id];
+	
+				if (obj.hasOwnProperty('d')) {
+					var data = obj.d;
+	
+					for (var name in data) {
+						var value = data[name];
+	
+						if (typeof value == 'object') {
+							data[name] = value.hasOwnProperty('v') ? value.v : undefined;
 						} else {
-							valueCounts.delete(oldValue);
-
-							if (adoptItemChanges && oldValue instanceof EventEmitter) {
-								oldValue.off('change', this._onItemChange, this);
-							}
-
-							removedValueSet.add(oldValue);
+							data[name] = dumpData[value].instance;
 						}
 					}
-
-					if (valueCounts.has(val)) {
-						valueCounts.set(val, valueCounts.get(val) + 1);
+	
+					if (obj.hasOwnProperty('c') && obj.instance.expandFromDumpObject) {
+						obj.instance.expandFromDumpObject(data);
 					} else {
-						valueCounts.set(val, 1);
-
-						if (adoptItemChanges && val instanceof EventEmitter) {
-							val.on('change', this._onItemChange, this);
-						}
-
-						if (!removedValueSet.delete(val)) {
-							addedValues.push(val);
-						}
+						assign(obj.instance, data);
 					}
-
-					diff[name] = {
-						type: hasName ? 'update' : 'add',
-						oldValue: oldValue,
-						value: val
-					};
-
-					data.set(name, val);
 				}
 			}
-
-			if (changed) {
-				removedValueSet.forEach(function(value) {
-					removedValues.push(value);
-				});
-
-				this.emit('change', { diff: diff });
-			}
-
-			return this;
-		},
-
+	
+			return dumpData[dump.r].instance;
+		}
+	
+		rt.dump = {
+			serialize: serialize,
+			deserialize: deserialize
+		};
+	})();
+	
+	(function() {
 		/**
-		 * Удаляет записи.
-		 *
-		 * @param {...string} names
-		 * @returns {Rift.ActiveDictionary}
+		 * @typesign (obj: Object): Object;
 		 */
-		delete: function() {
-			var data = this._data;
-			var valueCounts = this._valueCounts;
-			var adoptItemChanges = this._adoptItemChanges;
-			var changed = false;
-			var removedValues = [];
-			var diff = {
-				$removedValues: removedValues,
-				$addedValues: []
-			};
-
-			for (var i = 0, l = arguments.length; i < l; i++) {
-				var name = arguments[i];
-
-				if (!data.has(name)) {
-					continue;
+		function bindCells(obj) {
+			Object.keys(obj).forEach(function(name) {
+				var descr = Object.getOwnPropertyDescriptor(obj, name);
+				var value = descr.value;
+	
+				if (typeof value == 'function' && value.constructor == cellx) {
+					obj[name] = value.bind(obj);
+					obj[name].constructor = cellx;
 				}
-
-				changed = true;
-
-				var value = data.get(name);
-				var valueCount = valueCounts.get(value) - 1;
-
-				if (valueCount) {
-					valueCounts.set(value, valueCount);
-				} else {
-					valueCounts.delete(value);
-
-					if (adoptItemChanges && value instanceof EventEmitter) {
-						value.off('change', this._onItemChange, this);
-					}
-
-					removedValues.push(value);
-				}
-
-				diff[name] = {
-					type: 'delete',
-					oldValue: value,
-					value: undefined
-				};
-
-				data.delete(name);
-			}
-
-			if (changed) {
-				this.emit('change', { diff: diff });
-			}
-
-			return this;
-		},
-
-		/**
-		 * @param {*} value
-		 * @returns {boolean}
-		 */
-		contains: function(value) {
-			return this._valueCounts.has(value);
-		},
-
-		/**
-		 * Создает копию словаря.
-		 *
-		 * @returns {Rift.ActiveDictionary}
-		 */
-		clone: function() {
-			return new this.constructor(this, { adoptItemChanges: this._adoptItemChanges });
-		},
-
-		/**
-		 * Преобразует в объект.
-		 *
-		 * @returns {Object}
-		 */
-		toObject: function() {
-			var obj = {};
-
-			this._data.forEach(function(value, name) {
-				obj[name] = value;
 			});
-
+	
 			return obj;
-		},
-
-		/**
-		 * @param {Object} data
-		 * @param {Object} opts
-		 */
-		collectDumpObject: function(data, opts) {
-			this._data.forEach(function(value, name) {
-				data[name] = value;
-			});
-
-			if (this._adoptItemChanges) {
-				opts.adoptItemChanges = true;
-			}
-		},
-
-		/**
-		 * @param {Object} data
-		 */
-		expandFromDumpObject: function(data) {
-			this.set(data);
-		},
-
-		/**
-		 * Уничтожает инстанс освобождая занятые им ресурсы.
-		 */
-		dispose: function() {
-			if (this._adoptItemChanges) {
-				var onItemChange = this._onItemChange;
-
-				this._valueCounts.forEach(function(value) {
-					if (value instanceof EventEmitter) {
-						value.off('change', onItemChange, this);
-					}
-				}, this);
-			}
 		}
-	});
-
-	rt.ActiveDictionary = ActiveDictionary;
-
-})();
-
-(function() {
-
-	var EventEmitter = rt.EventEmitter;
-
-	var arrayProto = Array.prototype;
-	var push = arrayProto.push;
-	var unshift = arrayProto.unshift;
-	var concat = arrayProto.concat;
-	var slice = arrayProto.slice;
-	var splice = arrayProto.splice;
-	var map = arrayProto.map;
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.ActiveArray} arr
-	 * @param {Arguments} values
-	 * @returns {Array}
-	 */
-	function addValues(arr, values) {
-		var valueCounts = arr._valueCounts;
-		var adoptItemChanges = arr._adoptItemChanges;
-		var addedValues = [];
-
-		for (var i = 0, l = values.length; i < l; i++) {
-			var value = values[i];
-
-			if (valueCounts.has(value)) {
-				valueCounts.set(value, valueCounts.get(value) + 1);
-			} else {
-				valueCounts.set(value, 1);
-
-				if (adoptItemChanges && value instanceof EventEmitter) {
-					value.on('change', arr._onItemChange, arr);
-				}
-
-				addedValues.push(value);
-			}
-		}
-
-		return addedValues;
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.ActiveArray} arr
-	 * @param {*} value
-	 * @returns {Array}
-	 */
-	function removeValue(arr, value) {
-		var valueCount = arr._valueCounts.get(value) - 1;
-
-		if (valueCount) {
-			arr._valueCounts.set(value, valueCount);
-		} else {
-			arr._valueCounts.delete(value);
-
-			if (arr._adoptItemChanges && value instanceof EventEmitter) {
-				value.off('change', arr._onItemChange, arr);
-			}
-
-			return [value];
-		}
-
-		return [];
-	}
-
-	/**
-	 * @class Rift.ActiveArray
-	 * @extends {Rift.EventEmitter}
-	 *
-	 * @param {?(Array|Rift.ActiveArray|undefined)} [data]
-	 * @param {Object|boolean} [opts]
-	 * @param {boolean} [opts.adoptItemChanges=false]
-	 */
-	var ActiveArray = EventEmitter.extend('Rift.ActiveArray', /** @lends Rift.ActiveArray# */{
-		_data: null,
-		_valueCounts: null,
-
-		_adoptItemChanges: false,
-
-		constructor: function(data, opts) {
-			EventEmitter.call(this);
-
-			var thisData;
-			var valueCounts = new Map();
-			var adoptItemChanges = typeof opts == 'boolean' ? opts : !!opts && opts.adoptItemChanges;
-
-			if (data) {
-				thisData = (data instanceof ActiveArray ? data._data : data).slice(0);
-
-				for (var i = thisData.length; i;) {
-					if (--i in thisData) {
-						var value = thisData[i];
-
-						if (valueCounts.has(value)) {
-							valueCounts.set(value, valueCounts.get(value) + 1);
-						} else {
-							valueCounts.set(value, 1);
-
-							if (adoptItemChanges && value instanceof EventEmitter) {
-								value.on('change', this._onItemChange, this);
-							}
-						}
+	
+		rt.bindCells = bindCells;
+	})();
+	
+	(function() {
+		var nextUID = rt.uid.next;
+		var EventEmitter = rt.EventEmitter;
+	
+		/**
+		 * @class Rift.Disposable
+		 * @extends {Rift.EventEmitter}
+		 * @typesign new (): Rift.Disposable;
+		 */
+		var Disposable = EventEmitter.extend({
+			_disposables: null,
+	
+			disposed: false,
+	
+			constructor: function() {
+				EventEmitter.call(this);
+				this._disposables = Object.create(null);
+			},
+	
+			listenTo: function(target, type, listener, context) {
+				var listeners;
+				var listenings;
+	
+				if (Array.isArray(target) || (typeof $ == 'function' && target instanceof $)) {
+					listenings = [];
+	
+					for (var i = target.length; i;) {
+						listenings.push(this.listenTo(target[--i], type, listener, context));
 					}
-				}
-			} else {
-				thisData = [];
-			}
-
-			this._data = thisData;
-			this._valueCounts = valueCounts;
-
-			if (adoptItemChanges) {
-				this._adoptItemChanges = adoptItemChanges;
-			}
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Rift.Event} evt
-		 */
-		_onItemChange: function(evt) {
-			this._handleEvent(evt);
-		},
-
-		/**
-		 * Получает значение индекса.
-		 *
-		 * @param {int} index
-		 * @returns {*}
-		 */
-		get: function(index) {
-			return this._data[index];
-		},
-
-		/**
-		 * Устанавливает значение индекса.
-		 *
-		 * @param {int} index
-		 * @param {*} value
-		 * @returns {Rift.ActiveArray}
-		 */
-		set: function(index, value) {
-			var data = this._data;
-			var hasIndex = index in data;
-			var oldValue = data[index];
-
-			if (!hasIndex || !svz(oldValue, value)) {
-				var valueCounts = this._valueCounts;
-				var removedValues;
-				var addedValues;
-
-				if (hasIndex) {
-					var oldValueCount = valueCounts.get(oldValue) - 1;
-
-					if (oldValueCount) {
-						valueCounts.set(oldValue, oldValueCount);
-					} else {
-						valueCounts.delete(oldValue);
-
-						if (this._adoptItemChanges && oldValue instanceof EventEmitter) {
-							oldValue.off('change', this._onItemChange, this);
-						}
-
-						removedValues = [oldValue];
-					}
-				}
-
-				if (valueCounts.has(value)) {
-					valueCounts.set(value, valueCounts.get(value) + 1);
-				} else {
-					valueCounts.set(value, 1);
-
-					if (this._adoptItemChanges && value instanceof EventEmitter) {
-						value.on('change', this._onItemChange, this);
-					}
-
-					addedValues = [value];
-				}
-
-				data[index] = value;
-
-				this.emit('change', {
-					diff: {
-						$removedValues: removedValues || [],
-						$addedValues: addedValues || []
-					}
-				});
-			}
-
-			return this;
-		},
-
-		/**
-		 * Удаляет значения индексов.
-		 *
-		 * @param {...int} indexes
-		 * @returns {Rift.ActiveArray}
-		 */
-		delete: function() {
-			var data = this._data;
-			var valueCounts = this._valueCounts;
-			var adoptItemChanges = this._adoptItemChanges;
-			var changed = false;
-			var removedValues = [];
-
-			for (var i = 0, l = arguments.length; i < l; i++) {
-				var index = arguments[i];
-
-				if (index in data) {
-					changed = true;
-
-					var value = data[index];
-					var valueCount = valueCounts.get(value) - 1;
-
-					if (valueCount) {
-						valueCounts.set(value, valueCount);
-					} else {
-						valueCounts.delete(value);
-
-						if (adoptItemChanges && value instanceof EventEmitter) {
-							value.off('change', this._onItemChange, this);
-						}
-
-						removedValues.push(value);
-					}
-
-					delete data[index];
-				}
-			}
-
-			if (changed) {
-				this.emit('change', {
-					diff: {
-						$removedValues: removedValues,
-						$addedValues: []
-					}
-				});
-			}
-
-			return this;
-		},
-
-		/**
-		 * Длинна массива.
-		 *
-		 * @type {int}
-		 * @writable
-		 */
-		get length() {
-			return this._data.length;
-		},
-		set length(len) {
-			var data = this._data;
-			var oldLen = data.length;
-
-			if (oldLen != len) {
-				var changed = false;
-				var removedValues = [];
-
-				if (len < oldLen) {
-					var valueCounts = this._valueCounts;
-					var adoptItemChanges = this._adoptItemChanges;
-					var i = len;
-
-					do {
-						if (i in data) {
-							changed = true;
-
-							var value = data[i];
-							var valueCount = valueCounts.get(value) - 1;
-
-							if (valueCount) {
-								valueCounts.set(value, valueCount);
-							} else {
-								valueCounts.delete(value);
-
-								if (adoptItemChanges && value instanceof EventEmitter) {
-									value.off('change', this._onItemChange, this);
-								}
-
-								removedValues.push(value);
-							}
-						}
-					} while (++i < oldLen);
-				}
-
-				data.length = len;
-
-				if (changed) {
-					this.emit('change', {
-						diff: {
-							$removedValues: removedValues,
-							$addedValues: []
-						}
-					});
-				}
-			}
-		},
-
-		/**
-		 * @param {*} value
-		 * @returns {boolean}
-		 */
-		contains: function(value) {
-			return this._valueCounts.has(value);
-		},
-
-		/**
-		 * @param {*} value
-		 * @param {int} [fromIndex=0]
-		 * @returns {int}
-		 */
-		indexOf: function(value, fromIndex) {
-			return this._data.indexOf(value, fromIndex);
-		},
-
-		/**
-		 * @param {*} value
-		 * @param {int} [fromIndex=-1]
-		 * @returns {int}
-		 */
-		lastIndexOf: function(value, fromIndex) {
-			return this._data.lastIndexOf(value, fromIndex);
-		},
-
-		/**
-		 * Добавляет один или более элементов в конец массива и возвращает новую длину массива.
-		 *
-		 * @param {...*} values - Элементы, добавляемые в конец массива.
-		 * @returns {int}
-		 */
-		push: function() {
-			if (!arguments.length) {
-				return this._data.length;
-			}
-
-			push.apply(this._data, arguments);
-
-			this.emit('change', {
-				diff: {
-					$removedValues: [],
-					$addedValues: addValues(this, arguments)
-				}
-			});
-
-			return this._data.length;
-		},
-
-		/**
-		 * Удаляет первый элемент из массива и возвращает его значение.
-		 *
-		 * @returns {*}
-		 */
-		shift: function() {
-			var data = this._data;
-
-			if (!data.length) {
-				return;
-			}
-
-			if (!this._valueCounts.size) {
-				data.length--;
-				return;
-			}
-
-			var hasFirst = '0' in data;
-			var value;
-
-			if (hasFirst) {
-				value = data.shift();
-			} else {
-				data.shift();
-			}
-
-			this.emit('change', {
-				diff: {
-					$removedValues: hasFirst ? removeValue(this, value) : [],
-					$addedValues: []
-				}
-			});
-
-			return value;
-		},
-
-		/**
-		 * Добавляет один или более элементов в начало массива и возвращает новую длину массива.
-		 *
-		 * @example
-		 * var arr = [1, 2];
-		 *
-		 * arr.unshift(0); // 3
-		 * concole.log(arr);
-		 * // => [0, 1, 2]
-		 *
-		 * arr.unshift(-2, -1); // 5
-		 * concole.log(arr);
-		 * // => [-2, -1, 0, 1, 2]
-		 *
-		 * @param {...*} values - Элементы, добавляемые в начало массива.
-		 * @returns {int}
-		 */
-		unshift: function() {
-			if (!arguments.length) {
-				return this._data.length;
-			}
-
-			unshift.apply(this._data, arguments);
-
-			this.emit('change', {
-				diff: {
-					$removedValues: [],
-					$addedValues: addValues(this, arguments)
-				}
-			});
-
-			return this._data.length;
-		},
-
-		/**
-		 * Удаляет последний элемент из массива и возвращает его значение.
-		 *
-		 * @returns {*}
-		 */
-		pop: function() {
-			var data = this._data;
-
-			if (!data.length) {
-				return;
-			}
-
-			if (!(data.length - 1 in data)) {
-				data.length--;
-				return;
-			}
-
-			var value = data.pop();
-
-			this.emit('change', {
-				diff: {
-					$removedValues: removeValue(this, value),
-					$addedValues: []
-				}
-			});
-
-			return value;
-		},
-
-		/**
-		 * Объединяет все элементы массива в строку через разделитель.
-		 *
-		 * @param {string} [separator]
-		 * @returns {string}
-		 */
-		join: function(separator) {
-			return this._data.join(separator);
-		},
-
-		/**
-		 * @param {...*} values - Массивы и/или значения, соединяемые в новый массив.
-		 * @returns {Rift.ActiveArray}
-		 */
-		concat: function() {
-			return new this.constructor(
-				concat.apply(this._data, map.call(arguments, function(value) {
-					return value instanceof ActiveArray ? value._data : value;
-				}))
-			);
-		},
-
-		/**
-		 * Создаёт поверхностную копию части массива.
-		 *
-		 * @param {int} [startIndex=0]
-		 * @param {int} [endIndex]
-		 * @returns {Array}
-		 */
-		slice: function(startIndex, endIndex) {
-			return this._data.slice(startIndex, endIndex);
-		},
-
-		/**
-		 * Изменяет содержимое массива, добавляя новые и удаляя старые элементы.
-		 *
-		 * @param {int} startIndex
-		 * @param {int} deleteCount
-		 * @param {...*} [values]
-		 * @returns {Array} - Удалённые элементы.
-		 */
-		splice: function(startIndex, deleteCount) {
-			var data = this._data;
-			var removedSlice = splice.apply(data, arguments);
-			var addedSlice = slice.call(arguments, 2);
-			var removedSliceLen = removedSlice.length;
-			var addedSliceLen = addedSlice.length;
-
-			if (!removedSliceLen && !addedSliceLen) {
-				return removedSlice;
-			}
-
-			var valueCounts = this._valueCounts;
-			var adoptItemChanges = this._adoptItemChanges;
-			var changed = false;
-			var removedValueSet = new Set();
-			var addedValues = [];
-
-			for (var i = 0, l = Math.max(removedSliceLen, addedSliceLen); i < l; i++) {
-				var iInRemovedSlice = i in removedSlice;
-				var iInAddedSlice = i in addedSlice;
-
-				if (!iInRemovedSlice && !iInAddedSlice) {
-					continue;
-				}
-
-				var removedValue = removedSlice[i];
-				var addedValue = addedSlice[i];
-
-				if (!iInRemovedSlice || !iInAddedSlice || !svz(removedValue, addedValue)) {
-					changed = true;
-
-					if (iInRemovedSlice) {
-						var removedValueCount = valueCounts.get(removedValue) - 1;
-
-						if (removedValueCount) {
-							valueCounts.set(removedValue, removedValueCount);
-						} else {
-							valueCounts.delete(removedValue);
-
-							if (adoptItemChanges && removedValue instanceof EventEmitter) {
-								removedValue.off('change', this._onItemChange, this);
-							}
-
-							removedValueSet.add(removedValue);
-						}
-					}
-
-					if (iInAddedSlice) {
-						if (valueCounts.has(addedValue)) {
-							valueCounts.set(addedValue, valueCounts.get(addedValue) + 1);
-						} else {
-							valueCounts.set(addedValue, 1);
-
-							if (adoptItemChanges && addedValue instanceof EventEmitter) {
-								addedValue.on('change', this._onItemChange, this);
-							}
-
-							if (!removedValueSet.delete(addedValue)) {
-								addedValues.push(addedValue);
-							}
-						}
-					}
-				}
-			}
-
-			if (!changed && removedSliceLen > addedSliceLen) {
-				for (var i = startIndex + addedSliceLen, l = data.length; i < l; i++) {
-					if (i in data) {
-						changed = true;
-						break;
-					}
-				}
-			}
-
-			if (changed) {
-				var removedValues = [];
-
-				removedValueSet.forEach(function(value) {
-					removedValues.push(value);
-				});
-
-				this.emit('change', {
-					diff: {
-						$removedValues: removedValues,
-						$addedValues: addedValues
-					}
-				});
-			}
-
-			return removedSlice;
-		},
-
-		/**
-		 * @method
-		 *
-		 * @param {Function} cb
-		 * @param {Object} [context=global]
-		 */
-		forEach: null,
-
-		/**
-		 * @method
-		 *
-		 * @param {Function} cb
-		 * @param {Object} [context=global]
-		 * @returns {Array}
-		 */
-		map: null,
-
-		/**
-		 * @method
-		 *
-		 * @param {Function} cb
-		 * @param {Object} [context=global]
-		 * @returns {Array}
-		 */
-		filter: null,
-
-		/**
-		 * @method
-		 *
-		 * @param {Function} cb
-		 * @param {Object} [context=global]
-		 * @returns {boolean}
-		 */
-		every: null,
-
-		/**
-		 * @method
-		 *
-		 * @param {Function} cb
-		 * @param {Object} [context=global]
-		 * @returns {boolean}
-		 */
-		some: null,
-
-		/**
-		 * @method
-		 *
-		 * @param {Function} cb
-		 * @param {*} [initialValue]
-		 * @returns {*}
-		 */
-		reduce: null,
-
-		/**
-		 * @method
-		 *
-		 * @param {Function} cb
-		 * @param {*} [initialValue]
-		 * @returns {*}
-		 */
-		reduceRight: null,
-
-		/**
-		 * Создает копию массива.
-		 *
-		 * @returns {Rift.ActiveArray}
-		 */
-		clone: function() {
-			return new this.constructor(this, { adoptItemChanges: this._adoptItemChanges });
-		},
-
-		/**
-		 * Преобразует в обычный массив.
-		 *
-		 * @returns {Array}
-		 */
-		toArray: function() {
-			return this._data.slice(0);
-		},
-
-		/**
-		 * Преобразует в строковое представление.
-		 *
-		 * @returns {string}
-		 */
-		toString: function() {
-			return this._data.toString();
-		},
-
-		/**
-		 * @param {Object} data
-		 * @param {Object} opts
-		 */
-		collectDumpObject: function(data, opts) {
-			this._data.forEach(function(value, index) {
-				data[index] = value;
-			});
-
-			if (this._adoptItemChanges) {
-				opts.adoptItemChanges = true;
-			}
-		},
-
-		/**
-		 * @param {Object} data
-		 */
-		expandFromDumpObject: function(data) {
-			for (var index in data) {
-				this.set(index, data[index]);
-			}
-		},
-
-		/**
-		 * Уничтожает инстанс освобождая занятые им ресурсы.
-		 */
-		dispose: function() {
-			if (this._adoptItemChanges) {
-				var onItemChange = this._onItemChange;
-
-				this._valueCounts.forEach(function(value) {
-					if (value instanceof EventEmitter) {
-						value.off('change', onItemChange, this);
-					}
-				}, this);
-			}
-		}
-	});
-
-	['forEach', 'map', 'filter', 'every', 'some', 'reduce', 'reduceRight'].forEach(function(name) {
-		this[name] = function() {
-			return arrayProto[name].apply(this._data, arguments);
-		};
-	}, ActiveArray.prototype);
-
-	rt.ActiveArray = ActiveArray;
-
-})();
-
-(function() {
-
-	var nextTick = rt.process.nextTick;
-	var Event = rt.Event;
-	var EventEmitter = rt.EventEmitter;
-
-	var STATE_CHANGES_ACCUMULATION = 0;
-	var STATE_CHANGES_HANDLING = 1;
-	var STATE_CHILDREN_RECALCULATION = 2;
-
-	var state = STATE_CHANGES_ACCUMULATION;
-
-	/**
-	 * @type {Map<{ dataCell: Rift.DataCell, event: Rift.Event, cancellable: boolean }>}
-	 * @private
-	 */
-	var changes = new Map();
-
-	var changeCount = 0;
-
-	/**
-	 * @private
-	 */
-	var outdatedDataCells = Object.assign(Object.create(null), {
-		first: null,
-		last: null
-	});
-
-	var circularityDetectionCounter = new Map();
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.DataCell} dc
-	 * @returns {boolean}
-	 */
-	function addOutdatedDataCell(dc) {
-		var dcBundle = outdatedDataCells.last;
-		var maxParentDepth = dc._maxParentDepth;
-
-		if (dcBundle) {
-			while (true) {
-				if (maxParentDepth == dcBundle.maxParentDepth) {
-					if (dcBundle.dataCells.has(dc)) {
-						return false;
-					}
-
-					dcBundle.dataCells.add(dc);
-					dcBundle.count++;
-
-					return true;
-				}
-
-				if (maxParentDepth > dcBundle.maxParentDepth) {
-					var next = dcBundle.next;
-
-					dcBundle.next = (next || outdatedDataCells)[next ? 'prev' : 'last'] =
-						outdatedDataCells[maxParentDepth] = {
-							maxParentDepth: maxParentDepth,
-							dataCells: new Set([dc]),
-							count: 1,
-							prev: dcBundle,
-							next: next
-						};
-
-					return true;
-				}
-
-				if (!dcBundle.prev) {
-					dcBundle.prev = outdatedDataCells.first = outdatedDataCells[maxParentDepth] = {
-						maxParentDepth: maxParentDepth,
-						dataCells: new Set([dc]),
-						count: 1,
-						prev: null,
-						next: dcBundle
-					};
-
-					return true;
-				}
-
-				dcBundle = dcBundle.prev;
-			}
-		}
-
-		outdatedDataCells.first = outdatedDataCells.last = outdatedDataCells[maxParentDepth] = {
-			maxParentDepth: maxParentDepth,
-			dataCells: new Set([dc]),
-			count: 1,
-			prev: null,
-			next: null
-		};
-
-		return true;
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.DataCell} dc
-	 * @returns {boolean}
-	 */
-	function removeOutdatedDataCell(dc) {
-		var dcBundle = outdatedDataCells[dc._maxParentDepth];
-
-		if (dcBundle && dcBundle.dataCells.has(dc)) {
-			if (--dcBundle.count) {
-				delete dcBundle.dataCells.delete(dc);
-			} else {
-				var prev = dcBundle.prev;
-				var next = dcBundle.next;
-
-				if (prev) {
-					prev.next = next;
-				} else {
-					outdatedDataCells.first = next;
-				}
-
-				if (next) {
-					next.prev = prev;
-				} else {
-					outdatedDataCells.last = prev;
-				}
-
-				delete outdatedDataCells[dc._maxParentDepth];
-			}
-
-			return true;
-		}
-
-		return false;
-	}
-
-	/**
-	 * @private
-	 */
-	function handleChanges() {
-		state = STATE_CHANGES_HANDLING;
-
-		do {
-			for (
-				var changesIterator = changes.values(), changesIteratorStep;
-				!(changesIteratorStep = changesIterator.next()).done;
-			) {
-				var change = changesIteratorStep.value;
-				var dc = change.dataCell;
-
-				for (
-					var childrenIterator = dc._children.values(), childrenIteratorStep;
-					!(childrenIteratorStep = childrenIterator.next()).done;
-				) {
-					addOutdatedDataCell(childrenIteratorStep.value);
-				}
-
-				changes.delete(dc);
-				changeCount--;
-
-				dc._fixedValue = dc._value;
-				dc._changed = true;
-
-				dc._handleEvent(change.event);
-
-				if (state != STATE_CHANGES_HANDLING) {
-					return;
-				}
-			}
-		} while (changeCount);
-	}
-
-	/**
-	 * @private
-	 */
-	function releaseChanges() {
-		if (state == STATE_CHANGES_ACCUMULATION) {
-			if (changeCount) {
-				handleChanges();
-
-				if (state != STATE_CHANGES_HANDLING) {
-					return;
-				}
-			} else {
-				return;
-			}
-		} else if (state == STATE_CHANGES_HANDLING) {
-			if (changeCount) {
-				handleChanges();
-
-				if (state != STATE_CHANGES_HANDLING) {
-					return;
-				}
-			}
-		} else {
-			handleChanges();
-
-			if (state != STATE_CHANGES_HANDLING) {
-				return;
-			}
-		}
-
-		state = STATE_CHILDREN_RECALCULATION;
-
-		for (var dcBundle; dcBundle = outdatedDataCells.first;) {
-			var dcs = dcBundle.dataCells;
-
-			for (var iterator = dcs.values(), step; !(step = iterator.next()).done;) {
-				var dc = step.value;
-
-				dc._recalc();
-
-				if (state != STATE_CHILDREN_RECALCULATION) {
-					return;
-				}
-
-				// кажется, что правильней поставить этот if-else над dc._recalc() , но подумай получше ;)
-				if (--dcBundle.count) {
-					delete dcs.delete(dc);
-				} else {
-					var prev = dcBundle.prev;
-					var next = dcBundle.next;
-
-					if (prev) {
-						prev.next = next;
-					} else {
-						outdatedDataCells.first = next;
-					}
-
-					if (next) {
-						next.prev = prev;
-					} else {
-						outdatedDataCells.last = prev;
-					}
-
-					delete outdatedDataCells[dc._maxParentDepth];
-				}
-
-				if (changeCount) {
-					handleChanges();
-
-					if (state != STATE_CHANGES_HANDLING) {
-						return;
-					}
-
-					state = STATE_CHILDREN_RECALCULATION;
-
-					break;
-				}
-			}
-		}
-
-		state = STATE_CHANGES_ACCUMULATION;
-		circularityDetectionCounter.clear();
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.DataCell} dc
-	 * @param {Object|undefined} diff
-	 * @param {Rift.Event|undefined} [evt]
-	 * @param {boolean} [cancellable=true]
-	 */
-	function addChange(dc, diff, evt, cancellable) {
-		if (!evt) {
-			evt = new Event('change');
-			evt.target = dc;
-			evt.timestamp = Date.now();
-
-			if (diff) {
-				evt.detail = { diff: diff };
-			}
-		}
-
-		if (changeCount) {
-			if (changes.has(dc)) {
-				var change = changes.get(dc);
-
-				(evt.detail || (evt.detail = {})).prevEvent = change.event;
-				change.event = evt;
-
-				if (cancellable === false) {
-					change.cancellable = false;
-				}
-
-				return;
-			}
-		} else {
-			if (state == STATE_CHANGES_ACCUMULATION) {
-				nextTick(releaseChanges);
-			}
-		}
-
-		changes.set(dc, {
-			dataCell: dc,
-			event: evt,
-			cancellable: cancellable !== false
-		});
-
-		changeCount++;
-	}
-
-	var detectedParents = [];
-
-	/**
-	 * @class Rift.DataCell
-	 * @extends {Rift.EventEmitter}
-	 *
-	 * @example
-	 * var a = new DataCell(1);
-	 * var b = new DataCell(2);
-	 *
-	 * var c = new DateCell(function() {
-	 *     return a.value + b.value;
-	 * }, {
-	 *     onchange: function() {
-	 *         console.log('c.value: ' + c.value);
-	 *     }
-	 * });
-	 *
-	 * console.log(c.value);
-	 * // => 3
-	 *
-	 * a.value = 5;
-	 * b.value = 10;
-	 * // => 'c.value: 15'
-	 *
-	 * @param {*|Function} [value] - Значение или функция для его вычисления.
-	 * @param {Object} [opts] - Опции.
-	 * @param {Function} [opts.get] - Будет использоваться при получении значения.
-	 * @param {Function} [opts.set] - Будет использоваться при установке значения.
-	 * @param {Object} [opts.owner]
-	 * @param {boolean} [opts.computable]
-	 * @param {Function} [opts.onchange] - Инлайновый обработчик изменения значения.
-	 * @param {Function} [opts.onerror] - Инлайновый обработчик ошибки.
-	 */
-	var DataCell = EventEmitter.extend(/** @lends Rift.DataCell# */{
-		/**
-		 * @type {*}
-		 */
-		initialValue: undefined,
-
-		_value: undefined,
-		_fixedValue: undefined,
-
-		_formula: null,
-
-		_get: null,
-		_set: null,
-
-		/**
-		 * @type {?Object}
-		 */
-		owner: null,
-
-		/**
-		 * Родительские ячейки.
-		 *
-		 * @type {Set<Rift.DataCell>}
-		 * @protected
-		 */
-		_parents: null,
-
-		/**
-		 * Дочерние ячейки.
-		 *
-		 * @type {Set<Rift.DataCell>}
-		 * @protected
-		 */
-		_children: null,
-
-		/**
-		 * @type {int}
-		 * @protected
-		 */
-		_maxParentDepth: 0,
-
-		/**
-		 * @type {?Rift.Event}
-		 * @protected
-		 */
-		_lastErrorEvent: null,
-
-		/**
-		 * Является ли ячейка вычисляемой.
-		 *
-		 * @type {boolean}
-		 */
-		computable: false,
-
-		_changed: false,
-
-		/**
-		 * @type {boolean}
-		 */
-		get changed() {
-			if (changeCount) {
-				releaseChanges();
-			}
-
-			return this._changed;
-		},
-
-		/**
-		 * @type {boolean}
-		 */
-		disposed: false,
-
-		_onChange: null,
-
-		/**
-		 * Инлайновый обработчик изменения значения.
-		 *
-		 * @type {?Function}
-		 * @writable
-		 */
-		get onchange() {
-			return this._onChange;
-		},
-		set onchange(onChange) {
-			if (changeCount) {
-				releaseChanges();
-			}
-
-			this._onChange = onChange;
-		},
-
-		_onError: null,
-
-		/**
-		 * Инлайновый обработчик ошибки.
-		 *
-		 * @type {?Function}
-		 * @writable
-		 */
-		get onerror() {
-			return this._onError;
-		},
-		set onerror(onError) {
-			if (changeCount) {
-				releaseChanges();
-			}
-
-			this._onError = onError;
-		},
-
-		constructor: function(value, opts) {
-			EventEmitter.call(this);
-
-			if (!opts) {
-				opts = {};
-			}
-
-			if (opts.get) { this._get = opts.get; }
-			if (opts.set) { this._set = opts.set; }
-
-			if (opts.owner) { this.owner = opts.owner; }
-
-			if (opts.onchange) {
-				this._onChange = this.owner ? opts.onchange.bind(this.owner) : opts.onchange;
-			}
-			if (opts.onerror) {
-				this._onError = this.owner ? opts.onerror.bind(this.owner) : opts.onerror;
-			}
-
-			this._children = new Set();
-
-			if (
-				typeof value == 'function' &&
-					(opts.computable !== undefined ? opts.computable : value.constructor == Function)
-			) {
-				this.computable = true;
-			}
-
-			if (this.computable) {
-				this._formula = value;
-
-				detectedParents.unshift(new Set());
-
-				try {
-					this._value = this._fixedValue = this._formula.call(this.owner || this);
-				} catch (err) {
-					this._handleError(err);
-				}
-
-				this._parents = detectedParents.shift();
-
-				var maxParentDepth = 1;
-
-				for (var iterator = this._parents.values(), step; !(step = iterator.next()).done;) {
-					var parent = step.value;
-
-					parent._children.add(this);
-
-					if (maxParentDepth <= parent._maxParentDepth) {
-						maxParentDepth = parent._maxParentDepth + 1;
-					}
-				}
-
-				this._maxParentDepth = maxParentDepth;
-			} else {
-				this.initialValue = this._value = this._fixedValue = value;
-
-				if (value instanceof EventEmitter) {
-					value.on('change', this._onValueChange, this);
-				}
-			}
-		},
-
-		/**
-		 * @type {*}
-		 * @writable
-		 */
-		get value() {
-			if (detectedParents.length) {
-				detectedParents[0].add(this);
-			}
-
-			if (changeCount || state == STATE_CHANGES_HANDLING) {
-				releaseChanges();
-			}
-
-			if (this._get) {
-				return this.computable ? this._get.call(this.owner || this, this._value) : this._get(this._value);
-			}
-
-			return this._value;
-		},
-		set value(value) {
-			if (this.computable) {
-				if (!this._set) {
-					throw new TypeError('Cannot write to read-only dataСell');
-				}
-
-				this._set.call(this.owner || this, value);
-			} else {
-				var oldValue = this._value;
-
-				if (this._set) {
-					var change = {};
-
-					if (oldValue instanceof EventEmitter) {
-						oldValue.off('change', this._onValueChange, this);
-					}
-
-					this._set(value, change);
-
-					value = this._value;
-
-					if (value instanceof EventEmitter) {
-						value.on('change', this._onValueChange, this);
-					}
-
-					if (!svz(oldValue, value)) {
-						change.type = 'update';
-						change.oldValue = oldValue;
-						change.value = value;
-
-						addChange(this, { value: change });
-					} else {
-						if (!isEmpty(change)) {
-							addChange(this, { value: change }, undefined, value !== this._fixedValue);
-						}
-					}
-				} else {
-					if (!svz(oldValue, value)) {
-						this._value = value;
-
-						if (svz(value, this._fixedValue) && changes.get(this).cancellable) {
-							changes.delete(this);
-							changeCount--;
-
-							return;
-						}
-
-						if (oldValue instanceof EventEmitter) {
-							oldValue.off('change', this._onValueChange, this);
-						}
-						if (value instanceof EventEmitter) {
-							value.on('change', this._onValueChange, this);
-						}
-
-						addChange(this, {
-							value: {
-								type: 'update',
-								oldValue: oldValue,
-								value: value
-							}
-						});
-					}
-				}
-			}
-		},
-
-		/**
-		 * Обработчик внутреннего изменения значения.
-		 *
-		 * @protected
-		 *
-		 * @param {Rift.Event} evt
-		 * @param {Object} [evt.detail.diff]
-		 */
-		_onValueChange: function(evt) {
-			addChange(this, undefined, evt, this._value !== this._fixedValue);
-		},
-
-		/**
-		 * @protected
-		 */
-		_recalc: function() {
-			if (circularityDetectionCounter.has(this)) {
-				if (circularityDetectionCounter.get(this) == 10) {
-					this._handleError(new RangeError('Circular dependency detected'));
-					return;
-				}
-
-				circularityDetectionCounter.set(this, circularityDetectionCounter.get(this) + 1);
-			} else {
-				circularityDetectionCounter.set(this, 1);
-			}
-
-			var oldValue = this._value;
-			var oldParents = this._parents;
-
-			var err;
-
-			detectedParents.unshift(new Set());
-
-			try {
-				var value = this._formula.call(this.owner || this);
-			} catch (error) {
-				err = error;
-			}
-
-			if (state != STATE_CHILDREN_RECALCULATION) {
-				detectedParents.shift();
-				return;
-			}
-
-			var parents = this._parents = detectedParents.shift();
-			var maxParentDepth = 1;
-
-			for (var iterator = oldParents.values(), step; !(step = iterator.next()).done;) {
-				if (!parents.has(step.value)) {
-					step.value._children.delete(this);
-				}
-			}
-
-			for (var iterator = parents.values(), step; !(step = iterator.next()).done;) {
-				var parent = step.value;
-
-				if (!oldParents.has(parent)) {
-					parent._children.add(this);
-				}
-
-				if (maxParentDepth <= parent._maxParentDepth) {
-					maxParentDepth = parent._maxParentDepth + 1;
-				}
-			}
-
-			if (this._maxParentDepth != maxParentDepth) {
-				if (this._maxParentDepth < maxParentDepth) {
-					this._maxParentDepth = maxParentDepth;
-					addOutdatedDataCell(this);
-
-					return;
-				} else {
-					this._maxParentDepth = maxParentDepth;
-				}
-			}
-
-			if (err) {
-				this._handleError(err);
-			} else if (!svz(oldValue, value)) {
-				this._value = value;
-
-				addChange(this, {
-					value: {
-						type: 'update',
-						oldValue: oldValue,
-						value: value
-					}
-				});
-			}
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {*} err
-		 */
-		_handleError: function(err) {
-			this._logError(err);
-
-			var evt = this.emit('error', { error: err });
-			this._handleErrorEvent(evt);
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Rift.Event} evt
-		 */
-		_handleErrorEvent: function(evt) {
-			if (this._lastErrorEvent !== evt) {
-				this._lastErrorEvent = evt;
-
-				if (evt.target != this) {
-					this._handleEvent(evt);
-				}
-
-				for (var iterator = this._children.values(), step; !(step = iterator.next()).done;) {
-					if (evt.isPropagationStopped) {
-						break;
-					}
-
-					step.value._handleErrorEvent(evt);
-				}
-			}
-		},
-
-		on: function() {
-			if (changeCount) {
-				releaseChanges();
-			}
-
-			DataCell.$super.on.apply(this, arguments);
-		},
-
-		off: function() {
-			if (changeCount) {
-				releaseChanges();
-			}
-
-			DataCell.$super.off.apply(this, arguments);
-		},
-
-		/**
-		 * Уничтожает ячейку данных освобождая занятые ей ресурсы.
-		 */
-		dispose: function() {
-			if (this.disposed) {
-				return;
-			}
-
-			if (changes.has(this)) {
-				changes.delete(this);
-				changeCount--;
-			}
-
-			removeOutdatedDataCell(this);
-
-			if (this.computable) {
-				for (var iterator = this._parents.values(), step; !(step = iterator.next()).done;) {
-					step.value._children.delete(this);
-				}
-			} else {
-				if (this._value instanceof EventEmitter) {
-					this._value.off('change', this._onValueChange, this);
-				}
-			}
-
-			for (var iterator = this._children.values(), step; !(step = iterator.next()).done;) {
-				step.value.dispose();
-			}
-
-			this.disposed = true;
-		}
-	});
-
-	rt.DataCell = DataCell;
-
-})();
-
-(function() {
-
-	var cloneObject = rt.object.clone;
-	var DataCell = rt.DataCell;
-
-	/**
-	 * Заменяет активные свойства на геттеры, которые при срабатывании будут подставлять в инстанс исходные свойства,
-	 * но уже связанные с инстансом.
-	 *
-	 * @memberOf Rift.ActiveProperty
-	 *
-	 * @param {Object} obj
-	 * @returns {Object}
-	 */
-	function autoBind(obj) {
-		Object.keys(obj).forEach(function(name) {
-			var descr = Object.getOwnPropertyDescriptor(obj, name);
-			var value = descr.value;
-
-			if (typeof value == 'function' && value.constructor == ActiveProperty) {
-				Object.defineProperty(obj, name, {
-					configurable: true,
-					enumerable: descr.enumerable,
-
-					get: function() {
-						descr.value = Object.defineProperty(value.bind(this), 'constructor', {
-							configurable: true,
-							writable: true,
-							value: ActiveProperty
-						});
-
-						Object.defineProperty(this, name, descr);
-
-						return this[name];
-					}
-				});
-			}
-		});
-
-		return obj;
-	}
-
-	/**
-	 * @memberOf Rift.ActiveProperty
-	 *
-	 * @param {Object} obj
-	 * @returns {Object}
-	 */
-	function disposeDataCells(obj) {
-		if (obj._dataCells) {
-			for (var iterator = obj._dataCells.values(), step; !(step = iterator.next()).done;) {
-				step.value.dispose();
-			}
-
-			obj._dataCells = null;
-		}
-
-		return obj;
-	}
-
-	/**
-	 * @private
-	 */
-	function applyProperty(prop, value, opts, args) {
-		var dc = (this._dataCells || (this._dataCells = new Map())).get(prop);
-
-		if (!dc) {
-			if (value !== null && typeof value == 'object') {
-				if (typeof value.clone == 'function') {
-					value = value.clone();
-				} else if (Array.isArray(value)) {
-					value = value.slice(0);
-				} else {
-					var copy = new value.constructor(value);
-					value = copy != value ? copy : cloneObject(value);
-				}
-			}
-
-			opts = Object.create(opts);
-			opts.owner = this;
-
-			dc = new DataCell(value, opts);
-			this._dataCells.set(prop, dc);
-		}
-
-		switch (args.length) {
-			case 0: {
-				return dc.value;
-			}
-			case 1: {
-				dc.value = args[0];
-				break;
-			}
-			default: {
-				var methodName = args[0];
-				args[0] = dc;
-				return ActiveProperty.prototype[methodName].apply(this, args);
-			}
-		}
-
-		return this;
-	}
-
-	/**
-	 * @class Rift.ActiveProperty
-	 * @extends {Function}
-	 *
-	 * @example
-	 * function User() {}
-	 *
-	 * User.prototype = {
-	 *     firstName: new ActiveProperty(''),
-	 *     lastName: new ActiveProperty(''),
-	 *
-	 *     fullName: new ActiveProperty(function() {
-	 *         return (this.firstName() + ' ' + this.lastName()).trim();
-	 *     }, {
-	 *         set: function(fullName) {
-	 *             fullName = fullName.split(' ');
-	 *
-	 *             this.firstName(fullName[0]);
-	 *             this.lastName(fullName[1]);
-	 *         },
-	 *
-	 *         onchange: function(evt) {
-	 *             console.log('evt.detail.diff: ' + JSON.stringify(evt.detail.diff));
-	 *         }
-	 *     }),
-	 *
-	 *     name: new ActiveProperty(function() {
-	 *         return this.firstName() || this.lastName();
-	 *     }, {
-	 *         set: function(firstName) {
-	 *             this.firstName(firstName);
-	 *         }
-	 *     })
-	 * };
-	 *
-	 * var user = new User();
-	 *
-	 * console.log(user.fullName());
-	 * // => ''
-	 *
-	 * console.log(user.name());
-	 * // => ''
-	 *
-	 * user.firstName('Vasya');
-	 * user.lastName('Pupkin');
-	 * // => evt.detail.diff: {"value":{"oldValue":"","value":"Vasya Pupkin"}}
-	 *
-	 * console.log(user.fullName());
-	 * // => 'Vasya Pupkin'
-	 *
-	 * console.log(user.name());
-	 * // => 'Vasya'
-	 *
-	 * @param {*|Function} [value] - Значение или функция для его вычисления.
-	 * @param {Object} [opts] - Опции.
-	 * @param {Function} [opts.get] - Будет использоваться при получении значения.
-	 * @param {Function} [opts.set] - Будет использоваться при установке значения.
-	 * @param {Function} [opts.onchange] - Инлайновый обработчик изменения значения.
-	 * @param {Function} [opts.onerror] - Инлайновый обработчик ошибки.
-	 * @returns {Function}
-	 */
-	function ActiveProperty(value, opts) {
-		if (!opts) {
-			opts = {};
-		}
-
-		function prop() {
-			return applyProperty.call(this, prop, value, opts, arguments);
-		}
-
-		Object.defineProperty(prop, 'constructor', {
-			configurable: true,
-			writable: true,
-			value: ActiveProperty
-		});
-
-		return prop;
-	}
-
-	ActiveProperty.autoBind = autoBind;
-	ActiveProperty.disposeDataCells = disposeDataCells;
-
-	Object.assign(ActiveProperty.prototype, /** @lends Rift.ActiveProperty# */{
-		/**
-		 * @param {Rift.DataCell} dc
-		 * @returns {Rift.DataCell}
-		 */
-		dataCell: function(dc) {
-			return dc;
-		},
-
-		/**
-		 * @param {Rift.DataCell} dc
-		 * @param {Function} listener
-		 * @param {Object} [context]
-		 * @returns {Object}
-		 */
-		subscribe: function(dc, listener, context) {
-			dc.on('change', listener, context || this);
-			return this;
-		},
-
-		/**
-		 * @param {Rift.DataCell} dc
-		 * @param {Function} listener
-		 * @param {Object} [context]
-		 * @returns {Object}
-		 */
-		unsubscribe: function(dc, listener, context) {
-			dc.off('change', listener, context || this);
-			return this;
-		}
-	});
-
-	rt.ActiveProperty = ActiveProperty;
-
-	/**
-	 * @memberOf Rift
-	 *
-	 * @param {Function} value
-	 * @param {Object} [opts]
-	 */
-	rt.observable = function(value, opts) {
-		if (typeof value == 'function' && value.constructor == Function) {
-			if (!opts) {
-				opts = {};
-			}
-
-			opts.computable = false;
-		}
-
-		return new ActiveProperty(value, opts);
-	};
-
-	/**
-	 * @memberOf Rift
-	 *
-	 * @param {Function} formula
-	 * @param {Object} [opts]
-	 */
-	rt.computable = function(formula, opts) {
-		if (formula.constructor != Function) {
-			if (!opts) {
-				opts = {};
-			}
-
-			opts.computable = true;
-		}
-
-		return new ActiveProperty(formula, opts);
-	};
-
-})();
-
-(function() {
-
-	var getUID = rt.object.getUID;
-	var getStamp = rt.value.getStamp;
-	var EventEmitter = rt.EventEmitter;
-	var ActiveProperty = rt.ActiveProperty;
-	var autoBind = rt.ActiveProperty.autoBind;
-	var disposeDataCells = rt.ActiveProperty.disposeDataCells;
-
-	/**
-	 * @private
-	 *
-	 * @param {Function} method
-	 * @returns {Function}
-	 */
-	function wrapListeningMethod(method) {
-		return function _(target, type, listener, context, meta) {
-			if (Array.isArray(target) || (isClient && target instanceof $)) {
-				for (var i = target.length; i;) {
-					_.call(this, target[--i], type, listener, context, meta);
-				}
-			} else {
-				if (typeof target == 'function' && target.constructor == ActiveProperty) {
-					target = target('dataCell', 0);
-				}
-
-				if (typeof type == 'object') {
-					meta = context;
+				} else if (typeof type == 'object') {
 					context = listener;
-
-					var types = type;
-
-					for (type in types) {
-						_.call(this, target, type, types[type], context, meta);
+					listeners = type;
+					listenings = [];
+	
+					for (type in listeners) {
+						listenings.push(this.listenTo(target, type, listeners[type], context));
 					}
 				} else if (Array.isArray(listener)) {
-					var listeners = listener;
-
-					for (var i = 0, l = listeners.length; i < l; i++) {
-						_.call(this, target, type, listeners[i], context, meta);
+					listeners = listener;
+					listenings = [];
+	
+					for (var j = 0, m = listeners.length; j < m; j++) {
+						listenings.push(this.listenTo(target, type, listeners[j], context));
 					}
 				} else if (typeof listener == 'object') {
-					var props = listener;
-
-					for (var name in props) {
-						_.call(this, target[name]('dataCell', 0), type, props[name], context, meta);
+					listeners = listener;
+					listenings = [];
+	
+					for (var name in listeners) {
+						listenings.push(this.listenTo(target[name]('unwrap', 0), type, listeners[name], context));
 					}
 				} else {
-					method.call(this, target, type, listener, context, meta);
+					return this._listenTo(target, type, listener, context);
 				}
-			}
-
-			return this;
-		};
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {{ target: Object, type: string, listener: Function, context: Object }} listening
-	 */
-	function removeListener(listening) {
-		if (listening.target instanceof EventEmitter) {
-			listening.target.off(listening.type, listening.listener, listening.context);
-		} else {
-			listening.target.removeEventListener(listening.type, listening.listener, false);
-		}
-	}
-
-	/**
-	 * @class Rift.Disposable
-	 * @extends {Rift.EventEmitter}
-	 */
-	var Disposable = EventEmitter.extend(/** @lends Rift.Disposable# */{
-		_listening: null,
-		_callbacks: null,
-		_timeouts: null,
-		_dataCells: null,
-
-		constructor: function() {
-			EventEmitter.call(this);
-
-			if (!this.constructor._isActivePropertiesBound) {
-				var cl = this.constructor;
-
-				do {
-					autoBind(cl.prototype);
-					cl._isActivePropertiesBound = true;
-
-					cl = cl.$super.constructor;
-				} while (cl != Disposable && !cl._isActivePropertiesBound);
-			}
-		},
-
-		/**
-		 * Начинает прослушивание события на объекте.
-		 *
-		 * @param {Rift.EventEmitter|EventTarget} target
-		 * @param {string} type
-		 * @param {Function} listener
-		 * @param {Object|undefined} [context]
-		 * @param {*} [meta]
-		 * @returns {Rift.Disposable}
-		 */
-		listen: wrapListeningMethod(function(target, type, listener, context, meta) {
-			this._listen(target, type, listener, context, meta);
-		}),
-
-		/**
-		 * @protected
-		 */
-		_listen: function(target, type, listener, context, meta) {
-			if (!context) {
-				context = this;
-			}
-
-			var listening = this._listening || (this._listening = new Map());
-			var id = getUID(target) + '-' + type + '-' +
-				getUID(listener.hasOwnProperty(KEY_INNER) ? listener[KEY_INNER] : listener) + '-' +
-				getUID(context) + '-' + (meta !== undefined ? getStamp(meta) : '');
-
-			if (listening.has(id)) {
-				return;
-			}
-
-			if (target instanceof EventEmitter) {
-				target.on(type, listener, context);
-			} else if (typeof target.addEventListener == 'function') {
-				if (target != context) {
-					listener = listener.bind(context);
+	
+				var id = nextUID();
+				var _this = this;
+	
+				function stopListening() {
+					for (var i = listenings.length; i;) {
+						listenings[--i].stop();
+					}
+	
+					delete _this._disposables[id];
 				}
-
-				target.addEventListener(type, listener, false);
-			} else {
-				throw new TypeError('Unable to add a listener');
-			}
-
-			listening.set(id, {
-				target: target,
-				type: type,
-				listener: listener,
-				context: context,
-				meta: meta
-			});
-		},
-
-		/**
-		 * Останавливает прослушивание события на объекте.
-		 *
-		 * @param {Rift.EventEmitter|EventTarget} target
-		 * @param {string} type
-		 * @param {Function} listener
-		 * @param {Object|undefined} [context]
-		 * @param {*} [meta]
-		 * @returns {Rift.Disposable}
-		 */
-		stopListening: wrapListeningMethod(function(target, type, listener, context, meta) {
-			this._stopListening(target, type, listener, context, meta);
-		}),
-
-		/**
-		 * @protected
-		 */
-		_stopListening: function(target, type, listener, context, meta) {
-			var listening = this._listening;
-
-			if (!listening) {
-				return;
-			}
-
-			if (!context) {
-				context = this;
-			}
-
-			var id = getUID(target) + '-' + type + '-' +
-				getUID(listener.hasOwnProperty(KEY_INNER) ? listener[KEY_INNER] : listener) + '-' +
-				getUID(context) + '-' + (meta !== undefined ? getStamp(meta) : '');
-
-			if (listening.has(id)) {
-				removeListener(listening.get(id));
-				listening.delete(id);
-			}
-		},
-
-		/**
-		 * Останавливает прослушивание всех событий.
-		 *
-		 * @returns {Rift.Disposable}
-		 */
-		stopAllListening: function() {
-			var listening = this._listening;
-
-			if (listening) {
-				for (var id in listening) {
-					removeListener(listening[id]);
+	
+				var listening = this._disposables[id] = {
+					stop: stopListening,
+					dispose: stopListening
+				};
+	
+				return listening;
+			},
+	
+			/**
+			 * @typesign (
+			 *     target: Rift.EventEmitter|EventTarget,
+			 *     type: string,
+			 *     listener: (evt: cellx~Event): boolean|undefined,
+			 *     context?: Object
+			 * );
+			 */
+			_listenTo: function(target, type, listener, context) {
+				if (!context) {
+					context = this;
 				}
-
-				this._listening = null;
-			}
-
-			return this;
-		},
-
-		/**
-		 * Регистрирует колбэк.
-		 * @typesign (cb: Function): Function;
-		 */
-		registerCallback: function(cb) {
-			var callbacks = this._callbacks || (this._callbacks = new Map());
-
-			if (callbacks.has(cb)) {
-				callbacks.get(cb).canceled = true;
-			}
-
-			var disposable = this;
-
-			function outer() {
-				if (outer.hasOwnProperty('canceled') && outer.canceled) {
+	
+				var id = nextUID();
+				var _this = this;
+	
+				if (target instanceof EventEmitter) {
+					target.on(type, listener, context);
+				} else if (typeof target.addEventListener == 'function') {
+					if (target != context) {
+						listener = listener.bind(context);
+					}
+	
+					target.addEventListener(type, listener, false);
+				} else {
+					throw new TypeError('Unable to add a listener');
+				}
+	
+				function stopListening() {
+					if (id in _this._disposables) {
+						if (target instanceof EventEmitter) {
+							target.off(type, listener, context);
+						} else {
+							target.removeEventListener(type, listener, false);
+						}
+	
+						delete _this._disposables[id];
+					}
+				}
+	
+				var listening = this._disposables[id] = {
+					stop: stopListening,
+					dispose: stopListening
+				};
+	
+				return listening;
+			},
+	
+			/**
+			 * Регистрирует колбэк.
+			 * @typesign (cb: Function): Function{ cancel: (), dispose: () };
+			 */
+			registerCallback: function(cb) {
+				var id = nextUID();
+				var _this = this;
+	
+				function callback() {
+					if (id in _this._disposables) {
+						delete _this._disposables[id];
+						return cb.apply(_this, arguments);
+					}
+				}
+	
+				function cancelCallback() {
+					delete _this._disposables[id];
+				}
+	
+				callback.cancel = cancelCallback;
+				callback.dispose = cancelCallback;
+	
+				this._disposables[id] = callback;
+	
+				return callback;
+			},
+	
+			/**
+			 * Устанавливает таймер.
+			 * @typesign (fn: Function, delay: uint): { clear: (), dispose: () };
+			 */
+			setTimeout: function(fn, delay) {
+				var id = nextUID();
+				var _this = this;
+	
+				var timeoutId = setTimeout(function() {
+					delete _this._disposables[id];
+					fn.call(_this);
+				}, delay);
+	
+				function clearTimeout() {
+					if (id in _this._disposables) {
+						clearTimeout(timeoutId);
+						delete _this._disposables[id];
+					}
+				}
+	
+				var timeout = this._disposables[id] = {
+					clear: clearTimeout,
+					dispose: clearTimeout
+				};
+	
+				return timeout;
+			},
+	
+			/**
+			 * @typesign ();
+			 */
+			dispose: function() {
+				if (this.disposed) {
 					return;
 				}
-
-				callbacks.delete(cb);
-
-				return cb.apply(disposable, arguments);
+	
+				var disposables = this._disposables;
+	
+				for (var id in disposables) {
+					disposables[id].dispose();
+				}
+	
+				this.disposed = true;
 			}
-
-			callbacks.set(cb, outer);
-
-			return outer;
-		},
-
+		});
+	
+		rt.Disposable = Disposable;
+	})();
+	
+	(function() {
+		var bindCells = rt.bindCells;
+		var Disposable = rt.Disposable;
+	
 		/**
-		 * Отменяет регистрацию колбэка.
-		 * @typesign (cb: Function): Rift.Disposable;
+		 * @class Rift.BaseModel
+		 * @extends {Rift.Disposable}
+		 * @abstract
+		 * @typesign new (data?: Object): Rift.BaseModel;
 		 */
-		unregisterCallback: function(cb) {
-			var callbacks = this._callbacks;
-
-			if (callbacks && callbacks.has(cb)) {
-				callbacks.get(cb).canceled = true;
-				callbacks.delete(cb);
-			}
-
-			return this;
-		},
-
-		/**
-		 * Отменяет все колбэки.
-		 * @typesign (): Rift.Disposable;
-		 */
-		unregisterAllCallbacks: function() {
-			var callbacks = this._callbacks;
-
-			if (callbacks) {
-				callbacks.forEach(function(outer) {
-					outer.canceled = true;
-				});
-
-				this._callbacks = null;
-			}
-
-			return this;
-		},
-
-		/**
-		 * Устанавливает таймер.
-		 *
-		 * @param {Function} fn
-		 * @param {int} delay
-		 * @returns {Rift.Disposable}
-		 */
-		setTimeout: function(fn, delay) {
-			var timeouts = this._timeouts || (this._timeouts = new Map());
-
-			if (timeouts.has(fn)) {
-				clearTimeout(timeouts.get(fn));
-			}
-
-			var disposable = this;
-
-			timeouts.set(fn, setTimeout(function() {
-				timeouts.delete(fn);
-				fn.call(disposable);
-			}, delay));
-
-			return this;
-		},
-
-		/**
-		 * Отменяет установленный таймер.
-		 *
-		 * @param {Function} fn - Колбэк отменяемого таймера.
-		 * @returns {Rift.Disposable}
-		 */
-		clearTimeout: function(fn) {
-			var timeouts = this._timeouts;
-
-			if (timeouts && timeouts.has(fn)) {
-				clearTimeout(timeouts.get(fn));
-				timeouts.delete(fn);
-			}
-
-			return this;
-		},
-
-		/**
-		 * Отменяет все установленные таймеры.
-		 *
-		 * @returns {Rift.Disposable}
-		 */
-		clearAllTimeouts: function() {
-			var timeouts = this._timeouts;
-
-			if (timeouts) {
-				timeouts.forEach(function(fn, id) {
-					clearTimeout(id);
-				});
-
-				this._timeouts = null;
-			}
-
-			return this;
-		},
-
-		/**
-		 * @param {Object} data
-		 */
-		collectDumpObject: function(data) {
-			Object.keys(this).forEach(function(name) {
-				var value = Object.getOwnPropertyDescriptor(this, name).value;
-
-				if (typeof value == 'function' && value.constructor == ActiveProperty) {
-					var dc = value('dataCell', 0);
-
-					if (!dc.computable) {
-						var dcValue = dc.value;
-
-						if (dcValue === Object(dcValue) ? dc.changed : dc.initialValue !== dcValue) {
-							data[name] = dcValue;
+		var BaseModel = Disposable.extend({
+			constructor: function(data) {
+				Disposable.call(this);
+	
+				if (this._initAssets) {
+					this._initAssets(data || {});
+					bindCells(this);
+				}
+			},
+	
+			/**
+			 * @typesign (data: Object);
+			 */
+			collectDumpObject: function(data) {
+				var names = Object.keys(this);
+	
+				for (var i = 0, l = names.length; i < l; i++) {
+					var value = Object.getOwnPropertyDescriptor(this, names[i]).value;
+	
+					if (typeof value == 'function' && value.constructor == cellx) {
+						var cell = value('unwrap', 0);
+	
+						if (!cell.computed) {
+							var cellValue = cell.read();
+	
+							if (cellValue === Object(cellValue) ? cell.changed() : cell.initialValue !== cellValue) {
+								data[names[i]] = cellValue;
+							}
 						}
 					}
 				}
-			}, this);
-		},
-
-		/**
-		 * @param {Object} data
-		 */
-		expandFromDumpObject: function(data) {
-			for (var name in data) {
-				this[name](data[name]);
-			}
-		},
-
-		/**
-		 * Уничтожает инстанс освобождая занятые им ресурсы.
-		 */
-		dispose: function() {
-			this
-				.stopAllListening()
-				.unregisterAllCallbacks()
-				.clearAllTimeouts();
-
-			disposeDataCells(this);
-		}
-	});
-
-	rt.Disposable = Disposable;
-
-})();
-
-(function() {
-
-	var ActiveProperty = rt.ActiveProperty;
-	var Disposable = rt.Disposable;
-
-	/**
-	 * @class Rift.BaseModel
-	 * @extends {Rift.Disposable}
-	 * @abstract
-	 *
-	 * @param {?(Object|undefined)} [data] - Начальные данные.
-	 * @param {Object} [opts]
-	 */
-	var BaseModel = Disposable.extend(/** @lends Rift.BaseModel# */{
-		_options: null,
-
-		constructor: function(data, opts) {
-			Disposable.call(this);
-
-			this._options = opts || {};
-
-			if (data) {
-				this.setData(data);
-			}
-		},
-
-		/**
-		 * @param {Object} data
-		 */
-		setData: function(data) {
-			for (var name in data) {
-				if (typeof this[name] == 'function' && this[name].constructor == ActiveProperty) {
+			},
+	
+			/**
+			 * @typesign (data: Object);
+			 */
+			expandFromDumpObject: function(data) {
+				for (var name in data) {
 					this[name](data[name]);
 				}
 			}
-		},
-
-		/**
-		 * @param {Object} data
-		 * @param {Object} opts
-		 */
-		collectDumpObject: function(data, opts) {
-			BaseModel.$super.collectDumpObject.call(this, data);
-			Object.assign(opts, this._options);
-		}
-	});
-
-	rt.BaseModel = BaseModel;
-
-})();
-
-(function() {
-
-	var reAmpersand = /&/g;
-	var reLessThan = /</g;
-	var reGreaterThan = />/g;
-	var reQuote = /"/g;
-
-	/**
-	 * @function escape
-	 * @memberOf Rift.html
-	 *
-	 * @param {*} str
-	 * @returns {string}
-	 */
-	function escapeHTML(str) {
-		return str
-			.replace(reAmpersand, '&amp;')
-			.replace(reLessThan, '&lt;')
-			.replace(reGreaterThan, '&gt;')
-			.replace(reQuote, '&quot;');
-	}
-
-	/**
-	 * @namespace Rift.html
-	 */
-	rt.html = {
-		escape: escapeHTML
-	};
-
-})();
-
-(function() {
-
-	var nextUID = rt.uid.next;
-	var ActiveDictionary = rt.ActiveDictionary;
-	var ActiveArray = rt.ActiveArray;
-
-	/**
-	 * @typesign (viewClass: Function|string, viewParams?: Object): string;
-	 */
-	function include(viewClass, viewParams) {
-		if (typeof viewClass == 'string') {
-			viewClass = rt.BaseView.getViewClassOrError(viewClass);
-		}
-
-		if (viewParams) {
-			viewParams.parent = this;
-			viewParams.block = null;
-		} else {
-			viewParams = {
-				parent: this,
-				block: null
-			};
-		}
-
-		var childRenderings = this._childRenderings;
-		var index = childRenderings.count++;
-		var mark = childRenderings.marks[index] = '{{_' + nextUID() + '}}';
-
-		new viewClass(viewParams).render(function(html) {
-			childRenderings.results[index] = html;
-
-			if (childRenderings.count == ++childRenderings.readyCount && childRenderings.onallready) {
-				childRenderings.onallready();
-			}
 		});
-
-		return mark;
-	}
-
-	/**
-	 * @param {Object|Array|Rift.ActiveDictionary|Rift.ActiveArray} [target]
-	 * @param {Function} cb
-	 * @param {Object} context
-	 */
-	function each(target, cb, context) {
-		if (!target) {
-			return;
-		}
-
-		if (target instanceof ActiveDictionary) {
-			target = target.toObject();
-		} else if (target instanceof ActiveArray) {
-			target = target.toArray();
-		}
-
-		if (Array.isArray(target)) {
-			for (var i = 0, l = target.length; i < l; i++) {
-				if (i in target) {
-					cb.call(context, target[i], i);
+	
+		rt.BaseModel = BaseModel;
+	})();
+	
+	(function() {
+		var Cell = rt.Cell;
+	
+		var directiveHandlers = {
+			prop: function(el, value, name) {
+				if (el[name] !== value) {
+					el[name] = value;
 				}
-			}
-		} else {
-			for (var name in target) {
-				if (hasOwn.call(target, name)) {
-					cb.call(context, target[name], name);
-				}
-			}
-		}
-	}
-
-	/**
-	 * @namespace Rift.template
-	 */
-	rt.template = {
-		defaults: {
-			include: include,
-			each: each
-		}
-	};
-
-})();
-
-(function() {
-
-	var createNamespace = rt.namespace.create;
-	var forEachMatch = rt.regex.forEach;
-	var DataCell = rt.DataCell;
-
-	/**
-	 * @namespace Rift.domBinding.helpers
-	 */
-	var helpers = {
-		html: function(el, value) {
-			el.innerHTML = value;
-		},
-
-		text: function(el, value, targetNode) {
-			switch (targetNode) {
-				case 'first': {
-					var node = el.firstChild;
-
-					if (node && node.nodeType == 3) {
-						node.nodeValue = value;
+			},
+	
+			attr: function(el, value, name) {
+				if (value != null && value !== false) {
+					if (value === true) {
+						value = name;
 					} else {
-						el.insertBefore(document.createTextNode(value), node);
+						value = value.toString();
 					}
-
-					break;
-				}
-				case 'last': {
-					var node = el.lastChild;
-
-					if (node && node.nodeType == 3) {
-						node.nodeValue = value;
-					} else {
-						el.appendChild(document.createTextNode(value));
+	
+					if (el.getAttribute(name) !== value) {
+						el.setAttribute(name, value);
 					}
-
-					break;
-				}
-				case 'prev': {
-					var node = el.previousSibling;
-
-					if (node && node.nodeType == 3) {
-						node.nodeValue = value;
-					} else {
-						el.parentNode.insertBefore(document.createTextNode(value), el);
+				} else {
+					if (el.hasAttribute(name)) {
+						el.removeAttribute(name);
 					}
-
-					break;
 				}
-				case 'next': {
-					var node = el.nextSibling;
-
-					if (node && node.nodeType == 3) {
-						node.nodeValue = value;
-					} else {
-						el.parentNode.insertBefore(document.createTextNode(value), node);
-					}
-
-					break;
+			},
+	
+			value: function(el, value) {
+				value = String(value);
+	
+				if (el.value != value) {
+					el.value = value;
 				}
-				default: {
-					if (el.childNodes.length == 1 && el.firstChild.nodeType == 3) {
-						el.firstChild.nodeValue = value;
-					} else {
-						while (el.lastChild) {
-							el.removeChild(el.lastChild);
+			},
+	
+			checked: function(el, value) {
+				value = !!value;
+	
+				if (el.checked != value) {
+					el.checked = value;
+				}
+			},
+	
+			disabled: function(el, value) {
+				if (el.disabled != !!value) {
+					el.disabled = !!value;
+				}
+			},
+	
+			class: function(el, value, name) {
+				$(el).toggleClass(name, !!value);
+			},
+	
+			mod: function(el, value, name) {
+				var mods = {};
+				mods[name] = !!value;
+				$(el).mods(mods);
+			},
+	
+			show: function(el, value) {
+				value = value ? '' : 'none';
+	
+				if (el.style.display != value) {
+					el.style.display = value;
+				}
+			},
+	
+			html: function(el, value) {
+				el.innerHTML = value;
+			},
+	
+			text: function(el, value, target) {
+				value = String(value);
+	
+				var node;
+	
+				switch (target) {
+					case 'first': {
+						node = el.firstChild;
+	
+						if (!node || node.nodeType != 3) {
+							el.insertBefore(document.createTextNode(value), node);
+							return;
 						}
-
-						el.appendChild(document.createTextNode(value));
+	
+						break;
 					}
-
-					break;
+					case 'last': {
+						node = el.lastChild;
+	
+						if (!node || node.nodeType != 3) {
+							el.appendChild(document.createTextNode(value));
+							return;
+						}
+	
+						break;
+					}
+					case 'prev': {
+						node = el.previousSibling;
+	
+						if (!node || node.nodeType != 3) {
+							el.parentNode.insertBefore(document.createTextNode(value), el);
+							return;
+						}
+	
+						break;
+					}
+					case 'next': {
+						node = el.nextSibling;
+	
+						if (!node || node.nodeType != 3) {
+							el.parentNode.insertBefore(document.createTextNode(value), node);
+							return;
+						}
+	
+						break;
+					}
+					default: {
+						if (el.childNodes.length == 1 && el.firstChild.nodeType == 3) {
+							node = el.firstChild;
+						} else {
+							while (el.lastChild) {
+								el.removeChild(el.lastChild);
+							}
+	
+							el.appendChild(document.createTextNode(value));
+	
+							return;
+						}
+	
+						break;
+					}
+				}
+	
+				if (node.nodeValue != value) {
+					node.nodeValue = value;
 				}
 			}
-		},
-
-		prop: function(el, value, id) {
-			id = id.split('.');
-			var name = id.pop();
-			createNamespace(id, el)[name] = value;
-		},
-
-		attr: function(el, value, name) {
-			value = String(value);
-
-			if (el.getAttribute(name) !== value) {
-				el.setAttribute(name, value);
+		};
+	
+		var reName = Object.keys(directiveHandlers).join('|');
+		var reDirective = RegExp(
+			'\\s*(' + reName + ')(?:\\(([^)]*)\\))?:\\s*(\\S[\\s\\S]*?)(?=\\s*(?:,\\s*(?:' + reName +
+				')(?:\\([^)]*\\))?:\\s*\\S|$))',
+			'g'
+		);
+	
+		/**
+		 * @typesign (el: HTMLElement, context: Object, opts?: { applyValues: boolean = true });
+		 */
+		function bindElement(el, context, opts) {
+			if (el.hasOwnProperty(KEY_DATA_CELLS) && el[KEY_DATA_CELLS]) {
+				return;
 			}
-		},
-
-		value: function(el, value) {
-			value = String(value);
-
-			if (el.value != value) {
-				el.value = value;
-			}
-		},
-
-		checked: function(el, value) {
-			value = !!value;
-
-			if (el.checked != value) {
-				el.checked = value;
-			}
-		},
-
-		css: function(el, value, name) {
-			value = String(value);
-
-			if (!name) {
-				name = 'cssText';
-			}
-
-			if (el.style[name] != value) {
-				el.style[name] = value;
-			}
-		},
-
-		show: function(el, value) {
-			el.style.display = value ? '' : 'none';
-		}
-	};
-
-	var reName = '[$_a-zA-Z][$\\w]*';
-	var reBindingExpr = RegExp(
-		'(' + reName + ')(?:\\(([^)]*)\\))?:\\s*(\\S[\\s\\S]*?)(?=\\s*(?:,\\s*' + reName +
-			'(?:\\([^)]*\\))?:\\s*\\S|$))',
-		'g'
-	);
-
-	/**
-	 * Привязывает элемент к активным свойствам по атрибуту `rt-bind`.
-	 *
-	 * @memberOf Rift.domBinding
-	 *
-	 * @param {HTMLElement} el
-	 * @param {Object} context
-	 * @param {Object} [opts]
-	 * @param {boolean} [opts.applyValues=true]
-	 * @returns {Array<Rift.DataCell>}
-	 */
-	function bindElement(el, context, opts) {
-		if (el.hasOwnProperty(KEY_DATA_CELLS) && el[KEY_DATA_CELLS]) {
-			return el[KEY_DATA_CELLS];
-		}
-
-		var dcs = el[KEY_DATA_CELLS] = [];
-
-		if (el.hasAttribute('rt-bind')) {
+	
 			var applyValues = !opts || opts.applyValues !== false;
-
-			forEachMatch(reBindingExpr, el.getAttribute('rt-bind'), function(expr, helper, meta, js) {
-				var dc = new DataCell(Function('return ' + js + ';').bind(context), {
-					onchange: function() {
-						helpers[helper](el, this.value, meta);
+			var directives = el.getAttribute('rt-bind');
+			var cells = el[KEY_DATA_CELLS] = [];
+	
+			reDirective.lastIndex = 0;
+	
+			for (var directive; directive = reDirective.exec(directives);) {
+				(function(name, meta, expr) {
+					var cell = new Cell(Function('var _ = this; return ' + expr + ';').bind(context), {
+						onchange: function() {
+							directiveHandlers[name](el, this.read(), meta);
+						}
+					});
+	
+					cells.push(cell);
+	
+					if (applyValues) {
+						directiveHandlers[name](el, cell.read(), meta);
 					}
-				});
-
-				dcs.push(dc);
-
-				if (applyValues) {
-					helpers[helper](el, dc.value, meta);
-				}
+				})(directive[1], directive[2], directive[3]);
+			}
+	
+			el.removeAttribute('rt-bind');
+			el.setAttribute('rt-binding', directives);
+		}
+	
+		/**
+		 * @typesign (el: HTMLElement);
+		 */
+		function unbindElement(el) {
+			if (!el.hasOwnProperty(KEY_DATA_CELLS)) {
+				return;
+			}
+	
+			var cells = el[KEY_DATA_CELLS];
+	
+			if (!cells) {
+				return;
+			}
+	
+			for (var i = cells.length; i;) {
+				cells[--i].dispose();
+			}
+	
+			el[KEY_DATA_CELLS] = null;
+	
+			el.setAttribute('rt-bind', el.getAttribute('rt-binding'));
+			el.removeAttribute('rt-binding');
+		}
+	
+		/**
+		 * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true, applyValues: boolean = true }):
+		 *     HTMLElement;
+		 */
+		function bindDOM(el, context, opts) {
+			if (!opts) {
+				opts = {};
+			}
+	
+			var applyValues = opts.applyValues;
+	
+			if (opts.bindRootElement !== false && el.hasAttribute('rt-bind')) {
+				bindElement(el, context, { applyValues: applyValues });
+			}
+	
+			var els = el.querySelectorAll('[rt-bind]');
+	
+			for (var i = els.length; i;) {
+				bindElement(els[--i], context, { applyValues: applyValues });
+			}
+	
+			return el;
+		}
+	
+		/**
+		 * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true }): HTMLElement;
+		 */
+		function unbindDOM(el, opts) {
+			if ((!opts || opts.bindRootElement !== false) && el.hasAttribute('rt-binding')) {
+				unbindElement(el);
+			}
+	
+			var els = el.querySelectorAll('[rt-binding]');
+	
+			for (var i = els.length; i;) {
+				unbindElement(els[--i]);
+			}
+	
+			return el;
+		}
+	
+		rt.domBinding = {
+			directiveHandlers: directiveHandlers,
+			bind: bindDOM,
+			unbind: unbindDOM
+		};
+	})();
+	
+	(function() {
+		var assign = rt.object.assign;
+		var extend = rt.Class.extend;
+		var bindCells = rt.bindCells;
+		var Disposable = rt.Disposable;
+		var bindDOM = rt.domBinding.bind;
+		var unbindDOM = rt.domBinding.unbind;
+	
+		var selfClosingTags = assign(Object.create(null), {
+			area: 1,
+			base: 1,
+			basefont: 1,
+			br: 1,
+			col: 1,
+			command: 1,
+			embed: 1,
+			frame: 1,
+			hr: 1,
+			img: 1,
+			input: 1,
+			isindex: 1,
+			keygen: 1,
+			link: 1,
+			meta: 1,
+			param: 1,
+			source: 1,
+			track: 1,
+			wbr: 1,
+	
+			// svg tags
+			circle: 1,
+			ellipse: 1,
+			line: 1,
+			path: 1,
+			polygone: 1,
+			polyline: 1,
+			rect: 1,
+			stop: 1,
+			use: 1
+		});
+	
+		function emptyFn() {}
+	
+		/**
+		 * @type {Object<Function>}
+		 */
+		var viewClasses = rt.viewClasses = Object.create(null);
+	
+		/**
+		 * @typesign (name: string): Function;
+		 */
+		function getViewClass(name) {
+			if (!(name in viewClasses)) {
+				throw new TypeError('ViewClass "' + name + '" is not defined');
+			}
+	
+			return viewClasses[name];
+		}
+	
+		rt.getViewClass = getViewClass;
+	
+		/**
+		 * @typesign (name: string, viewClass: Function): Function;
+		 */
+		function registerViewClass(name, viewClass) {
+			if (name in viewClasses) {
+				throw new TypeError('ViewClass "' + name + '" is already registered');
+			}
+	
+			Object.defineProperty(viewClass, '$viewClassName', {
+				value: name
+			});
+	
+			viewClasses[name] = viewClass;
+	
+			return viewClass;
+		}
+	
+		rt.registerViewClass = registerViewClass;
+	
+		/**
+		 * @typesign (str: string): string;
+		 */
+		function toCamelCase(str) {
+			return str.replace(/[^$0-9a-zA-Z]([$0-9a-zA-Z])/g, function(match, firstWordChar) {
+				return firstWordChar.toUpperCase();
 			});
 		}
-
-		return dcs;
-	}
-
-	/**
-	 * Отвязывает элемент от привязанных к нему активных свойств.
-	 *
-	 * @memberOf Rift.domBinding
-	 *
-	 * @param {HTMLElement} el
-	 */
-	function unbindElement(el) {
-		if (el.hasOwnProperty(KEY_DATA_CELLS)) {
-			var dcs = el[KEY_DATA_CELLS];
-
-			if (dcs) {
-				for (var i = dcs.length; i;) {
-					dcs[--i].dispose();
+	
+		/**
+		 * @typesign (cls: Array<string>, mods: Object): Array<string>;
+		 */
+		function pushMods(cls, mods) {
+			for (var name in mods) {
+				var value = mods[name];
+	
+				if (value != null && value !== false) {
+					cls.push('_' + name + (value === true ? '' : '_' + value));
 				}
-
-				el[KEY_DATA_CELLS] = null;
+			}
+	
+			return cls;
+		}
+	
+		/**
+		 * @typesign (el: HTMLElement, attrs: Object);
+		 */
+		function setAttributes(el, attrs) {
+			for (var name in attrs) {
+				el.setAttribute(name, attrs[name]);
 			}
 		}
-	}
-
-	/**
-	 * Привязывает элементы dom-дерева к активным свойствам по атрибуту `rt-bind`.
-	 *
-	 * @function bind
-	 * @memberOf Rift.domBinding
-	 *
-	 * @param {HTMLElement} el
-	 * @param {Object} context
-	 * @param {Object} [opts]
-	 * @param {boolean} [opts.bindRootElement=true]
-	 * @param {boolean} [opts.applyValues=true]
-	 * @param {boolean} [opts.removeAttr=false]
-	 * @returns {Array<Rift.DataCell>}
-	 */
-	function bindDOM(el, context, opts) {
-		if (!opts) {
-			opts = {};
-		}
-
-		var removeAttr = opts.removeAttr === true;
-		var elementBindingOptions = {
-			applyValues: opts.applyValues !== false
-		};
-		var dcs = [];
-
-		if (opts.bindRootElement !== false && el.hasAttribute('rt-bind')) {
-			dcs.push.apply(dcs, bindElement(el, context, elementBindingOptions));
-
-			if (removeAttr) {
-				el.removeAttribute('rt-bind');
+	
+		/**
+		 * @typesign (view: Rift.BaseView, blockName: string, name: string): boolean;
+		 */
+		function initDescendantElements(view, blockName, name) {
+			var children = view.children;
+			var result = false;
+	
+			for (var i = children.length; i;) {
+				var child = children[--i];
+	
+				if (child.blockName == blockName) {
+					child.$(name);
+					result = true;
+				} else {
+					if (initDescendantElements(child, blockName, name)) {
+						result = true;
+					}
+				}
 			}
+	
+			return result;
 		}
-
-		var els = el.querySelectorAll('[rt-bind]');
-
-		for (var i = 0, l = els.length; i < l; i++) {
-			dcs.push.apply(dcs, bindElement(els[i], context, elementBindingOptions));
-
-			if (removeAttr) {
-				el.removeAttribute('rt-bind');
+	
+		/**
+		 * @typesign (view: Rift.BaseView, el: HTMLElement);
+		 */
+		function removeElement(view, el) {
+			if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME] || el[KEY_VIEW] != view) {
+				return;
 			}
+	
+			if (el.parentNode) {
+				el.parentNode.removeChild(el);
+			}
+	
+			unbindDOM(el);
+	
+			var els = view.elements[el[KEY_VIEW_ELEMENT_NAME]];
+			els.splice(els.indexOf(el), 1);
+	
+			el[KEY_VIEW] = null;
+			el[KEY_VIEW_ELEMENT_NAME] = undefined;
 		}
-
-		return dcs;
-	}
-
-	/**
-	 * @namespace Rift.domBinding
-	 */
-	rt.domBinding = {
-		helpers: helpers,
-		bindElement: bindElement,
-		unbindElement: unbindElement,
-		bind: bindDOM
-	};
-
-})();
-
-(function() {
-
-	var getUID = rt.object.getUID;
-	var execNamespace = rt.namespace.exec;
-	var getStamp = rt.value.getStamp;
-	var stringify = rt.value.stringify;
-	var extend = rt.Class.extend;
-	var Disposable = rt.Disposable;
-	var escapeHTML = rt.html.escape;
-	var bindDOM = rt.domBinding.bind;
-
-	var selfClosingTags = new Set([
-		'area',
-		'base',
-		'basefont',
-		'br',
-		'col',
-		'command',
-		'embed',
-		'frame',
-		'hr',
-		'img',
-		'input',
-		'isindex',
-		'keygen',
-		'link',
-		'meta',
-		'param',
-		'source',
-		'track',
-		'wbr',
-
-		// svg tags
-		'circle',
-		'ellipse',
-		'line',
-		'path',
-		'polygone',
-		'polyline',
-		'rect',
-		'stop',
-		'use'
-	]);
-
-	var viewClasses = Object.create(null);
-
-	function getViewClassOrError(name) {
-		if (!(name in viewClasses)) {
-			throw new TypeError('ViewClass "' + name + '" is not defined');
-		}
-
-		return viewClasses[name];
-	}
-
-	function registerViewClass(name, viewClass) {
-		if (name in viewClasses) {
-			throw new TypeError('ViewClass "' + name + '" is already registered');
-		}
-
-		Object.defineProperty(viewClass, '__viewClass', {
-			value: name
-		});
-
-		viewClasses[name] = viewClass;
-
-		return viewClass;
-	}
-
-	var reNameClass = /^(.+?):(.+)$/;
-	var reViewData = /([^,]*),([^,]*),(.*)/;
-
-	function emptyFn() {}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.BaseView} view
-	 * @param {Function} cb
-	 */
-	function receiveData(view, cb) {
-		if (view._receiveData != emptyFn) {
-			if (view._beforeDataReceiving != emptyFn) {
+	
+		/**
+		 * @typesign (view: Rift.BaseView);
+		 */
+		function afterDataReceiving(view) {
+			if (view._afterDataReceiving != emptyFn) {
 				try {
-					view._beforeDataReceiving();
+					view._afterDataReceiving();
 				} catch (err) {
 					view._logError(err);
 				}
 			}
-
-			try {
-				if (view._receiveData.length) {
-					view._receiveData(function(err) {
-						if (err != null) {
-							view.dataReceivingError = err;
-							view._logError(err);
-						}
-
-						afterDataReceiving(view);
-						cb.call(view);
-					});
-				} else {
-					view._receiveData()
-						.catch(function(err) {
-							view.dataReceivingError = err;
-							view._logError(err);
-						})
-						.then(function() {
+		}
+	
+		/**
+		 * @typesign (view: Rift.BaseView, cb: ());
+		 */
+		function receiveData(view, cb) {
+			if (view._receiveData == emptyFn) {
+				cb.call(view);
+			} else {
+				if (view._beforeDataReceiving != emptyFn) {
+					try {
+						view._beforeDataReceiving();
+					} catch (err) {
+						view._logError(err);
+					}
+				}
+	
+				try {
+					if (view._receiveData.length) {
+						view._receiveData(function(err) {
+							if (view.disposed) {
+								return;
+							}
+	
+							if (err != null) {
+								view.dataReceivingError = err;
+								view._logError(err);
+							}
+	
 							afterDataReceiving(view);
 							cb.call(view);
 						});
-				}
-			} catch (err) {
-				view.dataReceivingError = err;
-				view._logError(err);
-				afterDataReceiving(view);
-				cb.call(view);
-			}
-		} else {
-			cb.call(view);
-		}
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.BaseView} view
-	 */
-	function afterDataReceiving(view) {
-		if (view._afterDataReceiving != emptyFn) {
-			try {
-				view._afterDataReceiving();
-			} catch (err) {
-				view._logError(err);
-			}
-		}
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Array<string>} cls
-	 * @param {Object} mods
-	 * @returns {Array<string>}
-	 */
-	function pushMods(cls, mods) {
-		for (var name in mods) {
-			var value = mods[name];
-
-			if (value != null && value !== false) {
-				cls.push('_' + name + (value === true ? '' : '_' + value));
-			}
-		}
-
-		return cls;
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {HTMLElement} el
-	 * @param {Object} attrs
-	 */
-	function setAttributes(el, attrs) {
-		for (var name in attrs) {
-			el.setAttribute(name, attrs[name]);
-		}
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.BaseView} view
-	 * @param {string} blockName
-	 * @param {string} name
-	 * @returns {boolean}
-	 */
-	function initSimilarDescendantElements(view, blockName, name) {
-		var children = view.children;
-		var result = false;
-
-		for (var i = children.length; i;) {
-			var child = children[--i];
-
-			if (child.blockName == blockName) {
-				child.$(name);
-				result = true;
-			} else {
-				if (initSimilarDescendantElements(child, blockName, name)) {
-					result = true;
-				}
-			}
-		}
-
-		return result;
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift.BaseView} view
-	 * @param {HTMLElement} el
-	 */
-	function removeElement(view, el) {
-		if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME] || el[KEY_VIEW] != view) {
-			return;
-		}
-
-		var els = view.elements[el[KEY_VIEW_ELEMENT_NAME]];
-		els.splice(els.indexOf(el), 1);
-
-		el[KEY_VIEW] = null;
-		el[KEY_VIEW_ELEMENT_NAME] = undefined;
-
-		if (el.parentNode) {
-			el.parentNode.removeChild(el);
-		}
-	}
-
-	/**
-	 * @class Rift.BaseView
-	 * @extends {Rift.Disposable}
-	 *
-	 * @param {Object} [params]
-	 * @param {Rift.BaseApp} [params.app]
-	 * @param {Rift.BaseModel|Rift.ActiveDictionary|Rift.ActiveArray|Rift.ActiveProperty|string} [params.model]
-	 * @param {string} [params.name]
-	 * @param {string} [params.tagName]
-	 * @param {Object<boolean|number|string>} [params.mods]
-	 * @param {Object<string>} [params.attrs]
-	 * @param {Rift.BaseView} [params.parent]
-	 * @param {?(HTMLElement|$)} [params.block]
-	 * @param {boolean} [params.onlyClient=false] - Рендерить только на клиенте.
-	 */
-	var BaseView = Disposable.extend(/** @lends Rift.BaseView# */{
-		static: {
-			viewClasses: viewClasses,
-
-			getViewClassOrError: getViewClassOrError,
-			registerViewClass: registerViewClass,
-
-			extend: function(name, declaration) {
-				return registerViewClass(name, extend.call(this, undefined, declaration));
-			}
-		},
-
-		_params: null,
-
-		_id: undefined,
-
-		/**
-		 * @type {?Rift.BaseApp}
-		 */
-		app: null,
-
-		/**
-		 * @type {?(Rift.BaseModel|Rift.ActiveDictionary|Rift.ActiveArray|Rift.ActiveProperty)}
-		 */
-		model: null,
-
-		/**
-		 * @type {string|undefined}
-		 */
-		name: undefined,
-
-		/**
-		 * @type {string}
-		 */
-		tagName: 'div',
-
-		/**
-		 * @type {string}
-		 */
-		blockName: undefined,
-
-		/**
-		 * @type {Object}
-		 */
-		mods: null,
-
-		/**
-		 * @type {Object<string>}
-		 */
-		attrs: null,
-
-		_parent: null,
-
-		/**
-		 * Родительская вьюшка.
-		 *
-		 * @type {?Rift.BaseView}
-		 * @writable
-		 */
-		get parent() {
-			return this._parent;
-		},
-		set parent(parent) {
-			if (parent) {
-				parent.registerChild(this);
-			} else if (this._parent) {
-				this._parent.unregisterChild(this);
-			}
-		},
-
-		/**
-		 * Дочерние вьюшки.
-		 *
-		 * @type {Array<Rift.BaseView>}
-		 */
-		children: null,
-
-		/**
-		 * Корневой элемент вьюшки.
-		 *
-		 * @type {?$}
-		 */
-		block: null,
-
-		/**
-		 * Элементы вьюшки.
-		 *
-		 * @type {Object<$>}
-		 */
-		elements: null,
-
-		/**
-		 * @type {*}
-		 */
-		dataReceivingError: null,
-
-		_currentlyRendering: false,
-		_childRenderings: null,
-
-		/**
-		 * @type {Function}
-		 */
-		template: function() {
-			return '';
-		},
-
-		/**
-		 * @type {boolean}
-		 */
-		onlyClient: false,
-
-		isClientInited: false,
-
-		constructor: function(params) {
-			Disposable.call(this);
-
-			if (!params) {
-				params = {};
-			}
-
-			this._params = params;
-
-			this.mods = Object.create(this.mods);
-			this.attrs = Object.create(this.attrs);
-
-			this.children = [];
-			this.elements = {};
-
-			if (!this.blockName) {
-				var viewClass = this.constructor;
-
-				while (viewClass.$super.constructor != BaseView) {
-					viewClass = viewClass.$super.constructor;
-				}
-
-				viewClass.prototype.blockName = viewClass.__viewClass;
-			}
-
-			var block;
-
-			if (isServer) {
-				if (params.block) {
-					throw new TypeError('Parameter "block" can\'t be used on the server side');
-				}
-
-				block = null;
-
-				if (params.block === null) {
-					delete params.block;
-				}
-			} else {
-				if (params.block !== undefined) {
-					block = params.block;
-					delete params.block;
-				}
-			}
-
-			if (block === null) {
-				this._id = getUID(this, isServer ? 's' : 'c');
-				this._parseParams();
-			} else {
-				var data;
-				var rendered = false;
-
-				if (block) {
-					if (block instanceof $) {
-						block = block[0];
-					}
-
-					if (block.hasOwnProperty(KEY_VIEW) && block[KEY_VIEW]) {
-						throw new TypeError(
-							'Element is already used as ' + (
-								block.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) && block[KEY_VIEW_ELEMENT_NAME] ?
-									'an element' : 'a block'
-							) + ' of view'
-						);
-					}
-
-					if (block.hasAttribute('rt-d')) {
-						data = block.getAttribute('rt-d').match(reViewData);
-
-						if (data[2]) {
-							rendered = true;
-						}
-
-						if (data[3]) {
-							Object.assign(params, Function('return {' + data[3] + '};')());
-						}
-					}
-				}
-
-				this._id = rendered ? data[2] : getUID(this, 'c');
-				this._parseParams();
-
-				if (!block) {
-					block = document.createElement(this.tagName);
-				}
-
-				this.block = $(block);
-				block[KEY_VIEW] = this;
-
-				if (rendered) {
-					var view = this;
-
-					this.block
-						.find('[rt-p=' + this._id + ']')
-						.each(function() {
-							new viewClasses[this.getAttribute('rt-d').match(reViewData)[1]]({
-								parent: view,
-								block: this
-							});
-						});
-				} else {
-					setAttributes(block, this.attrs);
-					block.className = (pushMods([this.blockName], this.mods).join(' ') + ' ' + block.className).trim();
-
-					this._currentlyRendering = true;
-
-					receiveData(this, function() {
-						this._renderInner(function(html) {
-							this._currentlyRendering = true;
-
-							block.innerHTML = html;
-
-							var blocks = block.querySelectorAll('[rt-p]');
-							var blockDict = {};
-
-							for (var i = blocks.length; i;) {
-								blockDict[blocks[--i].getAttribute('rt-d').match(reViewData)[2]] = blocks[i];
-							}
-
-							(function _(view) {
-								var children = view.children;
-
-								for (var i = children.length; i;) {
-									var child = children[--i];
-									var childBlock = blockDict[child._id];
-
-									child.block = $(childBlock);
-									childBlock[KEY_VIEW] = child;
-
-									_(child);
+					} else {
+						view._receiveData()
+							.catch(function(err) {
+								if (!view.disposed) {
+									view.dataReceivingError = err;
+									view._logError(err);
 								}
-							})(this);
-						});
-					});
+							})
+							.then(function() {
+								if (!view.disposed) {
+									afterDataReceiving(view);
+									cb.call(view);
+								}
+							});
+					}
+				} catch (err) {
+					view.dataReceivingError = err;
+					view._logError(err);
+					afterDataReceiving(view);
+					cb.call(view);
 				}
 			}
-		},
-
+		}
+	
 		/**
-		 * @protected
+		 * @typesign (view: Rift.BaseView, dom: HTMLElement);
 		 */
-		_parseParams: function() {
-			var params = this._params;
-
-			if (params.name) {
-				this.name = params.name;
-			}
-
-			if (params.tagName) {
-				this.tagName = params.tagName;
-				delete params.tagName;
-			}
-
-			if (params.blockName) {
-				this.blockName = params.blockName;
-			}
-
-			if (params.mods) {
-				Object.assign(this.mods, params.mods);
-				delete params.mods;
-			}
-
-			if (params.attrs) {
-				Object.assign(this.attrs, params.attrs);
-				delete params.attrs;
-			}
-
-			if (params.parent) {
-				this.parent = params.parent;
-				delete params.parent;
-			}
-
-			if (params.app) {
-				this.app = params.app;
-				delete params.app;
-			} else {
-				var parent = this._parent;
-
-				if (parent && parent.app) {
-					this.app = parent.app;
+		function linkToDOM(view, dom) {
+			var blocks = reduce.call(dom.querySelectorAll('[rt-id]'), function(blocks, block) {
+				blocks[block.getAttribute('rt-id')] = block;
+				return blocks;
+			}, {});
+	
+			(function _(view) {
+				var children = view.children;
+	
+				for (var i = children.length; i;) {
+					var child = children[--i];
+					var childBlock = blocks[child._id];
+	
+					childBlock[KEY_VIEW] = child;
+					child.block = $(childBlock);
+	
+					_(child);
 				}
-			}
-
-			var model = params.model;
-
-			if (model) {
-				if (typeof model == 'string') {
-					this.model = execNamespace(model, this._parent || this);
-				} else {
-					this.model = model;
-					delete params.model;
+	
+				view.isDOMReady = true;
+				view.emit({ type: 'domready', bubbles: false });
+			})(view);
+		}
+	
+		/**
+		 * @class Rift.BaseView
+		 * @extends {Rift.Disposable}
+		 * @abstract
+		 *
+		 * @typesign new (params?: {
+		 *     tagName?: string,
+		 *     blockName?: string,
+		 *     mods?: Object<boolean|number|string>,
+		 *     attrs?: Object<string>,
+		 *     name?: string,
+		 *     owner?: Rift.BaseView,
+		 *     app?: Rift.BaseApp,
+		 *     model?: Rift.BaseModel|Rift.ActiveMap|Rift.ActiveList|Rift.Cell|Rift.cellx,
+		 *     parent?: Rift.BaseView,
+		 *     block?: HTMLElement|$
+		 * }): Rift.BaseView;
+		 */
+		var BaseView = Disposable.extend({
+			static: {
+				/**
+				 * @typesign (name: string, declaration: { static?: Object, constructor?: Function }): Function;
+				 */
+				extend: function(name, declaration) {
+					return registerViewClass(name, extend.call(this, undefined, declaration));
 				}
-			} else {
+			},
+	
+			tagName: 'div',
+	
+			/**
+			 * @type {string}
+			 */
+			blockName: undefined,
+	
+			/**
+			 * @type {Object}
+			 */
+			mods: null,
+	
+			/**
+			 * @type {Object<string>}
+			 */
+			attrs: null,
+	
+			_idCounter: 0,
+	
+			_id: undefined,
+	
+			/**
+			 * @type {string|undefined}
+			 */
+			name: undefined,
+	
+			/**
+			 * @type {?Rift.BaseView}
+			 */
+			owner: null,
+	
+			/**
+			 * @type {?Rift.BaseApp}
+			 */
+			app: null,
+	
+			/**
+			 * @type {?(Rift.BaseModel|Rift.ActiveMap|Rift.ActiveList|Rift.Cell|Rift.cellx)}
+			 */
+			model: null,
+	
+			_parent: null,
+	
+			/**
+			 * Родительская вьюшка.
+			 * @type {?Rift.BaseView}
+			 * @writable
+			 */
+			get parent() {
+				return this._parent;
+			},
+			set parent(parent) {
+				if (parent) {
+					parent.registerChild(this);
+				} else if (this._parent) {
+					this._parent.unregisterChild(this);
+				}
+			},
+	
+			/**
+			 * Дочерние вьюшки.
+			 * @type {Array<Rift.BaseView>}
+			 */
+			children: null,
+	
+			/**
+			 * Корневой элемент вьюшки.
+			 * @type {?$}
+			 */
+			block: null,
+	
+			/**
+			 * Элементы вьюшки.
+			 * @type {Object<$>}
+			 */
+			elements: null,
+	
+			isDOMReady: false,
+	
+			/**
+			 * @typesign (cb: ());
+			 * @typesign (): Promise;
+			 */
+			_receiveData: emptyFn,
+	
+			/**
+			 * @typesign ();
+			 */
+			_beforeDataReceiving: emptyFn,
+			/**
+			 * @typesign ();
+			 */
+			_afterDataReceiving: emptyFn,
+	
+			dataReceivingError: null,
+	
+			_currentlyRendering: false,
+			_childRenderings: null,
+	
+			/**
+			 * @typesign ();
+			 */
+			_beforeRendering: emptyFn,
+	
+			/**
+			 * @typesign (): string;
+			 */
+			template: function() {
+				return '';
+			},
+	
+			isClientInited: false,
+	
+			/**
+			 * @typesign ();
+			 */
+			_initClient: emptyFn,
+	
+			constructor: function(params) {
+				Disposable.call(this);
+	
+				if (!params) {
+					params = {};
+				}
+	
+				if (this._initAssets) {
+					this._initAssets(params);
+					bindCells(this);
+				}
+	
+				if (params.tagName) {
+					this.tagName = params.tagName;
+				}
+	
+				if (params.blockName) {
+					this.blockName = params.blockName;
+				} else if (!this.blockName) {
+					var proto = Object.getPrototypeOf(this);
+	
+					while (Object.getPrototypeOf(proto).constructor != BaseView) {
+						proto = Object.getPrototypeOf(proto);
+					}
+	
+					proto.blockName = toCamelCase(proto.constructor.$viewClassName);
+				}
+	
+				this.mods = Object.create(this.mods);
+	
+				if (params.mods) {
+					assign(this.mods, params.mods);
+				}
+	
+				this.attrs = Object.create(this.attrs);
+	
+				if (params.attrs) {
+					assign(this.attrs, params.attrs);
+				}
+	
+				if (params.name) {
+					this.name = params.name;
+				}
+	
+				if (params.owner) {
+					this.owner = params.owner;
+				}
+	
+				if (params.parent) {
+					this.parent = params.parent;
+				}
+	
 				var parent = this._parent;
-
-				if (parent && parent.model) {
-					this.model = parent.model;
+	
+				this._id = this._nextID();
+	
+				var app;
+	
+				if (params.app) {
+					app = this.app = params.app;
 				} else {
-					var app = this.app;
-
-					if (app && app.model) {
+					if (parent && parent.app) {
+						app = this.app = parent.app;
+					}
+				}
+	
+				if (params.model) {
+					this.model = params.model;
+				} else {
+					if (parent && parent.model) {
+						this.model = parent.model;
+					} else if (app) {
 						this.model = app.model;
 					}
 				}
-			}
-
-			if (params.onlyClient !== undefined) {
-				this.onlyClient = params.onlyClient;
-			}
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {Function} [cb]
-		 * @returns {Promise|undefined}
-		 */
-		_receiveData: emptyFn,
-
-		/**
-		 * @protected
-		 */
-		_beforeDataReceiving: emptyFn,
-
-		/**
-		 * @protected
-		 */
-		_afterDataReceiving: emptyFn,
-
-		/**
-		 * @protected
-		 */
-		_beforeRendering: emptyFn,
-
-		/**
-		 * @param {Function} cb
-		 */
-		render: function(cb) {
-			if (this._currentlyRendering) {
-				throw new TypeError('Cannot run the rendering when it is in process');
-			}
-
-			if (this._beforeRendering != emptyFn) {
-				try {
-					this._beforeRendering();
-				} catch (err) {
-					this._logError(err);
+	
+				this.children = [];
+	
+				var block = isServer ? null : params.block;
+	
+				if (block !== null) {
+					if (block) {
+						if (block instanceof $) {
+							block = block[0];
+						}
+	
+						if (block.hasOwnProperty(KEY_VIEW) && block[KEY_VIEW]) {
+							throw new TypeError(
+								'Element is already used as ' + (
+									block.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) && block[KEY_VIEW_ELEMENT_NAME] ?
+										'an element' : 'a block'
+								) + ' of view'
+							);
+						}
+					} else {
+						block = document.createElement(this.tagName);
+					}
+	
+					block[KEY_VIEW] = this;
+					this.block = $(block);
 				}
-			}
-
-			if (isServer && this.onlyClient) {
-				cb(this._renderOpenTag() + (selfClosingTags.has(this.tagName) ? '' : '</' + this.tagName + '>'));
-				return;
-			}
-
-			this._currentlyRendering = true;
-
-			receiveData(this, function() {
-				if (selfClosingTags.has(this.tagName)) {
-					this._currentlyRendering = false;
-					cb(this._renderOpenTag());
-				} else {
-					this._renderInner(function(html) {
+	
+				this.elements = {};
+	
+				if (block) {
+					if (block.hasAttribute('rt-id')) {
+						this.render(function() {
+							linkToDOM(this, block);
+						});
+					} else {
+						setAttributes(block, this.attrs);
+						block.className = (pushMods([this.blockName], this.mods).join(' ') + ' ' + block.className).trim();
+	
+						this._currentlyRendering = true;
+	
+						receiveData(this, function() {
+							this._renderInner(function(html) {
+								this._currentlyRendering = false;
+								block.innerHTML = html;
+								linkToDOM(this, block);
+							});
+						});
+					}
+				}
+			},
+	
+			/**
+			 * @typesign (): string;
+			 */
+			_nextID: function() {
+				if (this._parent) {
+					return this._parent._nextID();
+				}
+	
+				return String(++this._idCounter);
+			},
+	
+			/**
+			 * @typesign (cb: (html: string));
+			 */
+			render: function(cb) {
+				if (this._currentlyRendering) {
+					throw new TypeError('Can\'t run rendering when it is in process');
+				}
+	
+				if (this._beforeRendering != emptyFn) {
+					try {
+						this._beforeRendering();
+					} catch (err) {
+						this._logError(err);
+					}
+				}
+	
+				this._currentlyRendering = true;
+	
+				receiveData(this, function() {
+					if (this.tagName in selfClosingTags) {
 						this._currentlyRendering = false;
-						cb(this._renderOpenTag() + html + '</' + this.tagName + '>');
-					});
-				}
-			});
-		},
-
-		/**
-		 * @protected
-		 *
-		 * @param {boolean} billet
-		 * @returns {string}
-		 */
-		_renderOpenTag: function(billet) {
-			var attrs = this.attrs;
-			var attribs = [
-				'class="' + (pushMods([this.blockName], this.mods).join(' ') + ' ' + (attrs.class || '')).trim() + '"'
-			];
-
-			for (var name in attrs) {
-				if (name != 'class') {
-					attribs.push(name + '="' + attrs[name] + '"');
-				}
-			}
-
-			return '<' + this.tagName +
-				' ' + attribs.join(' ') +
-				' rt-d="' + [
-					this.constructor.__viewClass,
-					isServer && this.onlyClient ? '' : this._id,
-					isEmpty(this._params) ? '' : escapeHTML(stringify(this._params).slice(1, -1))
-				] + '"' +
-				(this._parent ? ' rt-p="' + this._parent._id + '"' : '') +
-				'>';
-		},
-
-		/**
-		 * @param {Function} cb
-		 */
-		_renderInner: function(cb) {
-			var childRenderings = this._childRenderings = {
-				count: 0,
-				readyCount: 0,
-
-				marks: [],
-				results: [],
-
-				onallready: null
-			};
-			var html;
-
-			try {
-				html = this.template.call(this);
-			} catch (err) {
-				this._childRenderings = null;
-				this._logError(err);
-				cb.call(this, '');
-				return;
-			}
-
-			var view = this;
-
-			childRenderings.onallready = function() {
-				view._childRenderings = null;
-
-				var marks = childRenderings.marks;
-				var results = childRenderings.results;
-
-				for (var i = marks.length; i;) {
-					html = html.replace(marks[--i], function() {
-						return results[i];
-					});
-				}
-
-				cb.call(view, html);
-			};
-
-			if (childRenderings.count == childRenderings.readyCount) {
-				childRenderings.onallready();
-			}
-		},
-
-		/**
-		 * @typesign (): Rift.BaseView;
-		 */
-		initClient: function() {
-			if (this.isClientInited) {
-				throw new TypeError('Client is already initialized');
-			}
-
-			this.isClientInited = true;
-
-			var children = this.children.slice(0);
-
-			for (var i = 0, l = children.length; i < l; i++) {
-				children[i].initClient();
-			}
-
-			try {
-				var dcs = this._dataCells || (this._dataCells = new Map());
-				var domBindingDCs = bindDOM(this.block[0], this, {
-					applyValues: false,
-					removeAttr: true
+						cb.call(this, this._renderOpenTag());
+					} else {
+						this._renderInner(function(html) {
+							this._currentlyRendering = false;
+							cb.call(this, this._renderOpenTag() + html + '</' + this.tagName + '>');
+						});
+					}
 				});
-
-				for (var i = domBindingDCs.length; i;) {
-					dcs.set(domBindingDCs[--i], domBindingDCs[i]);
+			},
+	
+			/**
+			 * @typesign (): string;
+			 */
+			_renderOpenTag: function() {
+				var attrs = this.attrs;
+				var attributes = [
+					'class="' + (pushMods([this.blockName], this.mods).join(' ') + ' ' + (attrs.class || '')).trim() + '"'
+				];
+	
+				for (var name in attrs) {
+					if (name != 'class') {
+						attributes.push(name + '="' + attrs[name] + '"');
+					}
 				}
-
-				if (this._initClient != emptyFn) {
-					this._initClient();
+	
+				return '<' + this.tagName + ' ' + attributes.join(' ') + ' rt-id="' + this._id + '">';
+			},
+	
+			/**
+			 * @typesign (cb: (html: string));
+			 */
+			_renderInner: function(cb) {
+				var childRenderings = this._childRenderings = {
+					count: 0,
+					readyCount: 0,
+	
+					childTraces: [],
+					results: [],
+	
+					onallready: null
+				};
+				var html;
+	
+				try {
+					html = this.template.call(this.owner || this);
+				} catch (err) {
+					this._childRenderings = null;
+					this._logError(err);
+					cb.call(this, '');
+					return;
 				}
-				if (this._bindEvents != emptyFn) {
-					this._bindEvents();
+	
+				var _this = this;
+	
+				childRenderings.onallready = function() {
+					_this._childRenderings = null;
+	
+					var childTraces = childRenderings.childTraces;
+					var results = childRenderings.results;
+	
+					for (var i = childTraces.length; i;) {
+						html = html.replace(childTraces[--i], function() {
+							return results[i];
+						});
+					}
+	
+					cb.call(_this, html);
+				};
+	
+				if (childRenderings.count == childRenderings.readyCount) {
+					childRenderings.onallready();
 				}
-			} catch (err) {
-				this._logError(err);
-			}
-
-			return this;
-		},
-
-		/**
-		 * @protected
-		 */
-		_initClient: emptyFn,
-
-		/**
-		 * @protected
-		 */
-		_bindEvents: emptyFn,
-
-		/**
-		 * Регистрирует дочернюю вьюшку.
-		 *
-		 * @param {Rift.BaseView} child
-		 * @returns {Rift.BaseView}
-		 */
-		registerChild: function(child) {
-			if (child._parent) {
-				if (child._parent == this) {
+			},
+	
+			/**
+			 * @typesign (cb?: ()): Rift.BaseView;
+			 */
+			initClient: function(cb) {
+				function initClient() {
+					if (!this.isClientInited) {
+						this.isClientInited = true;
+	
+						var children = this.children.slice();
+	
+						for (var i = 0, l = children.length; i < l; i++) {
+							children[i].initClient();
+						}
+	
+						try {
+							if (this._initClient != emptyFn) {
+								this._initClient();
+							}
+	
+							bindDOM(this.block[0], this.owner || this);
+						} catch (err) {
+							this._logError(err);
+						}
+					}
+	
+					if (cb) {
+						cb.call(this);
+					}
+				}
+	
+				if (this.isDOMReady) {
+					initClient.call(this);
+				} else {
+					this.once('domready', initClient);
+				}
+	
+				return this;
+			},
+	
+			/**
+			 * Регистрирует дочернюю вьюшку.
+			 * @typesign (child: Rift.BaseView): Rift.BaseView;
+			 */
+			registerChild: function(child) {
+				if (child._parent) {
+					if (child._parent == this) {
+						return this;
+					}
+	
+					throw new TypeError('View is already used as a child of view');
+				}
+	
+				child._parent = this;
+	
+				var children = this.children;
+				var childName = child.name;
+	
+				children.push(child);
+	
+				if (childName) {
+					(hasOwn.call(children, childName) ? children[childName] : (children[childName] = [])).push(child);
+				}
+	
+				return this;
+			},
+	
+			/**
+			 * Отменяет регистрацию дочерней вьюшки.
+			 * @typesign (child: Rift.BaseView): Rift.BaseView;
+			 */
+			unregisterChild: function(child) {
+				if (child._parent !== this) {
 					return this;
 				}
-
-				throw new TypeError('View is already used as a child of view');
-			}
-
-			child._parent = this;
-
-			var children = this.children;
-			var childName = child.name;
-
-			children.push(child);
-
-			if (childName) {
-				(hasOwn.call(children, childName) ? children[childName] : (children[childName] = [])).push(child);
-			}
-
-			return this;
-		},
-
-		/**
-		 * Отменяет регистрацию дочерней вьюшки.
-		 *
-		 * @param {Rift.BaseView} child
-		 * @returns {Rift.BaseView}
-		 */
-		unregisterChild: function(child) {
-			if (child._parent !== this) {
-				return this;
-			}
-
-			child._parent = null;
-
-			var children = this.children;
-			var childName = child.name;
-
-			children.splice(children.indexOf(child), 1);
-
-			if (childName) {
-				var namedChildren = children[childName];
-				namedChildren.splice(namedChildren.indexOf(child), 1);
-			}
-
-			return this;
-		},
-
-		/**
-		 * Создаёт и регистрирует элемент(ы) и/или возвращает именованную $-коллекцию.
-		 *
-		 * @example
-		 * this.$('btnSend'); // получение элемента(ов) по имени
-		 *
-		 * @example
-		 * // создаёт новый элемент `<li class="Module_element _selected">Hi!</li>`,
-		 * // добавляет его в коллекцию `element` и возвращает коллекцию с новым элементом
-		 * this.$('item', '<li class="_selected">Hi!</li>');
-		 *
-		 * @example
-		 * // то же, что и в предыдущем примере, но описание элемента в виде объекта
-		 * this.$('item', { tagName: 'li', mods: { selected: true }, html: 'Hi!' });
-		 *
-		 * @param {string} name
-		 * @param {...(HTMLElement|string|{ tagName: string, mods: Object, attrs: Object<string>, html: string })} [el]
-		 * @returns {$}
-		 */
-		$: function(name) {
-			var els;
-
-			if (hasOwn.call(this.elements, name)) {
-				els = this.elements[name];
-			} else {
-				els = $('.' + this.blockName + '_' + name, this.block);
-
-				if (initSimilarDescendantElements(this, this.blockName, name)) {
-					els = els.filter(function() {
-						return !this.hasOwnProperty(KEY_VIEW) || !this[KEY_VIEW];
-					});
+	
+				child._parent = null;
+	
+				var children = this.children;
+				var childName = child.name;
+	
+				children.splice(children.indexOf(child), 1);
+	
+				if (childName) {
+					var namedChildren = children[childName];
+					namedChildren.splice(namedChildren.indexOf(child), 1);
 				}
-
-				this.elements[name] = els;
-			}
-
-			var argCount = arguments.length;
-
-			if (argCount > 1) {
-				var i = 1;
-
-				do {
-					var el = arguments[i];
-					var isString = typeof el == 'string';
-
-					if (isString || el instanceof HTMLElement) {
-						if (isString) {
-							var outer = document.createElement('div');
-							outer.innerHTML = el;
-
-							el = outer.childNodes.length == 1 && outer.firstChild.nodeType == 1 ?
-								outer.firstChild :
-								outer;
+	
+				return this;
+			},
+	
+			/**
+			 * @typesign (children: string, method: string, ...args?: Array): Array;
+			 */
+			broadcast: function(children, method) {
+				var cl;
+				var name;
+	
+				if (/^(.+?):(.+)$/.test(children)) {
+					cl = RegExp.$1;
+					name = RegExp.$2;
+				} else {
+					cl = children;
+					name = '*';
+				}
+	
+				cl = getViewClass(cl);
+	
+				var descendants = [];
+	
+				(function _(children) {
+					for (var i = 0, l = children.length; i < l; i++) {
+						var child = children[i];
+	
+						if ((cl === '*' || child instanceof cl) && (name == '*' || child.name === name)) {
+							descendants.push(child);
+						}
+	
+						_(child.children);
+					}
+				})(this.children);
+	
+				var args = slice.call(arguments, 2);
+	
+				return descendants.map(function(descendant) {
+					if (!descendant.disposed && typeof descendant[method] == 'function') {
+						return descendant[method].apply(descendant, args);
+					}
+				});
+			},
+	
+			/**
+			 * Создаёт и регистрирует элемент(ы) и/или возвращает именованную $-коллекцию.
+			 *
+			 * @example
+			 * this.$('btnSend'); // получение элемента(ов) по имени
+			 *
+			 * @example
+			 * // создаёт новый элемент `<li class="Module_item _selected">Hi!</li>`,
+			 * // добавляет его в коллекцию `item` и возвращает коллекцию с новым элементом
+			 * this.$('item', '<li class="_selected">Hi!</li>');
+			 *
+			 * @typesign (
+			 *     name: string,
+			 *     ...els?: Array<HTMLElement|string|{ tagName: string, mods: Object, attrs: Object<string>, html: string }>
+			 * ): $;
+			 */
+			$: function(name) {
+				var els;
+	
+				if (hasOwn.call(this.elements, name)) {
+					els = this.elements[name];
+				} else {
+					els = this.block.find('.' + this.blockName + '_' + name);
+	
+					if (initDescendantElements(this, this.blockName, name)) {
+						els = els.filter(function() {
+							return !this.hasOwnProperty(KEY_VIEW) || !this[KEY_VIEW];
+						});
+					}
+	
+					var _this = this;
+	
+					els.each(function() {
+						this[KEY_VIEW] = _this;
+						this[KEY_VIEW_ELEMENT_NAME] = name;
+					});
+	
+					this.elements[name] = els;
+				}
+	
+				var argCount = arguments.length;
+	
+				if (argCount > 1) {
+					var i = 1;
+	
+					do {
+						var el = arguments[i];
+						var isString = typeof el == 'string';
+	
+						if (isString || el instanceof HTMLElement) {
+							if (isString) {
+								var container = document.createElement('div');
+								container.innerHTML = el;
+	
+								el = container.childNodes.length == 1 && container.firstChild.nodeType == 1 ?
+									container.firstChild :
+									container;
+							} else {
+								if (el.hasOwnProperty(KEY_VIEW) && el[KEY_VIEW]) {
+									if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME]) {
+										throw new TypeError('Element is already used as a block of view');
+									}
+									if (el[KEY_VIEW] != this || el[KEY_VIEW_ELEMENT_NAME] != name) {
+										throw new TypeError('Element is already used as an element of view');
+									}
+	
+									continue;
+								}
+							}
+	
+							el.className = (this.blockName + '_' + name + ' ' + el.className).trim();
 						} else {
-							if (el.hasOwnProperty(KEY_VIEW) && el[KEY_VIEW]) {
-								if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME]) {
-									throw new TypeError('Element is already used as a block of view');
-								}
-
-								if (el[KEY_VIEW] != this || el[KEY_VIEW_ELEMENT_NAME] != name) {
-									throw new TypeError('Element is already used as an element of view');
-								}
-
-								continue;
+							var params = el;
+	
+							el = document.createElement(params.tagName || 'div');
+	
+							if (params.attrs) {
+								setAttributes(el, params.attrs);
+							}
+	
+							var cls = [this.blockName + '_' + name];
+	
+							if (params.mods) {
+								pushMods(cls, params.mods);
+							}
+	
+							el.className = (cls.join(' ') + ' ' + el.className).trim();
+	
+							if (params.html) {
+								el.innerHTML = params.html;
 							}
 						}
-
-						el.className = (this.blockName + '_' + name + ' ' + el.className).trim();
+	
+						el[KEY_VIEW] = this;
+						el[KEY_VIEW_ELEMENT_NAME] = name;
+	
+						els.push(el);
+	
+						bindDOM(el, this.owner || this);
+					} while (++i < argCount);
+				}
+	
+				return els;
+			},
+	
+			/**
+			 * @typesign (...els: $|HTMLElement|string): Rift.BaseView;
+			 */
+			$rm: function() {
+				for (var i = arguments.length; i;) {
+					var el = arguments[--i];
+	
+					if (typeof el == 'string') {
+						if (!hasOwn.call(this.elements, el)) {
+							continue;
+						}
+	
+						el = this.elements[el];
+					}
+	
+					if (el instanceof $) {
+						var _this = this;
+	
+						el.each(function() {
+							removeElement(_this, this);
+						});
 					} else {
-						var elSettings = el;
-
-						el = document.createElement(elSettings.tagName || 'div');
-
-						if (elSettings.attrs) {
-							setAttributes(el, elSettings.attrs);
-						}
-
-						var cls = [this.blockName + '_' + name];
-
-						if (elSettings.mods) {
-							pushMods(cls, elSettings.mods);
-						}
-
-						el.className = (cls.join(' ') + ' ' + el.className).trim();
-
-						if (elSettings.html) {
-							el.innerHTML = elSettings.html;
-						}
+						removeElement(this, el);
 					}
-
-					el[KEY_VIEW] = this;
-					el[KEY_VIEW_ELEMENT_NAME] = name;
-
-					els.push(el);
-				} while (++i < argCount);
-			}
-
-			return els;
-		},
-
-		/**
-		 * Удаляет элемент(ы) из dom-дерева и отменяет его(их) регистрацию.
-		 *
-		 * @param {...($|HTMLElement|string)} els
-		 * @returns {Rift.BaseView}
-		 */
-		$rm: function() {
-			for (var i = arguments.length; i;) {
-				var el = arguments[--i];
-
-				if (typeof el == 'string') {
-					if (!hasOwn.call(this.elements, el)) {
-						continue;
-					}
-
-					el = this.elements[el];
 				}
-
-				if (el instanceof $) {
-					var view = this;
-
-					el.each(function() {
-						removeElement(view, this);
-					});
-				} else {
-					removeElement(this, el);
-				}
-			}
-
-			return this;
-		},
-
-		/**
-		 * @param {string} children
-		 * @param {string} method
-		 * @param {...*} [args]
-		 * @returns {Array}
-		 */
-		broadcast: function(children, method) {
-			var name;
-			var cl;
-
-			if (reNameClass.test(children)) {
-				name = RegExp.$1;
-				cl = RegExp.$2;
-			} else {
-				name = children;
-				cl = '*';
-			}
-
-			var descendants = [];
-
-			(function _(children) {
-				if (name != '*') {
-					if (!hasOwn.call(children, name)) {
-						return;
-					}
-
-					children = children[name];
-				}
-
-				for (var i = 0, l = children.length; i < l; i++) {
-					descendants.push(children[i]);
-					_(children[i].children);
-				}
-			})(this.children);
-
-			if (cl != '*') {
-				cl = getViewClassOrError(cl);
-
-				descendants = descendants.filter(function(descendant) {
-					return descendant instanceof cl;
-				});
-			}
-
-			var args = slice.call(arguments, 2);
-
-			return descendants.map(function(descendant) {
-				return descendant[method].apply(descendant, args);
-			});
-		},
-
-		_listen: function(target, evt, listener, context, meta) {
-			var type;
-			var cl;
-
-			if (target instanceof BaseView) {
-				if (reNameClass.test(evt)) {
-					type = RegExp.$1;
-					cl = RegExp.$2;
-
-					if (cl != '*') {
-						cl = getViewClassOrError(cl);
-
-						var inner = listener;
-						var outer = function(evt) {
-							if (evt.target instanceof cl) {
+	
+				return this;
+			},
+	
+			/**
+			 * @override Rift.Disposable#_listenTo
+			 */
+			_listenTo: function(target, evt, listener, context) {
+				var type;
+	
+				if (target instanceof BaseView) {
+					var inner;
+	
+					if (/^(.+?):(.+)$/.test(evt)) {
+						var cl = RegExp.$1;
+						type = RegExp.$2;
+	
+						if (cl != '*') {
+							cl = getViewClass(cl);
+							inner = listener;
+	
+							listener = function(evt) {
+								if (evt.target instanceof cl) {
+									return inner.call(this, evt);
+								}
+							};
+						}
+					} else {
+						type = evt;
+						inner = listener;
+	
+						var _this = this;
+	
+						listener = function(evt) {
+							if (evt.target == _this) {
 								return inner.call(this, evt);
 							}
 						};
-						outer[KEY_INNER] = inner;
-
-						listener = outer;
-					}
-				} else {
-					type = evt;
-
-					var view = this;
-					var inner = listener;
-					var outer = function(evt) {
-						if (evt.target == view) {
-							return inner.call(this, evt);
-						}
-					};
-					outer[KEY_INNER] = inner;
-
-					listener = outer;
-				}
-			} else {
-				type = evt;
-			}
-
-			BaseView.$super._listen.call(
-				this,
-				target,
-				type,
-				listener,
-				context,
-				(cl ? (cl === '*' ? '' : getUID(cl)) : '0') + getStamp(meta)
-			);
-		},
-
-		_stopListening: function(target, evt, listener, context, meta) {
-			var type;
-			var cl;
-
-			if (target instanceof BaseView) {
-				if (reNameClass.test(evt)) {
-					type = RegExp.$1;
-					cl = RegExp.$2;
-
-					if (cl != '*') {
-						cl = getViewClassOrError(cl);
 					}
 				} else {
 					type = evt;
 				}
-			} else {
-				type = evt;
-			}
-
-			BaseView.$super._stopListening.call(
-				this,
-				target,
-				type,
-				listener,
-				context,
-				(cl ? (cl === '*' ? '' : getUID(cl)) : '0') + getStamp(meta)
-			);
-		},
-
-		/**
-		 * Уничтожает вьюшку освобождая занятые ей ресурсы.
-		 */
-		dispose: function() {
-			var block;
-
-			if (isClient) {
-				block = this.block[0];
-
-				if (block.parentNode) {
-					block.parentNode.removeChild(block);
-				}
-			}
-
-			var children = this.children;
-
-			for (var i = children.length; i;) {
-				children[--i].dispose();
-			}
-
-			if (this._parent) {
-				var parentChildren = this._parent.children;
-
-				parentChildren.splice(parentChildren.indexOf(this), 1);
-
-				if (this.name) {
-					var namedParentChildren = parentChildren[this.name];
-					namedParentChildren.splice(namedParentChildren.indexOf(this), 1);
-				}
-			}
-
-			if (isClient) {
-				block[KEY_VIEW] = null;
-			}
-
-			BaseView.$super.dispose.call(this);
-		}
-	});
-
-	rt.BaseView = BaseView;
-
-})();
-
-(function() {
-
-	var serialize = rt.dump.serialize;
-	var deserialize = rt.dump.deserialize;
-	var ActiveProperty = rt.ActiveProperty;
-	var Disposable = rt.Disposable;
-
-	/**
-	 * @class Rift.ViewState
-	 * @extends {Rift.Disposable}
-	 * @typesign new (props: Object): Rift.ViewState;
-	 */
-	var ViewState = Disposable.extend('Rift.ViewState', /** @lends Rift.ViewState# */{
-		/**
-		 * @type {Array<string>}
-		 */
-		propertyList: null,
-
-		constructor: function(props) {
-			Disposable.call(this);
-
-			this.propertyList = Object.keys(props);
-
-			for (var name in props) {
-				var prop = (typeof props[name] == 'function' ? props[name] : new ActiveProperty(props[name]))
-					.bind(this);
-
-				Object.defineProperty(prop, 'constructor', {
-					configurable: true,
-					writable: true,
-					value: ActiveProperty
-				});
-
-				this[name] = prop;
-			}
-		},
-
-		/**
-		 * @typesign (): Object<string>;
-		 */
-		serializeData: function() {
-			var propList = this.propertyList;
-			var data = {};
-
-			for (var i = propList.length; i;) {
-				var dc = this[propList[--i]]('dataCell', 0);
-
-				if (!dc.computable) {
-					var value = dc.value;
-
-					if (value === Object(value) ? dc.changed : dc.initialValue !== value) {
-						data[propList[i]] = serialize({ v: value });
+	
+				return Disposable.prototype._listenTo.call(this, target, type, listener, context);
+			},
+	
+			/**
+			 * @typesign ();
+			 */
+			dispose: function() {
+				var block = this.block && this.block[0];
+	
+				if (block) {
+					if (block.parentNode) {
+						block.parentNode.removeChild(block);
 					}
+	
+					unbindDOM(block);
 				}
-			}
-
-			return data;
-		},
-
-		/**
-		 * @typesign (data: Object<string>): Rift.ViewState;
-		 */
-		updateFromSerializedData: function(data) {
-			var deserialized = {};
-
-			for (var name in data) {
-				deserialized[name] = deserialize(data[name]).v;
-			}
-
-			this.update(deserialized);
-
-			return this;
-		},
-
-		/**
-		 * @typesign (data: Object): Rift.ViewState;
-		 */
-		update: function(data) {
-			var propList = this.propertyList;
-			var oldData = {};
-
-			for (var i = propList.length; i;) {
-				oldData[propList[--i]] = this[propList[i]]();
-			}
-
-			for (var i = propList.length; i;) {
-				var name = propList[--i];
-
-				if (oldData[name] === this[name]()) {
-					this[name](hasOwn.call(data, name) ? data[name] : this[name]('dataCell', 0).initialValue);
+	
+				var children = this.children;
+	
+				for (var i = children.length; i;) {
+					children[--i].dispose();
 				}
+	
+				this.parent = null;
+	
+				if (block) {
+					block[KEY_VIEW] = null;
+				}
+	
+				Disposable.prototype.dispose.call(this);
 			}
-
-			return this;
-		}
-	});
-
-	rt.ViewState = ViewState;
-
-})();
-
-(function() {
-
-	var escapeRegExp = rt.regex.escape;
-	var nextTick = rt.process.nextTick;
-	var Disposable = rt.Disposable;
-
-	var reNotLocal = /^(?:\w+:)?\/\//;
-	var reSlashes = /[\/\\]+/g;
-	var reInsert = /\{([^}]+)\}/g;
-	var reOption = /\((?:\?(\S+)\s+)?([^)]+)\)/g;
-
-	/**
-	 * @private
-	 *
-	 * @param {string} str
-	 * @returns {number|string}
-	 */
-	function tryStringAsNumber(str) {
-		if (str != '') {
-			if (str == 'NaN') {
-				return NaN;
+		});
+	
+		rt.BaseView = BaseView;
+	})();
+	
+	(function() {
+		var nextUID = rt.uid.next;
+		var ActiveMap = rt.ActiveMap;
+		var ActiveList = rt.ActiveList;
+		var getViewClass = rt.getViewClass;
+	
+		/**
+		 * @typesign (viewClass: Function|string, viewParams?: Object): string;
+		 */
+		function include(viewClass, viewParams) {
+			if (typeof viewClass == 'string') {
+				viewClass = getViewClass(viewClass);
 			}
-
-			var num = Number(str);
-
-			if (num == num) {
-				return num;
-			}
-		}
-
-		return str;
-	}
-
-	/**
-	 * Кодирует путь. Символы те же, что и у encodeURIComponent, кроме слеша `/`.
-	 * В отличии от encodeURI и encodeURIComponent не трогает уже закодированное:
-	 *     encodeURIComponent(' %20'); // '%20%2520'
-	 *     encodePath(' %20'); // '%20%20'
-	 *
-	 * @example
-	 * encodeURIComponent(' %20/%2F'); // '%20%2520%2F%252F'
-	 * encodePath(' %20/%2F'); // '%20%20/%2F'
-	 *
-	 * @private
-	 *
-	 * @param {string} path
-	 * @returns {string}
-	 */
-	function encodePath(path) {
-		path = path.split('/');
-
-		for (var i = path.length; i;) {
-			path[--i] = encodeURIComponent(decodeURIComponent(path[i]));
-		}
-
-		return path.join('/');
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {string} path
-	 * @returns {string}
-	 */
-	function slashifyPath(path) {
-		if (path[0] != '/') {
-			path = '/' + path;
-		}
-		if (path[path.length - 1] != '/') {
-			path += '/';
-		}
-
-		return path;
-	}
-
-	/**
-	 * @typedef {{
-	 *     rePath: RegExp,
-	 *     properties: Array<{ type: int, name: string }>,
-	 *     requiredProperties: Array<string>,
-	 *     pathMap: Array<{ requiredProperties: Array<string>, pathPart: string|undefined, prop: string|undefined }>,
-	 *     state: string,
-	 *     callback: Function
-	 * }} Router~Route
-	 */
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift#Router} router
-	 * @param {string} path
-	 * @returns {?{ route: Router~Route, state: Object }}
-	 */
-	function tryPath(router, path) {
-		var routes = router.routes;
-
-		for (var i = 0, l = routes.length; i < l; i++) {
-			var route = routes[i];
-			var match = path.match(route.rePath);
-
-			if (match) {
-				return {
-					route: route,
-
-					state: route.properties.reduce(function(state, prop, index) {
-						state[prop.name] = prop.type == 1 ?
-							!!match[index + 1] :
-							tryStringAsNumber(decodeURIComponent(match[index + 1]));
-
-						return state;
-					}, {})
+	
+			if (viewParams) {
+				viewParams.parent = this;
+				viewParams.block = null;
+			} else {
+				viewParams = {
+					parent: this,
+					block: null
 				};
 			}
+	
+			var childRenderings = this._childRenderings;
+			var index = childRenderings.count++;
+			var childTrace = childRenderings.childTraces[index] = '{{' + nextUID() + '}}';
+	
+			new viewClass(viewParams).render(function(html) {
+				childRenderings.results[index] = html;
+	
+				if (childRenderings.count == ++childRenderings.readyCount && childRenderings.onallready) {
+					childRenderings.onallready();
+				}
+			});
+	
+			return childTrace;
 		}
-
-		return null;
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift#Router} router
-	 * @param {?Router~Route} [preferredRoute]
-	 * @returns {?{ route: Router~Route, path: string }}
-	 */
-	function tryViewState(router, preferredRoute) {
-		var viewState = router.app.viewState;
-		var routes = router.routes;
-		var resultRoute = null;
-
-		for (var i = 0, l = routes.length; i < l; i++) {
-			var route = routes[i];
-			var requiredProps = route.requiredProperties;
-			var j = requiredProps.length;
-
-			while (j--) {
-				var value = viewState[requiredProps[j]]();
-
-				if (value == null || value === false || value === '') {
-					break;
+	
+		/**
+		 * @typesign (obj?: Object|Array|Rift.ActiveMap|Rift.ActiveList, cb: (value, key), context: Object);
+		 */
+		function each(obj, cb, context) {
+			if (!obj) {
+				return;
+			}
+	
+			if (obj instanceof ActiveMap) {
+				obj = obj.toObject();
+			} else if (obj instanceof ActiveList) {
+				obj = obj.toArray();
+			}
+	
+			if (Array.isArray(obj)) {
+				for (var i = 0, l = obj.length; i < l; i++) {
+					if (i in obj) {
+						cb.call(context, obj[i], i);
+					}
+				}
+			} else {
+				for (var name in obj) {
+					if (hasOwn.call(obj, name)) {
+						cb.call(context, obj[name], name);
+					}
 				}
 			}
-
-			if (j == -1) {
-				if (requiredProps.length) {
-					resultRoute = route;
-					break;
-				} else if (!resultRoute || route === preferredRoute) {
-					resultRoute = route;
-				}
-			}
 		}
-
-		return resultRoute && {
-			route: resultRoute,
-			path: buildPath(router, resultRoute)
+	
+		rt.template = {
+			defaults: {
+				include: include,
+				helpers: {},
+				each: each
+			}
 		};
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift#Router} router
-	 * @param {Router~Route} route
-	 * @returns {string}
-	 */
-	function buildPath(router, route) {
-		var viewState = router.app.viewState;
-		var pathMap = route.pathMap;
-		var path = [];
-
-		for (var i = 0, l = pathMap.length; i < l; i++) {
-			var pathMapItem = pathMap[i];
-			var requiredProps = pathMapItem.requiredProperties;
-			var j = requiredProps.length;
-
-			while (j--) {
-				var value = viewState[requiredProps[j]]();
-
-				if (value == null || value === false || value === '') {
-					break;
+	})();
+	
+	(function() {
+		var include = rt.template.defaults.include;
+		var getViewClass = rt.getViewClass;
+		var BaseView = rt.BaseView;
+	
+		BaseView.extend('ViewList', {
+			tagName: 'ul',
+	
+			/**
+			 * @override Rift.BaseView#model
+			 * @type {Rift.cellx<Array|Rift.ActiveList>}
+			 */
+			model: null,
+	
+			itemViewClass: null,
+	
+			getItemParams: null,
+	
+			constructor: function(params) {
+				BaseView.call(this, params);
+	
+				this.itemViewClass = getViewClass(params.itemViewClass);
+	
+				if (params.getItemParams) {
+					this.getItemParams = params.getItemParams;
+				}
+			},
+	
+			template: function() {
+				var model = this.model();
+	
+				if (!model) {
+					return '';
+				}
+	
+				var itemViewClass = this.itemViewClass;
+				var getItemParams = this.getItemParams;
+	
+				return model.map(function(itemModel, index) {
+					var params = getItemParams ? getItemParams(itemModel, index, model) : {};
+	
+					params.name = 'item';
+					params.model = itemModel;
+					params.$index = index;
+	
+					return '<li class="ViewList_item">' + include.call(this, itemViewClass, params) + '</li>';
+				}, this).join('');
+			},
+	
+			_initClient: function() {
+				this.listenTo(this, 'change', { model: this._onModelChange });
+			},
+	
+			_onModelChange: function() {
+				var model = this.model() || [];
+				var itemViewClass = this.itemViewClass;
+				var getItemParams = this.getItemParams;
+				var items = this.children.item || (this.children.item = []);
+				var block = this.block[0];
+	
+				var currentItemModels = items.map(function(item) {
+					return item.model;
+				});
+				var newItemModels = Array.isArray(model) ? model.slice() : model.toArray();
+	
+				newItemModels.forEach(function(itemModel, index) {
+					if (itemModel === currentItemModels[index]) {
+						return;
+					}
+	
+					var itemModelIndex = currentItemModels.indexOf(itemModel, index + 1);
+	
+					if (itemModelIndex == -1) {
+						var params = getItemParams ? getItemParams(itemModel, index, model) : {};
+	
+						params.name = 'item';
+						params.model = itemModel;
+						params.parent = this;
+						params.$index = index;
+	
+						new itemViewClass(params);
+	
+						var item = items.pop();
+						var li = document.createElement('li');
+	
+						li.className = 'ViewList_item';
+						li.appendChild(item.block[0]);
+	
+						if (index < items.length) {
+							block.insertBefore(li, items[index].block[0].parentNode);
+						} else {
+							block.appendChild(li);
+						}
+	
+						items.splice(index, 0, item);
+						currentItemModels.splice(index, 0, item.model);
+	
+						item.initClient();
+					} else {
+						block.insertBefore(items[itemModelIndex].block[0].parentNode, items[index].block[0].parentNode);
+	
+						items.splice(index, 0, items.splice(itemModelIndex, 1)[0]);
+						currentItemModels.splice(index, 0, currentItemModels.splice(itemModelIndex, 1)[0]);
+					}
+				}, this);
+	
+				items.slice(newItemModels.length).forEach(function(item) {
+					var li = item.block[0].parentNode;
+					li.parentNode.removeChild(li);
+	
+					item.dispose();
+				});
+			}
+		});
+	})();
+	
+	(function() {
+		var include = rt.template.defaults.include;
+		var getViewClass = rt.getViewClass;
+		var BaseView = rt.BaseView;
+	
+		BaseView.extend('ViewSwitch', {
+			_states: null,
+			_stateSource: null,
+	
+			initialState: undefined,
+	
+			_currentState: undefined,
+	
+			constructor: function(params) {
+				BaseView.call(this, params);
+	
+				this._states = params.states;
+	
+				if (params.stateSource) {
+					this._stateSource = params.stateSource;
+				}
+	
+				var initialState;
+	
+				if (params.initialState) {
+					initialState = this.initialState = params.initialState;
+				}
+	
+				var currentState = initialState || (this._stateSource ? this._stateSource() : undefined);
+	
+				if ((!currentState || !this._states[currentState]) && this._states.default) {
+					currentState = 'default';
+				}
+	
+				if (currentState && this._states[currentState]) {
+					this._currentState = currentState;
+				}
+			},
+	
+			/**
+			 * @type {string|undefined}
+			 */
+			get currentState() {
+				return this._currentState;
+			},
+			set currentState(newState) {
+				if ((!newState || !this._states[newState]) && this._states.default) {
+					newState = 'default';
+				}
+	
+				if (this._currentState === newState) {
+					return;
+				}
+	
+				if (this._currentState) {
+					this.children[0].dispose();
+				}
+	
+				if (newState && this._states[newState]) {
+					var state = this._states[newState];
+					var params = Object.create(state.viewParams || null);
+	
+					params.parent = this;
+	
+					var view = new (getViewClass(state.viewClass))(params);
+					view.block.appendTo(this.block);
+					view.initClient();
+	
+					this._currentState = newState;
+				} else {
+					this._currentState = undefined;
+				}
+			},
+	
+			template: function() {
+				var currentState = this._currentState;
+	
+				if (currentState && this._states[currentState]) {
+					var state = this._states[currentState];
+					return include.call(this, state.viewClass, state.viewParams || null);
+				}
+	
+				return '';
+			},
+	
+			_initClient: function() {
+				if (this._stateSource) {
+					this.listenTo(this, 'change', { _stateSource: this._onStateSourceChange });
+				}
+			},
+	
+			_onStateSourceChange: function() {
+				this.currentState = this._stateSource();
+			}
+		});
+	})();
+	
+	(function() {
+		var serialize = rt.dump.serialize;
+		var deserialize = rt.dump.deserialize;
+		var Disposable = rt.Disposable;
+	
+		/**
+		 * @class Rift.ViewState
+		 * @extends {Rift.Disposable}
+		 * @typesign new (props: Object): Rift.ViewState;
+		 */
+		var ViewState = Disposable.extend('Rift.ViewState', {
+			/**
+			 * @type {Array<string>}
+			 */
+			propertyList: null,
+	
+			constructor: function(props) {
+				Disposable.call(this);
+	
+				this.propertyList = Object.keys(props);
+	
+				this.propertyList.forEach(function(name) {
+					this[name] = (typeof props[name] == 'function' ? props[name] : cellx(props[name])).bind(this);
+					this[name].constructor = cellx;
+				}, this);
+			},
+	
+			/**
+			 * @typesign (): Object;
+			 */
+			serializeData: function() {
+				var propertyList = this.propertyList;
+				var data = {};
+	
+				for (var i = propertyList.length; i;) {
+					var cell = this[propertyList[--i]]('unwrap', 0);
+	
+					if (!cell.computable) {
+						var value = cell.read();
+	
+						if (value === Object(value) ? cell.changed() : cell.initialValue !== value) {
+							data[propertyList[i]] = value;
+						}
+					}
+				}
+	
+				return serialize(data);
+			},
+	
+			/**
+			 * @typesign (data: Object): Rift.ViewState;
+			 */
+			updateFromSerializedData: function(data) {
+				this.update(deserialize(data));
+				return this;
+			},
+	
+			/**
+			 * @typesign (data: Object): Rift.ViewState;
+			 */
+			update: function(data) {
+				var propertyList = this.propertyList;
+				var name;
+	
+				for (var i = propertyList.length; i;) {
+					name = propertyList[--i];
+	
+					var cell = this[name]('unwrap', 0);
+	
+					if (!cell.computable) {
+						cell.write(cell.initialValue);
+					}
+				}
+	
+				for (var j = propertyList.length; j;) {
+					name = propertyList[--j];
+	
+					if (hasOwn.call(data, name)) {
+						this[name](data[name]);
+					}
+				}
+	
+				return this;
+			}
+		});
+	
+		rt.ViewState = ViewState;
+	})();
+	
+	(function() {
+		var nextTick = rt.nextTick;
+		var escapeRegExp = rt.regex.escape;
+		var serialize = rt.dump.serialize;
+		var Disposable = rt.Disposable;
+	
+		var KEY_ROUTING_STATE = rt.KEY_ROUTING_STATE = '__rt_routingState__';
+	
+		/**
+		 * @typesign (str: string): number|string;
+		 */
+		function tryStringAsNumber(str) {
+			if (str != '') {
+				if (str == 'NaN') {
+					return NaN;
+				}
+	
+				var num = Number(str);
+	
+				if (num == num) {
+					return num;
 				}
 			}
-
-			if (j == -1) {
-				path.push(pathMapItem.pathPart !== undefined ? pathMapItem.pathPart : viewState[pathMapItem.prop]());
-			}
+	
+			return str;
 		}
-
-		return slashifyPath(path.join(''));
-	}
-
-	/**
-	 * @private
-	 *
-	 * @param {Rift#Router} router
-	 * @param {Router~Route} route
-	 * @param {string} path
-	 * @param {Object} viewStateData
-	 * @param {int} [mode=0]
-	 */
-	function setState(router, route, path, viewStateData, mode) {
-		router.currentRoute = route;
-		router.currentPath = path;
-
-		if (isClient) {
-			if (mode) {
-				history[mode == 1 ? 'replaceState' : 'pushState']({
-					'_rt-state': {
+	
+		/**
+		 * Кодирует путь. Символы те же, что и у encodeURIComponent, кроме слеша `/`.
+		 * В отличии от encodeURI и encodeURIComponent не трогает уже закодированное:
+		 *     encodeURIComponent(' %20'); // '%20%2520'
+		 *     encodePath(' %20'); // '%20%20'
+		 *
+		 * @example
+		 * encodeURIComponent(' %20/%2F'); // '%20%2520%2F%252F'
+		 * encodePath(' %20/%2F'); // '%20%20/%2F'
+		 *
+		 * @typesign (path: string): string;
+		 */
+		function encodePath(path) {
+			path = path.split('/');
+	
+			for (var i = path.length; i;) {
+				path[--i] = encodeURIComponent(decodeURIComponent(path[i]));
+			}
+	
+			return path.join('/');
+		}
+	
+		/**
+		 * @typesign (path: string): string;
+		 */
+		function slashifyPath(path) {
+			if (path[0] != '/') {
+				path = '/' + path;
+			}
+			if (path[path.length - 1] != '/') {
+				path += '/';
+			}
+	
+			return path;
+		}
+	
+		/**
+		 * @typedef {{
+		 *     name: string,
+		 *     rePath: RegExp,
+		 *     properties: Array<{ type: int, name: string }>,
+		 *     requiredProperties: Array<string>,
+		 *     pathMap: Array<{
+		 *         requiredProperties: Array<string>,
+		 *         pathPart: string,
+		 *         property: undefined
+		 *     }|{
+		 *         requiredProperties: Array<string>,
+		 *         pathPart: undefined,
+		 *         property: string
+		 *     }>,
+		 *     callback: (path: string)
+		 * }} Router~Route
+		 */
+	
+		/**
+		 * @typesign (viewState: Rift.ViewState, route: Router~Route): string;
+		 */
+		function buildPath(viewState, route) {
+			var pathMap = route.pathMap;
+			var path = [];
+	
+			for (var i = 0, l = pathMap.length; i < l; i++) {
+				var pathItem = pathMap[i];
+				var requiredProperties = pathItem.requiredProperties;
+				var j = requiredProperties.length;
+	
+				while (j--) {
+					var value = viewState[requiredProperties[j]]();
+	
+					if (value == null || value === false || value === '') {
+						break;
+					}
+				}
+	
+				if (j == -1) {
+					path.push(pathItem.pathPart !== undefined ? pathItem.pathPart : viewState[pathItem.property]());
+				}
+			}
+	
+			return slashifyPath(path.join(''));
+		}
+	
+		/**
+		 * @typesign (router: Rift.Router, path: string): { route: Router~Route, state: Object }|null;
+		 */
+		function tryPath(router, path) {
+			var routes = router.routes;
+	
+			for (var i = 0, l = routes.length; i < l; i++) {
+				var route = routes[i];
+				var match = path.match(route.rePath);
+	
+				if (match) {
+					return {
+						route: route,
+	
+						state: route.properties.reduce(function(state, prop, index) {
+							if (prop.type == 1) {
+								state[prop.name] = !!match[index + 1];
+							} else {
+								state[prop.name] = match[index + 1] &&
+									tryStringAsNumber(decodeURIComponent(match[index + 1]));
+							}
+	
+							return state;
+						}, {})
+					};
+				}
+			}
+	
+			return null;
+		}
+	
+		/**
+		 * @typesign (router: Rift.Router, preferredRoute?: Router~Route): { route: Router~Route, path: string }|null;
+		 */
+		function tryViewState(router, preferredRoute) {
+			var viewState = router.app.viewState;
+			var routes = router.routes;
+			var resultRoute = null;
+	
+			for (var i = 0, l = routes.length; i < l; i++) {
+				var route = routes[i];
+				var requiredProperties = route.requiredProperties;
+				var j = requiredProperties.length;
+	
+				while (j--) {
+					var value = viewState[requiredProperties[j]]();
+	
+					if (value == null || value === false || value === '') {
+						break;
+					}
+				}
+	
+				if (j == -1) {
+					if (resultRoute) {
+						if (resultRoute.requiredProperties.length) {
+							if (requiredProperties.length && route === preferredRoute) {
+								resultRoute = route;
+								break;
+							}
+						} else {
+							if (requiredProperties.length) {
+								resultRoute = route;
+	
+								if (route === preferredRoute) {
+									break;
+								}
+							} else if (route === preferredRoute) {
+								resultRoute = route;
+							}
+						}
+					} else {
+						resultRoute = route;
+					}
+				}
+			}
+	
+			return resultRoute && {
+				route: resultRoute,
+				path: buildPath(viewState, resultRoute)
+			};
+		}
+	
+		/**
+		 * @typesign (router: Rift.Router, route: Router~Route, path: string, viewStateData: Object, mode: uint = 0);
+		 */
+		function setState(router, route, path, viewStateData, mode) {
+			router.currentRoute = route;
+			router.currentRouteName(route.name);
+	
+			router.currentPath = path;
+	
+			if (isClient) {
+				router._isViewStateChangeHandlingRequired = false;
+	
+				var historyState;
+	
+				if (mode) {
+					historyState = {};
+	
+					historyState[KEY_ROUTING_STATE] = {
 						routeIndex: router.routes.indexOf(route),
 						path: path,
 						viewStateData: viewStateData
-					}
-				}, null, path);
-			} else {
-				var state = history.state || {};
-
-				state['_rt-state'] = {
-					routeIndex: router.routes.indexOf(route),
-					path: path,
-					viewStateData: viewStateData
-				};
-
-				history.replaceState(state, null, path);
-			}
-		}
-
-		router.currentState(route.state);
-
-		if (route.callback) {
-			route.callback.call(router.app, path);
-		}
-	}
-
-	/**
-	 * @class Rift.Router
-	 * @extends {Object}
-	 *
-	 * @param {Rift.BaseApp} app
-	 * @param {Array<{ path: string, callback: Function= }|string>} [routes]
-	 */
-	var Router = Disposable.extend(/** @lends Rift.Router# */{
-		/**
-		 * Ссылка на приложение.
-		 *
-		 * @type {Rift.App}
-		 */
-		app: null,
-
-		/**
-		 * Ссылка на корневой элемент вьюшки.
-		 *
-		 * @type {?HTMLElement}
-		 */
-		viewBlock: null,
-
-		/**
-		 * @type {Array<Router~Route>}
-		 * @protected
-		 */
-		routes: null,
-
-		/**
-		 * @type {?Router~Route}
-		 */
-		currentRoute: null,
-
-		/**
-		 * @type {string|undefined}
-		 */
-		currentPath: undefined,
-
-		/**
-		 * @type {string|undefined}
-		 */
-		currentState: rt.observable(),
-
-		/**
-		 * @type {boolean}
-		 */
-		started: false,
-
-		_isViewStateChangeHandlingRequired: false,
-
-		constructor: function(app, routes) {
-			Disposable.call(this);
-
-			this.app = app;
-			this.routes = [];
-
-			if (routes) {
-				this.addRoutes(routes);
-			}
-		},
-
-		/**
-		 * @param {Array<{ path: string, callback: Function }|string>} routes
-		 * @returns {Rift.Router}
-		 */
-		addRoutes: function(routes) {
-			routes.forEach(function(route) {
-				if (typeof route == 'string') {
-					route = { path: route };
-				}
-
-				this.addRoute(route.path, route.state, route.callback);
-			}, this);
-
-			return this;
-		},
-
-		/**
-		 * @param {string} path
-		 * @param {string|undefined} [state]
-		 * @param {Function|undefined} [callback]
-		 * @returns {Rift.Router}
-		 */
-		addRoute: function(path, state, callback) {
-			if (this.started) {
-				throw new TypeError('Router is already started');
-			}
-
-			path = path.split(reOption);
-
-			var rePath = [];
-			var props = [];
-			var requiredProps = [];
-			var pathMap = [];
-
-			for (var i = 0, l = path.length; i < l;) {
-				if (i % 3) {
-					rePath.push('(');
-
-					var pathMapItemRequiredProps = [];
-
-					if (path[i]) {
-						pathMapItemRequiredProps.push(path[i]);
-
-						props.push({
-							type: 1,
-							name: path[i]
-						});
-					}
-
-					var pathPart = path[i + 1].split(reInsert);
-
-					for (var j = 0, m = pathPart.length; j < m; j++) {
-						if (j % 2) {
-							var prop = pathPart[j];
-
-							pathMapItemRequiredProps.push(prop);
-
-							rePath.push('([^\\/]+)');
-
-							props.push({
-								type: 2,
-								name: prop
-							});
-
-							pathMap.push({
-								requiredProperties: pathMapItemRequiredProps,
-								pathPart: undefined,
-								prop: prop
-							});
-						} else {
-							if (pathPart[j]) {
-								var encodedPathPart = encodePath(pathPart[j]);
-
-								rePath.push(escapeRegExp(encodedPathPart).split('\\*').join('.*?'));
-
-								pathMap.push({
-									requiredProperties: pathMapItemRequiredProps,
-									pathPart: encodedPathPart.split('*').join(''),
-									prop: undefined
-								});
-							}
-						}
-					}
-
-					rePath.push(')?');
-
-					i += 2;
+					};
+	
+					history[mode == 1 ? 'replaceState' : 'pushState'](historyState, null, path);
 				} else {
-					if (path[i]) {
-						var pathPart = path[i].split(reInsert);
-
+					historyState = history.state || {};
+	
+					historyState[KEY_ROUTING_STATE] = {
+						routeIndex: router.routes.indexOf(route),
+						path: path,
+						viewStateData: viewStateData
+					};
+	
+					history.replaceState(historyState, null, path);
+				}
+			}
+	
+			if (route.callback) {
+				route.callback.call(router.app, path);
+			}
+		}
+	
+		/**
+		 * @typesign (router: Rift.Router, preferredRoute?: Router~Route): boolean;
+		 */
+		function updateFromViewState(router, preferredRoute) {
+			var match = tryViewState(router, preferredRoute);
+	
+			if (match) {
+				var path = match.path;
+	
+				if (path !== router.currentPath) {
+					setState(router, match.route, path, router.app.viewState.serializeData(), 2);
+					return true;
+				}
+			}
+	
+			return false;
+		}
+	
+		/**
+		 * @class Rift.Router
+		 * @extends {Object}
+		 *
+		 * @typesign new (
+		 *     app: Rift.BaseApp,
+		 *     routes?: Array<{ name?: string, path: string, callback?: (path: string) }|string>
+		 * ): Rift.Router;
+		 */
+		var Router = Disposable.extend({
+			/**
+			 * Ссылка на приложение.
+			 * @type {Rift.App}
+			 */
+			app: null,
+	
+			/**
+			 * Ссылка на корневой элемент вьюшки.
+			 * @type {?HTMLElement}
+			 */
+			viewBlock: null,
+	
+			/**
+			 * @type {Array<Router~Route>}
+			 */
+			routes: null,
+	
+			/**
+			 * @type {Object<Router~Route>}
+			 */
+			routeDict: null,
+	
+			/**
+			 * @type {boolean}
+			 */
+			started: false,
+	
+			/**
+			 * @type {?Router~Route}
+			 */
+			currentRoute: null,
+			/**
+			 * @type {string}
+			 */
+			currentRouteName: cellx(''),
+	
+			/**
+			 * @type {string|undefined}
+			 */
+			currentPath: undefined,
+	
+			_isViewStateChangeHandlingRequired: false,
+	
+			constructor: function(app, routes) {
+				Disposable.call(this);
+	
+				this.app = app;
+				this.routes = [];
+				this.routeDict = Object.create(null);
+	
+				this.currentRouteName = this.currentRouteName.bind(this);
+				this.currentRouteName.constructor = cellx;
+	
+				if (routes) {
+					this.addRoutes(routes);
+				}
+			},
+	
+			/**
+			 * @typesign (routes: Array<{ name?: string, path: string, callback?: (path: string) }|string): Rift.Router;
+			 */
+			addRoutes: function(routes) {
+				routes.forEach(function(route) {
+					if (typeof route == 'string') {
+						route = { path: route };
+					}
+	
+					this.addRoute(route.path, route.name, route.callback);
+				}, this);
+	
+				return this;
+			},
+	
+			/**
+			 * @typesign (path: string, name?: string, cb?: (path: string)): Rift.Router;
+			 */
+			addRoute: function(path, name, cb) {
+				if (this.started) {
+					throw new TypeError('Can\'t add route to started router');
+				}
+	
+				path = path.split(/\((?:\?([^\s)]+)\s+)?([^)]+)\)/g);
+	
+				var reInsert = /\{([^}]+)\}/g;
+	
+				var pathPart;
+				var encodedPathPart;
+	
+				var prop;
+	
+				var rePath = [];
+				var props = [];
+				var requiredProperties = [];
+				var pathMap = [];
+	
+				for (var i = 0, l = path.length; i < l;) {
+					if (i % 3) {
+						rePath.push('(');
+	
+						var pathItemRequiredProperties = [];
+	
+						if (path[i]) {
+							pathItemRequiredProperties.push(path[i]);
+	
+							props.push({
+								type: 1,
+								name: path[i]
+							});
+						}
+	
+						pathPart = path[i + 1].split(reInsert);
+	
 						for (var j = 0, m = pathPart.length; j < m; j++) {
 							if (j % 2) {
-								var prop = pathPart[j];
-
+								prop = pathPart[j];
+	
+								pathItemRequiredProperties.push(prop);
+	
 								rePath.push('([^\\/]+)');
-
+	
 								props.push({
-									type: 0,
+									type: 2,
 									name: prop
 								});
-
-								requiredProps.push(prop);
-
+	
 								pathMap.push({
-									requiredProperties: [prop],
+									requiredProperties: pathItemRequiredProperties,
 									pathPart: undefined,
-									prop: prop
+									property: prop
 								});
 							} else {
 								if (pathPart[j]) {
-									var encodedPathPart = encodePath(pathPart[j]);
-
+									encodedPathPart = encodePath(pathPart[j]);
+	
 									rePath.push(escapeRegExp(encodedPathPart).split('\\*').join('.*?'));
-
+	
 									pathMap.push({
-										requiredProperties: [],
+										requiredProperties: pathItemRequiredProperties,
 										pathPart: encodedPathPart.split('*').join(''),
-										prop: undefined
+										property: undefined
 									});
 								}
 							}
 						}
+	
+						rePath.push(')?');
+	
+						i += 2;
+					} else {
+						if (path[i]) {
+							pathPart = path[i].split(reInsert);
+	
+							for (var k = 0, n = pathPart.length; k < n; k++) {
+								if (k % 2) {
+									prop = pathPart[k];
+	
+									rePath.push('([^\\/]+)');
+	
+									props.push({
+										type: 0,
+										name: prop
+									});
+	
+									requiredProperties.push(prop);
+	
+									pathMap.push({
+										requiredProperties: [prop],
+										pathPart: undefined,
+										property: prop
+									});
+								} else {
+									if (pathPart[k]) {
+										encodedPathPart = encodePath(pathPart[k]);
+	
+										rePath.push(escapeRegExp(encodedPathPart).split('\\*').join('.*?'));
+	
+										pathMap.push({
+											requiredProperties: [],
+											pathPart: encodedPathPart.split('*').join(''),
+											property: undefined
+										});
+									}
+								}
+							}
+						}
+	
+						i++;
 					}
-
-					i++;
 				}
-			}
-
-			this.routes.push({
-				rePath: RegExp('^\\/?' + rePath.join('') + '\\/?$'),
-				properties: props,
-				requiredProperties: requiredProps,
-				pathMap: pathMap,
-				state: state,
-				callback: callback
-			});
-
-			return this;
-		},
-
-		/**
-		 * @returns {Rift.Router}
-		 */
-		start: function() {
-			if (this.started) {
+	
+				var route = {
+					name: name,
+					rePath: RegExp('^\\/?' + rePath.join('') + '\\/?$'),
+					properties: props,
+					requiredProperties: requiredProperties,
+					pathMap: pathMap,
+					callback: cb
+				};
+	
+				this.routes.push(route);
+	
+				if (name) {
+					if (name in this.routeDict) {
+						throw new TypeError('Route "' + name + '" is already exist');
+					}
+	
+					this.routeDict[name] = route;
+				}
+	
 				return this;
-			}
-
-			this.started = true;
-
-			if (isClient) {
-				this.viewBlock = this.app.view.block[0];
-			}
-
-			this._bindEvents();
-
-			if (isServer) {
-				var match = tryViewState(this, this.currentPath == '/' ? null : this.currentRoute);
-
-				if (match) {
-					setState(this, match.route, match.path, this.app.viewState.serializeData());
+			},
+	
+			/**
+			 * @typesign (): Rift.Router;
+			 */
+			start: function() {
+				if (this.started) {
+					return this;
 				}
-			}
-
-			return this;
-		},
-
-		/**
-		 * @protected
-		 */
-		_bindEvents: function() {
-			if (isClient) {
-				this
-					.listen(window, 'popstate', this._onWindowPopState)
-					.listen(this.viewBlock, 'click', this._onViewBlockClick);
-			}
-
-			var viewState = this.app.viewState;
-			var onViewStatePropertyChange = this._onViewStatePropertyChange;
-			var propList = viewState.propertyList;
-
-			for (var i = propList.length; i;) {
-				this.listen(viewState[propList[--i]], 'change', onViewStatePropertyChange);
-			}
-		},
-
-		/**
-		 * @protected
-		 */
-		_onWindowPopState: function() {
-			var state = history.state && history.state['_rt-state'];
-
-			if (state) {
-				var route = this.currentRoute = this.routes[state.routeIndex];
-				var path = this.currentPath = state.path;
-
-				this.currentState(route.state);
-
-				this.app.viewState.updateFromSerializedData(state.viewStateData);
-
-				if (route.callback) {
-					route.callback.call(this.app, path);
-				}
-			} else {
-				this.app.viewState.update({});
-
-				var match = tryViewState(this);
-
-				if (match) {
-					setState(this, match.route, match.path, {}, 1);
-				} else {
-					this.currentRoute = null;
-					this.currentPath = undefined;
-					this.currentState(undefined);
-				}
-			}
-		},
-
-		/**
-		 * Обработчик клика по корневому элементу вьюшки.
-		 *
-		 * @protected
-		 *
-		 * @param {MouseEvent} evt
-		 */
-		_onViewBlockClick: function(evt) {
-			var viewBlock = this.viewBlock;
-			var el = evt.target;
-
-			while (el.tagName != 'A') {
-				if (el == viewBlock) {
-					return;
-				}
-
-				el = el.parentNode;
-
-				if (!el) {
-					return;
-				}
-			}
-
-			var href = el.getAttribute('href');
-
-			if (!reNotLocal.test(href) && this.route(href, true)) {
-				evt.preventDefault();
-			}
-		},
-
-		/**
-		 * @protected
-		 */
-		_onViewStatePropertyChange: function() {
-			if (this._isViewStateChangeHandlingRequired) {
-				return;
-			}
-
-			this._isViewStateChangeHandlingRequired = true;
-
-			nextTick(this.registerCallback(this._onViewStateChange));
-		},
-
-		/**
-		 * Обработчик изменения состояния представления.
-		 *
-		 * @protected
-		 */
-		_onViewStateChange: function() {
-			if (!this._isViewStateChangeHandlingRequired) {
-				return;
-			}
-
-			this._isViewStateChangeHandlingRequired = false;
-
-			var match = tryViewState(this, this.currentRoute);
-
-			if (!match) {
-				return;
-			}
-
-			var path = match.path;
-
-			if (path === this.currentPath) {
+	
+				this.started = true;
+	
 				if (isClient) {
-					var state = history.state || {};
-
-					if (!state['_rt-state']) {
-						state['_rt-state'] = {
-							routeIndex: this.routes.indexOf(this.currentRoute),
-							path: path
-						};
+					this.viewBlock = this.app.view.block[0];
+				}
+	
+				this._bindEvents();
+	
+				if (isServer) {
+					var match = tryViewState(this, this.currentPath == '/' ? null : this.currentRoute);
+	
+					if (match) {
+						setState(this, match.route, match.path, this.app.viewState.serializeData());
 					}
-
-					state['_rt-state'].viewStateData = this.app.viewState.serializeData();
-
-					history.replaceState(state, null, path);
 				}
-			} else {
-				setState(this, match.route, path, this.app.viewState.serializeData(), 2);
-			}
-		},
-
-		/**
-		 * Редиректит по указанному пути.
-		 * Если нет подходящего маршрута - возвращает false, редиректа не происходит.
-		 *
-		 * @param {string} path
-		 * @param {boolean} [pushHistory=false]
-		 * @returns {boolean}
-		 */
-		route: function(path, pushHistory) {
-			path = encodePath(path.replace(reSlashes, '/'));
-
-			if (path[0] != '/') {
-				var locationPath = location.pathname;
-				path = locationPath + (locationPath[locationPath.length - 1] == '/' ? '' : '/') + path;
-			}
-
-			if (path[path.length - 1] != '/') {
-				path += '/';
-			}
-
-			if (path === this.currentPath) {
+	
+				return this;
+			},
+	
+			_bindEvents: function() {
+				if (isClient) {
+					this.listenTo(window, 'popstate', this._onWindowPopState);
+					this.listenTo(this.viewBlock, 'click', this._onViewBlockClick);
+	
+					var viewState = this.app.viewState;
+					var onViewStatePropertyChange = this._onViewStatePropertyChange;
+					var propertyList = viewState.propertyList;
+	
+					for (var i = propertyList.length; i;) {
+						this.listenTo(viewState[propertyList[--i]]('unwrap', 0), 'change', onViewStatePropertyChange);
+					}
+				}
+			},
+	
+			_onWindowPopState: function() {
+				var historyState = history.state && history.state[KEY_ROUTING_STATE];
+	
+				if (historyState) {
+					var route = this.routes[historyState.routeIndex];
+					var path = historyState.path;
+	
+					this.currentRoute = route;
+					this.currentRouteName(route.name);
+	
+					this.currentPath = path;
+	
+					this.app.viewState.updateFromSerializedData(historyState.viewStateData);
+	
+					if (route.callback) {
+						route.callback.call(this.app, path);
+					}
+				} else {
+					this.app.viewState.update({});
+	
+					var match = tryViewState(this);
+	
+					if (match) {
+						setState(this, match.route, match.path, serialize({}), 0);
+					} else {
+						this.currentRoute = null;
+						this.currentRouteName('');
+	
+						this.currentPath = undefined;
+					}
+				}
+			},
+	
+			/**
+			 * Обработчик клика по корневому элементу вьюшки.
+			 * @typesign (evt: MouseEvent);
+			 */
+			_onViewBlockClick: function(evt) {
+				var viewBlock = this.viewBlock;
+				var el = evt.target;
+	
+				while (el.tagName != 'A') {
+					if (el == viewBlock) {
+						return;
+					}
+	
+					el = el.parentNode;
+	
+					if (!el) {
+						return;
+					}
+				}
+	
+				var href = el.getAttribute('href');
+	
+				if (href.indexOf('#') != -1) {
+					return;
+				}
+	
+				if (!/^(?:\w+:)?\/\//.test(href) && this.route(href)) {
+					evt.preventDefault();
+				}
+			},
+	
+			/**
+			 * @typesign ();
+			 */
+			_onViewStatePropertyChange: function() {
+				if (this._isViewStateChangeHandlingRequired) {
+					return;
+				}
+	
+				this._isViewStateChangeHandlingRequired = true;
+	
+				nextTick(this.registerCallback(this._onViewStateChange));
+			},
+	
+			/**
+			 * Обработчик изменения состояния представления.
+			 * @typesign ();
+			 */
+			_onViewStateChange: function() {
+				if (!this._isViewStateChangeHandlingRequired) {
+					return;
+				}
+	
+				this._isViewStateChangeHandlingRequired = false;
+	
+				var historyState = history.state || {};
+	
+				if (!historyState[KEY_ROUTING_STATE]) {
+					historyState[KEY_ROUTING_STATE] = {
+						routeIndex: this.routes.indexOf(this.currentRoute),
+						path: this.currentPath
+					};
+				}
+	
+				historyState[KEY_ROUTING_STATE].viewStateData = this.app.viewState.serializeData();
+	
+				history.replaceState(historyState, null, this.currentPath);
+			},
+	
+			/**
+			 * Редиректит по указанному пути.
+			 * Если нет подходящего маршрута - возвращает false, редиректа не происходит.
+			 *
+			 * @typesign (path: string, newHistoryStep: boolean = true): boolean;
+			 */
+			route: function(path, newHistoryStep) {
+				path = encodePath(path.replace(/[\/\\]+/g, '/'));
+	
+				if (path[0] != '/') {
+					var locationPath = location.pathname;
+					path = locationPath + (locationPath[locationPath.length - 1] == '/' ? '' : '/') + path;
+				}
+	
+				if (path[path.length - 1] != '/') {
+					path += '/';
+				}
+	
+				if (path === this.currentPath) {
+					return true;
+				}
+	
+				var match = tryPath(this, path);
+	
+				if (!match) {
+					return false;
+				}
+	
+				this.app.viewState.update(match.state);
+				setState(this, match.route, path, this.app.viewState.serializeData(), newHistoryStep !== false ? 2 : 1);
+	
 				return true;
+			},
+	
+			/**
+			 * @typesign (preferredRoute: string): boolean;
+			 */
+			update: function(preferredRoute) {
+				return updateFromViewState(this, preferredRoute ? this.routeDict[preferredRoute] : this.currentRoute);
 			}
-
-			var match = tryPath(this, path);
-
-			if (!match) {
-				return false;
-			}
-
-			this.app.viewState.update(match.state);
-			setState(this, match.route, path, this.app.viewState.serializeData(), pushHistory ? 2 : 1);
-
-			return true;
-		}
-	});
-
-	rt.Router = Router;
-
-})();
-
-(function() {
-
-	var deserialize = rt.dump.deserialize;
-	var ViewState = rt.ViewState;
-	var Router = rt.Router;
-
-	/**
-	 * @private
-	 */
-	function collectViewStateProperties(viewState, routes) {
-		var props = Object.assign({}, viewState);
-
-		for (var i = routes.length; i;) {
-			var routeProps = routes[--i].properties;
-
-			for (var j = routeProps.length; j;) {
-				var name = routeProps[--j].name;
-
-				if (!hasOwn.call(props, name)) {
-					props[name] = undefined;
+		});
+	
+		rt.Router = Router;
+	})();
+	
+	(function() {
+		var assign = rt.object.assign;
+		var deserialize = rt.dump.deserialize;
+		var ViewState = rt.ViewState;
+		var Router = rt.Router;
+	
+		function collectViewStateProperties(viewState, routes) {
+			var props = assign({}, viewState);
+	
+			for (var i = routes.length; i;) {
+				var routeProps = routes[--i].properties;
+	
+				for (var j = routeProps.length; j;) {
+					var name = routeProps[--j].name;
+	
+					if (!hasOwn.call(props, name)) {
+						props[name] = undefined;
+					}
 				}
 			}
+	
+			return props;
 		}
-
-		return props;
-	}
-
-	/**
-	 * @class Rift.BaseApp
-	 * @extends {Object}
-	 */
-	var BaseApp = rt.Class.extend(/** @lends Rift.BaseApp# */{
+	
 		/**
-		 * @type {Rift.BaseModel}
+		 * @class Rift.BaseApp
+		 * @extends {Object}
 		 */
-		model: null,
-
-		/**
-		 * @type {Rift.BaseView}
-		 */
-		view: null,
-
-		/**
-		 * @type {Rift.ViewState}
-		 */
-		viewState: null,
-
-		/**
-		 * @type {Rift.Router}
-		 */
-		router: null,
-
-		/**
-		 * @protected
-		 *
-		 * @param {Function|Object} model
-		 * @param {Function} viewClass
-		 * @param {?HTMLElement} viewBlock
-		 * @param {Object} viewState
-		 * @param {?Object} viewStateData
-		 * @param {Rift.Router} routes
-		 * @param {string} path
-		 */
-		_init: function(model, viewClass, viewBlock, viewState, viewStateData, routes, path) {
-			this.model = typeof model == 'function' ? new model() : deserialize(model);
-
-			var router = this.router = new Router(this, routes);
-			var viewState = this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
-
-			router.route(path);
-
-			if (isClient) {
-				for (var name in viewStateData) {
-					viewState[name](deserialize(viewStateData[name]).v);
+		var BaseApp = rt.Class.extend({
+			/**
+			 * @type {Rift.BaseModel}
+			 */
+			model: null,
+	
+			/**
+			 * @type {Rift.BaseView}
+			 */
+			view: null,
+	
+			/**
+			 * @type {Rift.ViewState}
+			 */
+			viewState: null,
+	
+			/**
+			 * @type {Rift.Router}
+			 */
+			router: null,
+	
+			/**
+			 * @typesign (params: {
+			 *     modelClass: Function,
+			 *     viewClass: Function,
+			 *     viewStateFields: Object,
+			 *     routes: Array<{ name?: string, path: string, callback?: (path: string) }|string>,
+			 *     path: string
+			 * });
+			 *
+			 * @typesign (params: {
+			 *     modelDataDump: Object,
+			 *     viewClass: Function,
+			 *     viewBlock: HTMLElement,
+			 *     viewStateFields: Object,
+			 *     viewStateDataDump: Object,
+			 *     routes: Array<{ name?: string, path: string, callback?: (path: string) }|string>,
+			 *     path: string
+			 * });
+			 */
+			_init: function(params) {
+				this.model = isServer ? new params.modelClass() : deserialize(params.modelDataDump);
+	
+				var router = this.router = new Router(this, params.routes);
+				var viewState = this.viewState =
+					new ViewState(collectViewStateProperties(params.viewStateFields, router.routes));
+	
+				router.route(params.path, false);
+	
+				var view;
+	
+				if (isClient) {
+					var viewStateData = deserialize(params.viewStateDataDump);
+	
+					for (var name in viewStateData) {
+						viewState[name](viewStateData[name]);
+					}
+	
+					view = new params.viewClass({
+						app: this,
+						block: params.viewBlock
+					});
+				} else {
+					view = new params.viewClass({
+						app: this,
+						block: null
+					});
 				}
+	
+				this.view = view;
+	
+				router.start();
+	
+				if (isClient) {
+					view.initClient();
+				}
+			},
+	
+			dispose: function() {
+				this.router.dispose();
+				this.view.dispose();
+				this.viewState.dispose();
+				this.model.dispose();
 			}
-
-			var view = this.view = new viewClass({ app: this, block: viewBlock });
-
-			router.start();
-
-			if (isClient) {
-				view.initClient();
-			}
-		},
-
-		dispose: function() {
-			this.router.dispose();
-			this.view.dispose();
-			this.viewState.dispose();
-			this.model.dispose();
-		}
-	});
-
-	rt.BaseApp = BaseApp;
-
-})();
-
+		});
+	
+		rt.BaseApp = BaseApp;
+	})();
+	
 })();

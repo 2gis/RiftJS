@@ -8,13 +8,10 @@ RiftJS — js-фреймворк для написания изоморфных 
 * удобное разделение на модули с их полной изоляцией;
 * развитые способы общения модулей между собой;
 * автоматизированная очистка памяти;
-* реактивное программирование на всех уровнях с использованием сверхбыстрого движка;
+* реактивное программирование на всех уровнях с использованием [сверхбыстрого движка](https://github.com/Riim/cellx);
 * двунаправленный data-binding;
 * роутинг с привязкой к вьюстейту и истории браузера (HTML5 history API);
 * изоморфность (честное SEO и быстрая первоначальная загрузка со всеми преимуществати single-page приложения).
-
-В отличии от многих современных фреймворков, в RiftJS упор сделан не на изобретение супер удобных синтаксисов на все случаи жизни, а на решение реальных проблем, возникающих при разработке сложных приложений.  
-При написании фреймворка в приоритет всегда ставились максимально простые и прозрачные решения.
 
 ## Начало работы
 
@@ -50,16 +47,16 @@ gulp --dev
 
 Добавьте файл `App/Model/User.js` со следующим содержимым:
 ```js
-var rt = require('riftjs');
+import rt from 'riftjs';
 
-var User = rt.BaseModel.extend('User', {
-	/**
-	 * Имя пользователя.
-	 */
-	name: rt.observable('')
-});
+export default class User extends rt.BaseModel {
+	_initAssets() {
+		// имя пользователя
+		this.name = rt.cell('');
+	}
+}
 
-module.exports = User;
+rt.registerClass('User', User);
 ```
 
 Первый аргумент метода `extend` — имя класса — используется для разных целей, в первую очередь для передачи состояния с сервера на клиент. Имя может быть с пространством имён, например: `'2gis.ProjectName.User'`.  
@@ -67,61 +64,62 @@ module.exports = User;
 
 В файл `App/Model/Model.js` добавьте свойство `viewer` — текущий пользователь приложения. Должно получиться так:
 ```js
-var rt = require('riftjs');
+import rt from 'riftjs';
 
-var Model = rt.BaseModel.extend('Model', {
-	/**
-	 * Текущий пользователь приложения.
-	 * @type {User}
-	 */
-	viewer: rt.observable(null)
-});
+export default class Model extends rt.BaseModel {
+	_initAssets() {
+		// пользователь приложения
+		this.viewer = rt.cell(null);
+	}
+}
 
-module.exports = Model;
+rt.registerClass('Model', Model);
 ```
 
 Теперь напишем модуль `UserCard` — карточка пользователя:
 
-Добавьте файл `App/View/UserCard/UserCard.js` — класс карточки пользователя. Содержимое файла:
+Добавьте файл `App/View/modules/UserCard/index.js` — класс карточки пользователя. Содержимое файла:
 ```js
-var rt = require('riftjs');
+import rt from 'riftjs';
 
-var UserCard = rt.BaseView.extend('UserCard', {
+class UserCard extends rt.BaseView {
 	//
-});
+}
+
+rt.registerClass('UserCard', UserCard);
 ```
 
-Добавьте файл `App/View/UserCard/UserCard.rtt` — шаблон карточки пользователя. Содержимое файла:
+Добавьте файл `App/View/modules/UserCard/index.rtt` — шаблон карточки пользователя. Содержимое файла:
 ```html
 <span>Hello, {model.name}!</span>
 ```
 
 Соединим всё вместе:
 
-В файле `View/AppView/AppView.js` наполним модель данными:
+В файле `App/View/modules/App/index.js` наполним модель данными:
 ```js
-var rt = require('riftjs');
+import rt from 'riftjs';
 
-var User = require('../../Model/User.js');
+import User from '../../Model/User.js';
 
-var AppView = rt.BaseView.extend('AppView', {
+export default class App extends rt.BaseView {
 	_receiveData: function(done) {
 		this.model.viewer(new User({ name: 'Петька' }));
 		done();
 	}
-});
+}
 
-module.exports = AppView;
+rt.registerViewClass('App', App);
 ```
 Так делается только для примера, по хорошему метод `_receiveData` должен не записывать данные в модель, а попросить у модели подготовить нужные данные. Если данные уже есть, модель сообщает о готовности, если же нет, запрашивает их у соответствующего провайдера и сообщает о готовности после их получения. Подробнее про метод `_receiveData` — [Rift.BaseView#_receiveData](???).
 
-Теперь используем модуль `UserCard` в шаблоне главного модуля (`App/View/AppView/AppView.rtt`):
+Теперь используем модуль `UserCard` в шаблоне главного модуля (`App/View/modules/App/index.rtt`):
 ```html
 {{// используем модуль UserCard }}
-{{> 'UserCard', { model: 'model.viewer()' } }}
+{{> 'UserCard', { model: model.viewer() } }}
 
 {{// и ещё разок }}
-{{> 'UserCard', { model: 'model.viewer()' } }}
+{{> 'UserCard', { model: model.viewer() } }}
 
 {{// просто выводим имя главного пользователя без использования модуля }}
 <div>{model.viewer().name}</div>
@@ -133,47 +131,3 @@ module.exports = AppView;
 ```js
 _app.model.viewer().name('Васька');
 ```
-
-Посмотрите сгенеренный сервером код.
-
-## Использование модулей
-
-???
-
-## Создание модуля с двунаправленным связыванием данных.
-
-???
-
-## Роутинг и вьюстейт
-
-В классах представления доступен вьюстейт (`this.app.viewState`) — слой описывающий общее состояние представления. С этого слоя происходит маппинг состояния в url. Каждый раз, когда меняется любое свойство во вьюстейте, происходит попытка подобрать более подходящий для него url-путь, и в случае успеха url обновляется. И наоборот, при переходе по локальной ссылке происходит обновление вьюстейта данными из неё. Весь этот механизм также взаимодействует с историей переходов в браузере (HTML5 history API).
-
-В ранее склонированном приложении есть неполный пример использования этого механизма. В файле `App/routes.js` уже содержится несколько путей. Все свойства использованные в `App/routes.js` автоматически создаются во вьюстейте со значением `undefined`. Если же нужно задать для свойства другое значение по умолчанию, то придётся вручную объявить его (свойство) в файле `App/viewState.js`, например так:
-```js
-var rt = require('riftjs');
-
-var viewState = {
-	someProp: rt.observable(5)
-};
-
-module.exports = viewState;
-```
-
-Через вьюстейт также можно организовывать передачу сигналов между несколькими вьюшками, но в простых случаях это лучше делать через [всплытие событий](???) (для передачи сигналов вверх) и [broadcast](???) (для передачи сигналов вниз).
-
-В файле `App/viewState.js` не обязательно использовать в качестве значений [активные свойства](???), как в примере выше, можно использовать и просто значения, при этом преобразование в [активные свойства](???) будет происходить автоматически, что немного сокращает запись.
-
-[Активные свойства](???) во вьюстейте ничем не отличаются от [активных свойств](???) в модели или вьюшке приложения и могут быть как зависимыми, так и выступать источниками данных для других свойств, в том числе находящихся не во вьюстейте. Также можно как обычно использовать такие свойства в шаблонах вьюшки:
-```html
-<span>{app.viewState.todoId}</span>
-```
-
-## Стандартные классы
-
-[Rift.EventEmitter](https://github.com/2gis/RiftJS/blob/master/docs/EventEmitter.ru.md)  
-[Rift.Disposable](https://github.com/2gis/RiftJS/blob/master/docs/Disposable.ru.md)  
-[Rift.ActiveProperty](https://github.com/2gis/RiftJS/blob/master/docs/ActiveProperty.ru.md)
-
-## Всякие мысли
-
-[Наследование стилей](https://github.com/2gis/RiftJS/blob/master/docs/StyleInheritance.ru.md)

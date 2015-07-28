@@ -1,14 +1,11 @@
 (function() {
-
+	var assign = rt.object.assign;
 	var deserialize = rt.dump.deserialize;
 	var ViewState = rt.ViewState;
 	var Router = rt.Router;
 
-	/**
-	 * @private
-	 */
 	function collectViewStateProperties(viewState, routes) {
-		var props = Object.assign({}, viewState);
+		var props = assign({}, viewState);
 
 		for (var i = routes.length; i;) {
 			var routeProps = routes[--i].properties;
@@ -29,7 +26,7 @@
 	 * @class Rift.BaseApp
 	 * @extends {Object}
 	 */
-	var BaseApp = rt.Class.extend(/** @lends Rift.BaseApp# */{
+	var BaseApp = rt.Class.extend({
 		/**
 		 * @type {Rift.BaseModel}
 		 */
@@ -51,31 +48,54 @@
 		router: null,
 
 		/**
-		 * @protected
+		 * @typesign (params: {
+		 *     modelClass: Function,
+		 *     viewClass: Function,
+		 *     viewStateFields: Object,
+		 *     routes: Array<{ name?: string, path: string, callback?: (path: string) }|string>,
+		 *     path: string
+		 * });
 		 *
-		 * @param {Function|Object} model
-		 * @param {Function} viewClass
-		 * @param {?HTMLElement} viewBlock
-		 * @param {Object} viewState
-		 * @param {?Object} viewStateData
-		 * @param {Rift.Router} routes
-		 * @param {string} path
+		 * @typesign (params: {
+		 *     modelDataDump: Object,
+		 *     viewClass: Function,
+		 *     viewBlock: HTMLElement,
+		 *     viewStateFields: Object,
+		 *     viewStateDataDump: Object,
+		 *     routes: Array<{ name?: string, path: string, callback?: (path: string) }|string>,
+		 *     path: string
+		 * });
 		 */
-		_init: function(model, viewClass, viewBlock, viewState, viewStateData, routes, path) {
-			this.model = typeof model == 'function' ? new model() : deserialize(model);
+		_init: function(params) {
+			this.model = isServer ? new params.modelClass() : deserialize(params.modelDataDump);
 
-			var router = this.router = new Router(this, routes);
-			var viewState = this.viewState = new ViewState(collectViewStateProperties(viewState, router.routes));
+			var router = this.router = new Router(this, params.routes);
+			var viewState = this.viewState =
+				new ViewState(collectViewStateProperties(params.viewStateFields, router.routes));
 
-			router.route(path);
+			router.route(params.path, false);
+
+			var view;
 
 			if (isClient) {
+				var viewStateData = deserialize(params.viewStateDataDump);
+
 				for (var name in viewStateData) {
-					viewState[name](deserialize(viewStateData[name]).v);
+					viewState[name](viewStateData[name]);
 				}
+
+				view = new params.viewClass({
+					app: this,
+					block: params.viewBlock
+				});
+			} else {
+				view = new params.viewClass({
+					app: this,
+					block: null
+				});
 			}
 
-			var view = this.view = new viewClass({ app: this, block: viewBlock });
+			this.view = view;
 
 			router.start();
 
@@ -93,5 +113,4 @@
 	});
 
 	rt.BaseApp = BaseApp;
-
 })();

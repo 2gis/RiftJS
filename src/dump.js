@@ -1,79 +1,101 @@
 (function() {
-
 	var getUID = rt.object.getUID;
-	var stringify = rt.value.stringify;
-	var classes = rt.Class.classes;
-	var registerClass = rt.Class.register;
+	var assign = rt.object.assign;
+	var classes = rt.classes;
+	var ActiveMap = rt.ActiveMap;
+	var ActiveList = rt.ActiveList;
 
-	registerClass('Array', Array);
-	registerClass('Date', Date);
+	ActiveMap.prototype.collectDumpObject = function(data, opts) {
+		var entries = data.entries = [];
 
-	Object.defineProperties(Date.prototype, {
-		collectDumpObject: {
-			configurable: true,
-			writable: true,
-			value: function(data) {
-				data.utc = this.toString();
-			}
-		},
+		this._entries.forEach(function(value, key) {
+			entries.push([key, value]);
+		});
 
-		expandFromDumpObject: {
-			configurable: true,
-			writable: true,
-			value: function(data) {
-				this.setTime(new Date(data.utc));
-			}
+		if (this.adoptsItemChanges) {
+			opts.adoptsItemChanges = true;
 		}
-	});
+	};
+
+	ActiveMap.prototype.expandFromDumpObject = function(data) {
+		data.entries.forEach(function(entry) {
+			this.set(entry[0], entry[1]);
+		}, this);
+	};
+
+	ActiveList.prototype.collectDumpObject = function(data, opts) {
+		data.items = this.toArray();
+
+		if (this.adoptsItemChanges) {
+			opts.adoptsItemChanges = true;
+		}
+		if (this.sorted) {
+			opts.sorted = true;
+		}
+	};
+
+	ActiveList.prototype.expandFromDumpObject = function(data) {
+		this.addRange(data.items);
+	};
+
+	rt.registerClass('ActiveMap', ActiveMap);
+	rt.registerClass('ActiveList', ActiveList);
 
 	/**
-	 * @private
-	 *
-	 * @param {Object} obj
-	 * @param {Object} objects
-	 * @returns {string}
+	 * @typesign (obj: Object, dumpData: Object): string;
 	 */
-	function collectDump(obj, objects) {
+	function collectDump(obj, dumpData) {
 		var id = getUID(obj);
 
-		if (objects.hasOwnProperty(id)) {
+		if (dumpData.hasOwnProperty(id)) {
 			return id;
 		}
 
-		var data = {};
-		var opts = {};
+		var data;
+		var object = dumpData[id] = {};
 
-		if (obj.constructor.hasOwnProperty('__class')) {
+		if (Array.isArray(obj)) {
+			object.t = 0;
+		} else if (toString.call(obj) == '[object Date]') {
+			object.t = 1;
+			object.s = obj.toString();
+
+			return id;
+		} else if (obj.constructor.hasOwnProperty('$className')) {
+			object.c = obj.constructor.$className;
+
 			if (obj.collectDumpObject) {
+				data = {};
+				var opts = {};
+
 				obj.collectDumpObject(data, opts);
-			} else {
-				Object.assign(data, obj);
-			}
 
-			objects[id] = {
-				c: obj.constructor.__class
-			};
-		} else {
-			Object.assign(data, obj);
-			objects[id] = {};
-		}
-
-		if (!isEmpty(data)) {
-			for (var name in data) {
-				var value = data[name];
-
-				if (value === Object(value)) {
-					data[name] = collectDump(value, objects);
-				} else {
-					data[name] = value === undefined ? {} : { v: value };
+				if (Object.keys(opts).length) {
+					object.o = opts;
 				}
 			}
-
-			objects[id].d = data;
 		}
 
-		if (!isEmpty(opts)) {
-			objects[id].o = opts;
+		if (!data) {
+			data = assign({}, obj);
+		}
+
+		var isDataEmpty = true;
+
+		for (var name in data) {
+			isDataEmpty = false;
+
+			var value = data[name];
+
+			if (value === Object(value)) {
+				data[name] = collectDump(value, dumpData);
+			} else {
+				data[name] = value === undefined ? {} : { v: value };
+			}
+		}
+
+		if (!isDataEmpty) {
+			object.d = data;
 		}
 
 		return id;
@@ -81,40 +103,36 @@
 
 	/**
 	 * Сериализует объект в дамп.
-	 *
-	 * @memberOf Rift.dump
-	 *
-	 * @param {Object} obj
-	 * @returns {string}
+	 * @typesign (obj: Object): string;
 	 */
 	function serialize(obj) {
-		var objects = {};
+		var dumpData = {};
 
-		return stringify({
-			s: objects,
-			r: collectDump(obj, objects)
+		return JSON.stringify({
+			d: dumpData,
+			r: collectDump(obj, dumpData)
 		});
 	}
 
 	/**
 	 * Восстанавливает объект из дампа.
-	 *
-	 * @memberOf Rift.dump
-	 *
-	 * @param {string|Object} dump
-	 * @returns {Object}
+	 * @typesign (dump: string|Object): Object;
 	 */
 	function deserialize(dump) {
 		if (typeof dump == 'string') {
-			dump = Function('return ' + dump + ';')();
+			dump = JSON.parse(dump);
 		}
 
-		var objects = dump.s;
+		var dumpData = dump.d;
+		var id;
+		var obj;
 
-		for (var id in objects) {
-			var obj = objects[id];
+		for (id in dumpData) {
+			obj = dumpData[id];
 
-			if (obj.hasOwnProperty('c')) {
+			if (obj.hasOwnProperty('t')) {
+				obj.instance = obj.t ? new Date(obj.s) : [];
+			} else if (obj.hasOwnProperty('c')) {
 				var cl = classes[obj.c];
 				obj.instance = obj.hasOwnProperty('o') ? new cl(undefined, obj.o) : new cl();
 			} else {
@@ -122,39 +140,35 @@
 			}
 		}
 
-		for (var id in objects) {
-			var obj = objects[id];
+		for (id in dumpData) {
+			obj = dumpData[id];
 
 			if (obj.hasOwnProperty('d')) {
 				var data = obj.d;
 
 				for (var name in data) {
-					var item = data[name];
+					var value = data[name];
 
-					if (typeof item == 'object') {
-						data[name] = item.hasOwnProperty('v') ? item.v : undefined;
+					if (typeof value == 'object') {
+						data[name] = value.hasOwnProperty('v') ? value.v : undefined;
 					} else {
-						data[name] = objects[item].instance;
+						data[name] = dumpData[value].instance;
 					}
 				}
 
 				if (obj.hasOwnProperty('c') && obj.instance.expandFromDumpObject) {
 					obj.instance.expandFromDumpObject(data);
 				} else {
-					Object.assign(obj.instance, data);
+					assign(obj.instance, data);
 				}
 			}
 		}
 
-		return objects[dump.r].instance;
+		return dumpData[dump.r].instance;
 	}
 
-	/**
-	 * @namespace Rift.dump
-	 */
 	rt.dump = {
 		serialize: serialize,
 		deserialize: deserialize
 	};
-
 })();

@@ -1,45 +1,43 @@
 (function() {
-
 	var nextUID = rt.uid.next;
 
 	/**
 	 * Получает уникальный идентификатор объекта.
-	 *
-	 * @function
-	 * @memberOf Rift.object
-	 *
-	 * @param {Object} obj
-	 * @param {string} [prefix]
-	 * @returns {string}
+	 * @typesign (obj: Object, prefix: string = ''): string;
 	 */
 	var getUID;
 
-	if (typeof Symbol == 'function' && typeof Symbol.iterator == 'symbol') {
-		var uidKey = Symbol('uid');
-
+	if (typeof KEY_UID == 'symbol') {
 		getUID = function getUID(obj, prefix) {
-			return obj[uidKey] || (obj[uidKey] = nextUID(prefix));
+			return obj[KEY_UID] || (obj[KEY_UID] = nextUID(prefix));
 		};
 	} else {
-		var uidKey = '_rt-uid';
-
 		getUID = function getUID(obj, prefix) {
-			if (!hasOwn.call(obj, uidKey)) {
-				Object.defineProperty(obj, uidKey, {
+			if (!hasOwn.call(obj, KEY_UID)) {
+				Object.defineProperty(obj, KEY_UID, {
 					value: nextUID(prefix)
 				});
 			}
 
-			return obj[uidKey];
+			return obj[KEY_UID];
 		};
 	}
 
 	/**
-	 * @memberOf Rift.object
-	 *
-	 * @param {Object} obj
-	 * @param {Object} source
-	 * @returns {Object}
+	 * @typesign (obj: Object, source: Object): Object;
+	 */
+	var assign = Object.assign || function assign(obj, source) {
+		var keys = Object.keys(source);
+
+		for (var i = keys.length; i;) {
+			obj[keys[--i]] = source[keys[i]];
+		}
+
+		return obj;
+	};
+
+	/**
+	 * @typesign (obj: Object, source: Object): Object;
 	 */
 	function mixin(obj, source) {
 		var names = Object.getOwnPropertyNames(source);
@@ -51,24 +49,9 @@
 		return obj;
 	}
 
-	/**
-	 * @function clone
-	 * @memberOf Rift.object
-	 *
-	 * @param {Object} obj
-	 * @returns {Object}
-	 */
-	function cloneObject(obj) {
-		return mixin(Object.create(Object.getPrototypeOf(obj)), obj);
-	}
-
-	/**
-	 * @namespace Rift.object
-	 */
 	rt.object = {
 		getUID: getUID,
-		mixin: mixin,
-		clone: cloneObject
+		assign: assign,
+		mixin: mixin
 	};
-
 })();

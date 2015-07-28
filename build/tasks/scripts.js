@@ -1,13 +1,14 @@
+var notifier = require('node-notifier');
 var gulp = require('gulp');
 var $ = require('gulp-load-plugins')();
 
-var config = require('../config');
-var helpers = require('../helpers');
-
 gulp.task('scripts-build', function() {
-	return gulp.src(config.files)
-		.pipe($.plumber(helpers.plumberErrorHandler))
-		.pipe($.concat('Rift.js'))
+	return gulp.src('src/Rift.js')
+		.pipe($.plumber(function(err) {
+			$.util.log(err.toString(), '\n' + $.util.colors.red('--------'));
+			notifier.notify({ title: err.name, message: err.message });
+		}))
+		.pipe($.include())
 		.pipe(gulp.dest(''))
 		.pipe($.uglify())
 		.pipe($.rename({ suffix: '.min' }))
@@ -16,6 +17,6 @@ gulp.task('scripts-build', function() {
 
 gulp.task('scripts', ['scripts-build'], function() {
 	if ($.util.env.dev) {
-		gulp.watch(config.files, ['scripts-build']);
+		gulp.watch('src/**/*.js', ['scripts-build']);
 	}
 });

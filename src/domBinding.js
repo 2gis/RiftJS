@@ -1,90 +1,28 @@
 (function() {
+	var Cell = rt.Cell;
 
-	var createNamespace = rt.namespace.create;
-	var forEachMatch = rt.regex.forEach;
-	var DataCell = rt.DataCell;
-
-	/**
-	 * @namespace Rift.domBinding.helpers
-	 */
-	var helpers = {
-		html: function(el, value) {
-			el.innerHTML = value;
-		},
-
-		text: function(el, value, targetNode) {
-			switch (targetNode) {
-				case 'first': {
-					var node = el.firstChild;
-
-					if (node && node.nodeType == 3) {
-						node.nodeValue = value;
-					} else {
-						el.insertBefore(document.createTextNode(value), node);
-					}
-
-					break;
-				}
-				case 'last': {
-					var node = el.lastChild;
-
-					if (node && node.nodeType == 3) {
-						node.nodeValue = value;
-					} else {
-						el.appendChild(document.createTextNode(value));
-					}
-
-					break;
-				}
-				case 'prev': {
-					var node = el.previousSibling;
-
-					if (node && node.nodeType == 3) {
-						node.nodeValue = value;
-					} else {
-						el.parentNode.insertBefore(document.createTextNode(value), el);
-					}
-
-					break;
-				}
-				case 'next': {
-					var node = el.nextSibling;
-
-					if (node && node.nodeType == 3) {
-						node.nodeValue = value;
-					} else {
-						el.parentNode.insertBefore(document.createTextNode(value), node);
-					}
-
-					break;
-				}
-				default: {
-					if (el.childNodes.length == 1 && el.firstChild.nodeType == 3) {
-						el.firstChild.nodeValue = value;
-					} else {
-						while (el.lastChild) {
-							el.removeChild(el.lastChild);
-						}
-
-						el.appendChild(document.createTextNode(value));
-					}
-
-					break;
-				}
+	var directiveHandlers = {
+		prop: function(el, value, name) {
+			if (el[name] !== value) {
+				el[name] = value;
 			}
 		},
 
-		prop: function(el, value, id) {
-			id = id.split('.');
-			var name = id.pop();
-			createNamespace(id, el)[name] = value;
-		},
-
 		attr: function(el, value, name) {
-			value = String(value);
+			if (value != null && value !== false) {
+				if (value === true) {
+					value = name;
+				} else {
+					value = value.toString();
+				}
 
-			if (el.getAttribute(name) !== value) {
-				el.setAttribute(name, value);
+				if (el.getAttribute(name) !== value) {
+					el.setAttribute(name, value);
+				}
+			} else {
+				if (el.hasAttribute(name)) {
+					el.removeAttribute(name);
+				}
 			}
 		},
 
@@ -104,144 +42,212 @@
 			}
 		},
 
-		css: function(el, value, name) {
-			value = String(value);
-
-			if (!name) {
-				name = 'cssText';
-			}
-
-			if (el.style[name] != value) {
-				el.style[name] = value;
+		disabled: function(el, value) {
+			if (el.disabled != !!value) {
+				el.disabled = !!value;
 			}
 		},
 
+		class: function(el, value, name) {
+			$(el).toggleClass(name, !!value);
+		},
+
+		mod: function(el, value, name) {
+			var mods = {};
+			mods[name] = !!value;
+			$(el).mods(mods);
+		},
+
 		show: function(el, value) {
-			el.style.display = value ? '' : 'none';
+			value = value ? '' : 'none';
+
+			if (el.style.display != value) {
+				el.style.display = value;
+			}
+		},
+
+		html: function(el, value) {
+			el.innerHTML = value;
+		},
+
+		text: function(el, value, target) {
+			value = String(value);
+
+			var node;
+
+			switch (target) {
+				case 'first': {
+					node = el.firstChild;
+
+					if (!node || node.nodeType != 3) {
+						el.insertBefore(document.createTextNode(value), node);
+						return;
+					}
+
+					break;
+				}
+				case 'last': {
+					node = el.lastChild;
+
+					if (!node || node.nodeType != 3) {
+						el.appendChild(document.createTextNode(value));
+						return;
+					}
+
+					break;
+				}
+				case 'prev': {
+					node = el.previousSibling;
+
+					if (!node || node.nodeType != 3) {
+						el.parentNode.insertBefore(document.createTextNode(value), el);
+						return;
+					}
+
+					break;
+				}
+				case 'next': {
+					node = el.nextSibling;
+
+					if (!node || node.nodeType != 3) {
+						el.parentNode.insertBefore(document.createTextNode(value), node);
+						return;
+					}
+
+					break;
+				}
+				default: {
+					if (el.childNodes.length == 1 && el.firstChild.nodeType == 3) {
+						node = el.firstChild;
+					} else {
+						while (el.lastChild) {
+							el.removeChild(el.lastChild);
+						}
+
+						el.appendChild(document.createTextNode(value));
+
+						return;
+					}
+
+					break;
+				}
+			}
+
+			if (node.nodeValue != value) {
+				node.nodeValue = value;
+			}
 		}
 	};
 
-	var reName = '[$_a-zA-Z][$\\w]*';
-	var reBindingExpr = RegExp(
-		'(' + reName + ')(?:\\(([^)]*)\\))?:\\s*(\\S[\\s\\S]*?)(?=\\s*(?:,\\s*' + reName +
-			'(?:\\([^)]*\\))?:\\s*\\S|$))',
+	var reName = Object.keys(directiveHandlers).join('|');
+	var reDirective = RegExp(
+		'\\s*(' + reName + ')(?:\\(([^)]*)\\))?:\\s*(\\S[\\s\\S]*?)(?=\\s*(?:,\\s*(?:' + reName +
+			')(?:\\([^)]*\\))?:\\s*\\S|$))',
 		'g'
 	);
 
 	/**
-	 * Привязывает элемент к активным свойствам по атрибуту `rt-bind`.
-	 *
-	 * @memberOf Rift.domBinding
-	 *
-	 * @param {HTMLElement} el
-	 * @param {Object} context
-	 * @param {Object} [opts]
-	 * @param {boolean} [opts.applyValues=true]
-	 * @returns {Array<Rift.DataCell>}
+	 * @typesign (el: HTMLElement, context: Object, opts?: { applyValues: boolean = true });
 	 */
 	function bindElement(el, context, opts) {
 		if (el.hasOwnProperty(KEY_DATA_CELLS) && el[KEY_DATA_CELLS]) {
-			return el[KEY_DATA_CELLS];
+			return;
 		}
 
-		var dcs = el[KEY_DATA_CELLS] = [];
+		var applyValues = !opts || opts.applyValues !== false;
+		var directives = el.getAttribute('rt-bind');
+		var cells = el[KEY_DATA_CELLS] = [];
 
-		if (el.hasAttribute('rt-bind')) {
-			var applyValues = !opts || opts.applyValues !== false;
+		reDirective.lastIndex = 0;
 
-			forEachMatch(reBindingExpr, el.getAttribute('rt-bind'), function(expr, helper, meta, js) {
-				var dc = new DataCell(Function('return ' + js + ';').bind(context), {
+		for (var directive; directive = reDirective.exec(directives);) {
+			(function(name, meta, expr) {
+				var cell = new Cell(Function('var _ = this; return ' + expr + ';').bind(context), {
 					onchange: function() {
-						helpers[helper](el, this.value, meta);
+						directiveHandlers[name](el, this.read(), meta);
 					}
 				});
 
-				dcs.push(dc);
+				cells.push(cell);
 
 				if (applyValues) {
-					helpers[helper](el, dc.value, meta);
+					directiveHandlers[name](el, cell.read(), meta);
 				}
-			});
+			})(directive[1], directive[2], directive[3]);
 		}
 
-		return dcs;
+		el.removeAttribute('rt-bind');
+		el.setAttribute('rt-binding', directives);
 	}
 
 	/**
-	 * Отвязывает элемент от привязанных к нему активных свойств.
-	 *
-	 * @memberOf Rift.domBinding
-	 *
-	 * @param {HTMLElement} el
+	 * @typesign (el: HTMLElement);
 	 */
 	function unbindElement(el) {
-		if (el.hasOwnProperty(KEY_DATA_CELLS)) {
-			var dcs = el[KEY_DATA_CELLS];
-
-			if (dcs) {
-				for (var i = dcs.length; i;) {
-					dcs[--i].dispose();
-				}
-
-				el[KEY_DATA_CELLS] = null;
-			}
+		if (!el.hasOwnProperty(KEY_DATA_CELLS)) {
+			return;
 		}
+
+		var cells = el[KEY_DATA_CELLS];
+
+		if (!cells) {
+			return;
+		}
+
+		for (var i = cells.length; i;) {
+			cells[--i].dispose();
+		}
+
+		el[KEY_DATA_CELLS] = null;
+
+		el.setAttribute('rt-bind', el.getAttribute('rt-binding'));
+		el.removeAttribute('rt-binding');
 	}
 
 	/**
-	 * Привязывает элементы dom-дерева к активным свойствам по атрибуту `rt-bind`.
-	 *
-	 * @function bind
-	 * @memberOf Rift.domBinding
-	 *
-	 * @param {HTMLElement} el
-	 * @param {Object} context
-	 * @param {Object} [opts]
-	 * @param {boolean} [opts.bindRootElement=true]
-	 * @param {boolean} [opts.applyValues=true]
-	 * @param {boolean} [opts.removeAttr=false]
-	 * @returns {Array<Rift.DataCell>}
+	 * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true, applyValues: boolean = true }):
+	 *     HTMLElement;
 	 */
 	function bindDOM(el, context, opts) {
 		if (!opts) {
 			opts = {};
 		}
 
-		var removeAttr = opts.removeAttr === true;
-		var elementBindingOptions = {
-			applyValues: opts.applyValues !== false
-		};
-		var dcs = [];
+		var applyValues = opts.applyValues;
 
 		if (opts.bindRootElement !== false && el.hasAttribute('rt-bind')) {
-			dcs.push.apply(dcs, bindElement(el, context, elementBindingOptions));
-
-			if (removeAttr) {
-				el.removeAttribute('rt-bind');
-			}
+			bindElement(el, context, { applyValues: applyValues });
 		}
 
 		var els = el.querySelectorAll('[rt-bind]');
 
-		for (var i = 0, l = els.length; i < l; i++) {
-			dcs.push.apply(dcs, bindElement(els[i], context, elementBindingOptions));
-
-			if (removeAttr) {
-				el.removeAttribute('rt-bind');
-			}
+		for (var i = els.length; i;) {
+			bindElement(els[--i], context, { applyValues: applyValues });
 		}
 
-		return dcs;
+		return el;
 	}
 
 	/**
-	 * @namespace Rift.domBinding
+	 * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true }): HTMLElement;
 	 */
-	rt.domBinding = {
-		helpers: helpers,
-		bindElement: bindElement,
-		unbindElement: unbindElement,
-		bind: bindDOM
-	};
+	function unbindDOM(el, opts) {
+		if ((!opts || opts.bindRootElement !== false) && el.hasAttribute('rt-binding')) {
+			unbindElement(el);
+		}
 
+		var els = el.querySelectorAll('[rt-binding]');
+
+		for (var i = els.length; i;) {
+			unbindElement(els[--i]);
+		}
+
+		return el;
+	}
+
+	rt.domBinding = {
+		directiveHandlers: directiveHandlers,
+		bind: bindDOM,
+		unbind: unbindDOM
+	};
 })();
