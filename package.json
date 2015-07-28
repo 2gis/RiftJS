@@ -1,6 +1,6 @@
 {
   "name": "riftjs",
-  "version": "0.35.0",
+  "version": "0.36.0",
   "description": "The experimental javascript framework",
   "main": "Rift.js",
   "scripts": {
@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/2gis/RiftJS",
   "dependencies": {
-    "cellx": "^0.11.5"
+    "cellx": "^1.0.0-rc2"
   },
   "devDependencies": {
     "gulp": "^3.8.11",

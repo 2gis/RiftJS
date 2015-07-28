@@ -1914,10 +1914,10 @@
 					},
 			
 					/**
-					 * @typesign (hidden: boolean = false): *;
+					 * @typesign (): *;
 					 */
-					read: function(hidden) {
-						if (!hidden && calculatedCell) {
+					read: function() {
+						if (calculatedCell) {
 							if (calculatedCell._masters) {
 								if (calculatedCell._masters.indexOf(this) == -1) {
 									calculatedCell._masters.push(this);
