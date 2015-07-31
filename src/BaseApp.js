@@ -25,6 +25,7 @@
 	/**
 	 * @class Rift.BaseApp
 	 * @extends {Object}
+	 * @abstract
 	 */
 	var BaseApp = rt.Class.extend({
 		/**

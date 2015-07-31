@@ -2310,16 +2310,12 @@
 
 	rt.nextTick = cellx.nextTick;
 	rt.EventEmitter = cellx.EventEmitter;
-
 	rt.ActiveMap = cellx.ActiveMap;
 	rt.map = cellx.map;
 	rt.ActiveList = cellx.ActiveList;
 	rt.list = cellx.list;
-
-	rt.cellx = cellx;
-	rt.cell = cellx;
-
 	rt.Cell = cellx.Cell;
+	rt.cellx = rt.cell = cellx;
 
 	var KEY_UID = '__rt_uid__';
 	var KEY_DATA_CELLS = '__rt_dataCells__';
@@ -2367,11 +2363,7 @@
 		 * @typesign (prefix: string = ''): string;
 		 */
 		function nextUID(prefix) {
-			if (uidCounter == 2176782335/* 'zzzzzz' */) {
-				uidCounter = 0;
-			}
-	
-			return (prefix || '') + (++uidCounter).toString(36);
+			return (prefix || '') + (++uidCounter);
 		}
 	
 		rt.uid = {
@@ -2491,7 +2483,7 @@
 				throw new TypeError('Class "' + name + '" is already registered');
 			}
 	
-			Object.defineProperty(cl, '$className', {
+			Object.defineProperty(cl, '$class', {
 				value: name
 			});
 	
@@ -2633,8 +2625,8 @@
 				object.s = obj.toString();
 	
 				return id;
-			} else if (obj.constructor.hasOwnProperty('$className')) {
-				object.c = obj.constructor.$className;
+			} else if (obj.constructor.hasOwnProperty('$class')) {
+				object.c = obj.constructor.$class;
 	
 				if (obj.collectDumpObject) {
 					data = {};
@@ -3343,7 +3335,7 @@
 				throw new TypeError('ViewClass "' + name + '" is already registered');
 			}
 	
-			Object.defineProperty(viewClass, '$viewClassName', {
+			Object.defineProperty(viewClass, '$viewClass', {
 				value: name
 			});
 	
@@ -3696,7 +3688,7 @@
 						proto = Object.getPrototypeOf(proto);
 					}
 	
-					proto.blockName = toCamelCase(proto.constructor.$viewClassName);
+					proto.blockName = toCamelCase(proto.constructor.$viewClass);
 				}
 	
 				this.mods = Object.create(this.mods);
@@ -5311,6 +5303,7 @@
 		/**
 		 * @class Rift.BaseApp
 		 * @extends {Object}
+		 * @abstract
 		 */
 		var BaseApp = rt.Class.extend({
 			/**

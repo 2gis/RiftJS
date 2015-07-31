@@ -12,11 +12,7 @@
 	 * @typesign (prefix: string = ''): string;
 	 */
 	function nextUID(prefix) {
-		if (uidCounter == 2176782335/* 'zzzzzz' */) {
-			uidCounter = 0;
-		}
-
-		return (prefix || '') + (++uidCounter).toString(36);
+		return (prefix || '') + (++uidCounter);
 	}
 
 	rt.uid = {

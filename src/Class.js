@@ -29,7 +29,7 @@
 			throw new TypeError('Class "' + name + '" is already registered');
 		}
 
-		Object.defineProperty(cl, '$className', {
+		Object.defineProperty(cl, '$class', {
 			value: name
 		});
 

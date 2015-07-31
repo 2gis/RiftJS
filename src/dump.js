@@ -61,8 +61,8 @@
 			object.s = obj.toString();
 
 			return id;
-		} else if (obj.constructor.hasOwnProperty('$className')) {
-			object.c = obj.constructor.$className;
+		} else if (obj.constructor.hasOwnProperty('$class')) {
+			object.c = obj.constructor.$class;
 
 			if (obj.collectDumpObject) {
 				data = {};

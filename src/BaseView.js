@@ -67,7 +67,7 @@
 			throw new TypeError('ViewClass "' + name + '" is already registered');
 		}
 
-		Object.defineProperty(viewClass, '$viewClassName', {
+		Object.defineProperty(viewClass, '$viewClass', {
 			value: name
 		});
 
@@ -420,7 +420,7 @@
 					proto = Object.getPrototypeOf(proto);
 				}
 
-				proto.blockName = toCamelCase(proto.constructor.$viewClassName);
+				proto.blockName = toCamelCase(proto.constructor.$viewClass);
 			}
 
 			this.mods = Object.create(this.mods);

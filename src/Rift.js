@@ -27,16 +27,12 @@
 
 	rt.nextTick = cellx.nextTick;
 	rt.EventEmitter = cellx.EventEmitter;
-
 	rt.ActiveMap = cellx.ActiveMap;
 	rt.map = cellx.map;
 	rt.ActiveList = cellx.ActiveList;
 	rt.list = cellx.list;
-
-	rt.cellx = cellx;
-	rt.cell = cellx;
-
 	rt.Cell = cellx.Cell;
+	rt.cellx = rt.cell = cellx;
 
 	var KEY_UID = '__rt_uid__';
 	var KEY_DATA_CELLS = '__rt_dataCells__';
