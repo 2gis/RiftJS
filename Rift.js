@@ -2334,8 +2334,8 @@
 	rt.KEY_VIEW = KEY_VIEW;
 	rt.KEY_VIEW_ELEMENT_NAME = KEY_VIEW_ELEMENT_NAME;
 
-	var isServer = rt.isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
-	var isClient = rt.isClient = !isServer;
+	var isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
+	var isClient = !isServer;
 
 	var $ = rt.$ = isClient ? global.jQuery || global.Zepto || global.ender || global.$ : undefined;
 
@@ -2349,6 +2349,11 @@
 	rt.logError = logError;
 
 	// gulp-include
+	rt.env = {
+		isServer: isServer,
+		isClient: isClient
+	};
+	
 	(function() {
 		var uidCounter = 0;
 	
@@ -4302,7 +4307,7 @@
 			}
 		}
 	
-		rt.template = {
+		rt.templateRuntime = {
 			defaults: {
 				include: include,
 				helpers: {},
@@ -4312,7 +4317,7 @@
 	})();
 	
 	(function() {
-		var include = rt.template.defaults.include;
+		var include = rt.templateRuntime.defaults.include;
 		var getViewClass = rt.getViewClass;
 		var BaseView = rt.BaseView;
 	
@@ -4428,7 +4433,7 @@
 	})();
 	
 	(function() {
-		var include = rt.template.defaults.include;
+		var include = rt.templateRuntime.defaults.include;
 		var getViewClass = rt.getViewClass;
 		var BaseView = rt.BaseView;
 	

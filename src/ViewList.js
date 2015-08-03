@@ -1,5 +1,5 @@
 (function() {
-	var include = rt.template.defaults.include;
+	var include = rt.templateRuntime.defaults.include;
 	var getViewClass = rt.getViewClass;
 	var BaseView = rt.BaseView;
 

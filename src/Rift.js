@@ -51,8 +51,8 @@
 	rt.KEY_VIEW = KEY_VIEW;
 	rt.KEY_VIEW_ELEMENT_NAME = KEY_VIEW_ELEMENT_NAME;
 
-	var isServer = rt.isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
-	var isClient = rt.isClient = !isServer;
+	var isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
+	var isClient = !isServer;
 
 	var $ = rt.$ = isClient ? global.jQuery || global.Zepto || global.ender || global.$ : undefined;
 
@@ -66,6 +66,7 @@
 	rt.logError = logError;
 
 	// gulp-include
+	//= include ./env.js
 	//= include ./uid.js
 	//= include ./object.js
 	//= include ./regex.js
@@ -76,7 +77,7 @@
 	//= include ./BaseModel.js
 	//= include ./domBinding.js
 	//= include ./BaseView.js
-	//= include ./template.js
+	//= include ./templateRuntime.js
 	//= include ./ViewList.js
 	//= include ./ViewSwitch.js
 	//= include ./ViewState.js

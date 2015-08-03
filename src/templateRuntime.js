@@ -66,7 +66,7 @@
 		}
 	}
 
-	rt.template = {
+	rt.templateRuntime = {
 		defaults: {
 			include: include,
 			helpers: {},
