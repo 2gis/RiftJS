@@ -1,253 +1,260 @@
-(function() {
-	var Cell = rt.Cell;
+var cellx = require('cellx');
 
-	var directiveHandlers = {
-		prop: function(el, value, name) {
-			if (el[name] !== value) {
-				el[name] = value;
-			}
-		},
+var Cell = cellx.Cell;
 
-		attr: function(el, value, name) {
-			if (value != null && value !== false) {
-				if (value === true) {
-					value = name;
-				} else {
-					value = value.toString();
-				}
+var KEY_DATA_CELLS = '__rt_dataCells__';
+if (global.Symbol && typeof Symbol.iterator == 'symbol') {
+	KEY_DATA_CELLS = Symbol(KEY_DATA_CELLS);
+}
 
-				if (el.getAttribute(name) !== value) {
-					el.setAttribute(name, value);
-				}
+exports.KEY_DATA_CELLS = KEY_DATA_CELLS;
+
+var directiveHandlers = {
+	prop: function(el, value, name) {
+		if (el[name] !== value) {
+			el[name] = value;
+		}
+	},
+
+	attr: function(el, value, name) {
+		if (value != null && value !== false) {
+			if (value === true) {
+				value = name;
 			} else {
-				if (el.hasAttribute(name)) {
-					el.removeAttribute(name);
+				value = value.toString();
+			}
+
+			if (el.getAttribute(name) !== value) {
+				el.setAttribute(name, value);
+			}
+		} else {
+			if (el.hasAttribute(name)) {
+				el.removeAttribute(name);
+			}
+		}
+	},
+
+	value: function(el, value) {
+		value = String(value);
+
+		if (el.value != value) {
+			el.value = value;
+		}
+	},
+
+	checked: function(el, value) {
+		value = !!value;
+
+		if (el.checked != value) {
+			el.checked = value;
+		}
+	},
+
+	disabled: function(el, value) {
+		if (el.disabled != !!value) {
+			el.disabled = !!value;
+		}
+	},
+
+	class: function(el, value, name) {
+		$(el).toggleClass(name, !!value);
+	},
+
+	mod: function(el, value, name) {
+		var mods = {};
+		mods[name] = !!value;
+		$(el).mods(mods);
+	},
+
+	show: function(el, value) {
+		value = value ? '' : 'none';
+
+		if (el.style.display != value) {
+			el.style.display = value;
+		}
+	},
+
+	html: function(el, value) {
+		el.innerHTML = value;
+	},
+
+	text: function(el, value, target) {
+		value = String(value);
+
+		var node;
+
+		switch (target) {
+			case 'first': {
+				node = el.firstChild;
+
+				if (!node || node.nodeType != 3) {
+					el.insertBefore(document.createTextNode(value), node);
+					return;
 				}
+
+				break;
 			}
-		},
+			case 'last': {
+				node = el.lastChild;
 
-		value: function(el, value) {
-			value = String(value);
+				if (!node || node.nodeType != 3) {
+					el.appendChild(document.createTextNode(value));
+					return;
+				}
 
-			if (el.value != value) {
-				el.value = value;
+				break;
 			}
-		},
+			case 'prev': {
+				node = el.previousSibling;
 
-		checked: function(el, value) {
-			value = !!value;
+				if (!node || node.nodeType != 3) {
+					el.parentNode.insertBefore(document.createTextNode(value), el);
+					return;
+				}
 
-			if (el.checked != value) {
-				el.checked = value;
+				break;
 			}
-		},
+			case 'next': {
+				node = el.nextSibling;
 
-		disabled: function(el, value) {
-			if (el.disabled != !!value) {
-				el.disabled = !!value;
+				if (!node || node.nodeType != 3) {
+					el.parentNode.insertBefore(document.createTextNode(value), node);
+					return;
+				}
+
+				break;
 			}
-		},
-
-		class: function(el, value, name) {
-			$(el).toggleClass(name, !!value);
-		},
-
-		mod: function(el, value, name) {
-			var mods = {};
-			mods[name] = !!value;
-			$(el).mods(mods);
-		},
-
-		show: function(el, value) {
-			value = value ? '' : 'none';
-
-			if (el.style.display != value) {
-				el.style.display = value;
-			}
-		},
-
-		html: function(el, value) {
-			el.innerHTML = value;
-		},
-
-		text: function(el, value, target) {
-			value = String(value);
-
-			var node;
-
-			switch (target) {
-				case 'first': {
+			default: {
+				if (el.childNodes.length == 1 && el.firstChild.nodeType == 3) {
 					node = el.firstChild;
-
-					if (!node || node.nodeType != 3) {
-						el.insertBefore(document.createTextNode(value), node);
-						return;
+				} else {
+					while (el.lastChild) {
+						el.removeChild(el.lastChild);
 					}
 
-					break;
+					el.appendChild(document.createTextNode(value));
+
+					return;
 				}
-				case 'last': {
-					node = el.lastChild;
 
-					if (!node || node.nodeType != 3) {
-						el.appendChild(document.createTextNode(value));
-						return;
-					}
-
-					break;
-				}
-				case 'prev': {
-					node = el.previousSibling;
-
-					if (!node || node.nodeType != 3) {
-						el.parentNode.insertBefore(document.createTextNode(value), el);
-						return;
-					}
-
-					break;
-				}
-				case 'next': {
-					node = el.nextSibling;
-
-					if (!node || node.nodeType != 3) {
-						el.parentNode.insertBefore(document.createTextNode(value), node);
-						return;
-					}
-
-					break;
-				}
-				default: {
-					if (el.childNodes.length == 1 && el.firstChild.nodeType == 3) {
-						node = el.firstChild;
-					} else {
-						while (el.lastChild) {
-							el.removeChild(el.lastChild);
-						}
-
-						el.appendChild(document.createTextNode(value));
-
-						return;
-					}
-
-					break;
-				}
-			}
-
-			if (node.nodeValue != value) {
-				node.nodeValue = value;
+				break;
 			}
 		}
-	};
 
-	var reName = Object.keys(directiveHandlers).join('|');
-	var reDirective = RegExp(
-		'\\s*(' + reName + ')(?:\\(([^)]*)\\))?:\\s*(\\S[\\s\\S]*?)(?=\\s*(?:,\\s*(?:' + reName +
-			')(?:\\([^)]*\\))?:\\s*\\S|$))',
-		'g'
-	);
-
-	/**
-	 * @typesign (el: HTMLElement, context: Object, opts?: { applyValues: boolean = true });
-	 */
-	function bindElement(el, context, opts) {
-		if (el.hasOwnProperty(KEY_DATA_CELLS) && el[KEY_DATA_CELLS]) {
-			return;
+		if (node.nodeValue != value) {
+			node.nodeValue = value;
 		}
+	}
+};
 
-		var applyValues = !opts || opts.applyValues !== false;
-		var directives = el.getAttribute('rt-bind');
-		var cells = el[KEY_DATA_CELLS] = [];
+exports.directiveHandlers = directiveHandlers;
 
-		reDirective.lastIndex = 0;
+var reName = Object.keys(directiveHandlers).join('|');
+var reDirective = RegExp(
+	'\\s*(' + reName + ')(?:\\(([^)]*)\\))?:\\s*(\\S[\\s\\S]*?)(?=\\s*(?:,\\s*(?:' + reName +
+		')(?:\\([^)]*\\))?:\\s*\\S|$))',
+	'g'
+);
 
-		for (var directive; directive = reDirective.exec(directives);) {
-			(function(name, meta, expr) {
-				var cell = new Cell(Function('var _ = this; return ' + expr + ';').bind(context), {
-					onchange: function() {
-						directiveHandlers[name](el, this.read(), meta);
-					}
-				});
+/**
+ * @typesign (el: HTMLElement, context: Object, opts?: { applyValues: boolean = true });
+ */
+function bindElement(el, context, opts) {
+	if (el.hasOwnProperty(KEY_DATA_CELLS) && el[KEY_DATA_CELLS]) {
+		return;
+	}
 
-				cells.push(cell);
+	var applyValues = !opts || opts.applyValues !== false;
+	var directives = el.getAttribute('rt-bind');
+	var cells = el[KEY_DATA_CELLS] = [];
 
-				if (applyValues) {
-					directiveHandlers[name](el, cell.read(), meta);
+	reDirective.lastIndex = 0;
+
+	for (var directive; directive = reDirective.exec(directives);) {
+		(function(name, meta, expr) {
+			var cell = new Cell(Function('var _ = this; return ' + expr + ';').bind(context), {
+				onchange: function() {
+					directiveHandlers[name](el, this.read(), meta);
 				}
-			})(directive[1], directive[2], directive[3]);
-		}
+			});
 
-		el.removeAttribute('rt-bind');
-		el.setAttribute('rt-binding', directives);
+			cells.push(cell);
+
+			if (applyValues) {
+				directiveHandlers[name](el, cell.read(), meta);
+			}
+		})(directive[1], directive[2], directive[3]);
 	}
 
-	/**
-	 * @typesign (el: HTMLElement);
-	 */
-	function unbindElement(el) {
-		if (!el.hasOwnProperty(KEY_DATA_CELLS)) {
-			return;
-		}
+	el.removeAttribute('rt-bind');
+	el.setAttribute('rt-binding', directives);
+}
 
-		var cells = el[KEY_DATA_CELLS];
-
-		if (!cells) {
-			return;
-		}
-
-		for (var i = cells.length; i;) {
-			cells[--i].dispose();
-		}
-
-		el[KEY_DATA_CELLS] = null;
-
-		el.setAttribute('rt-bind', el.getAttribute('rt-binding'));
-		el.removeAttribute('rt-binding');
+/**
+ * @typesign (el: HTMLElement);
+ */
+function unbindElement(el) {
+	if (!el.hasOwnProperty(KEY_DATA_CELLS)) {
+		return;
 	}
 
-	/**
-	 * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true, applyValues: boolean = true }):
-	 *     HTMLElement;
-	 */
-	function bindDOM(el, context, opts) {
-		if (!opts) {
-			opts = {};
-		}
+	var cells = el[KEY_DATA_CELLS];
 
-		var applyValues = opts.applyValues;
-
-		if (opts.bindRootElement !== false && el.hasAttribute('rt-bind')) {
-			bindElement(el, context, { applyValues: applyValues });
-		}
-
-		var els = el.querySelectorAll('[rt-bind]');
-
-		for (var i = els.length; i;) {
-			bindElement(els[--i], context, { applyValues: applyValues });
-		}
-
-		return el;
+	if (!cells) {
+		return;
 	}
 
-	/**
-	 * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true }): HTMLElement;
-	 */
-	function unbindDOM(el, opts) {
-		if ((!opts || opts.bindRootElement !== false) && el.hasAttribute('rt-binding')) {
-			unbindElement(el);
-		}
-
-		var els = el.querySelectorAll('[rt-binding]');
-
-		for (var i = els.length; i;) {
-			unbindElement(els[--i]);
-		}
-
-		return el;
+	for (var i = cells.length; i;) {
+		cells[--i].dispose();
 	}
 
-	rt.domBinding = {
-		directiveHandlers: directiveHandlers,
-		bind: bindDOM,
-		unbind: unbindDOM
-	};
-})();
+	el[KEY_DATA_CELLS] = null;
+
+	el.setAttribute('rt-bind', el.getAttribute('rt-binding'));
+	el.removeAttribute('rt-binding');
+}
+
+/**
+ * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true, applyValues: boolean = true }):
+ *     HTMLElement;
+ */
+function bindDOM(el, context, opts) {
+	if (!opts) {
+		opts = {};
+	}
+
+	var applyValues = opts.applyValues;
+
+	if (opts.bindRootElement !== false && el.hasAttribute('rt-bind')) {
+		bindElement(el, context, { applyValues: applyValues });
+	}
+
+	var els = el.querySelectorAll('[rt-bind]');
+
+	for (var i = els.length; i;) {
+		bindElement(els[--i], context, { applyValues: applyValues });
+	}
+
+	return el;
+}
+
+exports.bind = bindDOM;
+
+/**
+ * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true }): HTMLElement;
+ */
+function unbindDOM(el, opts) {
+	if ((!opts || opts.bindRootElement !== false) && el.hasAttribute('rt-binding')) {
+		unbindElement(el);
+	}
+
+	var els = el.querySelectorAll('[rt-binding]');
+
+	for (var i = els.length; i;) {
+		unbindElement(els[--i]);
+	}
+
+	return el;
+}
+
+exports.unbind = unbindDOM;

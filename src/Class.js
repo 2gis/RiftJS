@@ -1,109 +1,107 @@
-(function() {
-	var mixin = rt.object.mixin;
+var cellx = require('cellx');
+var object = require('./object');
 
-	var Class;
+var mixin = object.mixin;
 
-	/**
-	 * @type {Object<Function>}
-	 */
-	var classes = rt.classes = Object.create(null);
+var hasOwn = Object.prototype.hasOwnProperty;
 
-	/**
-	 * @typesign (name: string): Function;
-	 */
-	function getClass(name) {
-		if (!(name in classes)) {
-			throw new TypeError('Class "' + name + '" is not defined');
-		}
+/**
+ * @type {Object<Function>}
+ */
+var classes = Object.create(null);
 
-		return classes[name];
+exports.classes = classes;
+
+/**
+ * @typesign (name: string): Function;
+ */
+function getClass(name) {
+	if (!(name in classes)) {
+		throw new TypeError('Class "' + name + '" is not defined');
 	}
 
-	rt.getClass = getClass;
+	return classes[name];
+}
 
-	/**
-	 * @typesign (name: string, cl: Function): Function;
-	 */
-	function registerClass(name, cl) {
-		if (name in classes) {
-			throw new TypeError('Class "' + name + '" is already registered');
-		}
+exports.get = getClass;
 
-		Object.defineProperty(cl, '$class', {
-			value: name
-		});
-
-		classes[name] = cl;
-
-		return cl;
+/**
+ * @typesign (name: string, cl: Function): Function;
+ */
+function registerClass(name, cl) {
+	if (name in classes) {
+		throw new TypeError('Class "' + name + '" is already registered');
 	}
 
-	rt.registerClass = registerClass;
+	Object.defineProperty(cl, '$class', {
+		value: name
+	});
 
-	/**
-	 * @typesign (declaration: { static?: Object, constructor?: Function }): Function;
-	 * @typesign (name?: string, declaration: { static?: Object, constructor?: Function }): Function;
-	 */
-	function extend(name, declaration) {
-		if (typeof name == 'object') {
-			declaration = name;
-			name = undefined;
-		}
+	classes[name] = cl;
 
-		var parent = this == Class ? Object : this;
-		var constr;
+	return cl;
+}
 
-		if (hasOwn.call(declaration, 'constructor')) {
-			constr = declaration.constructor;
-			delete declaration.constructor;
-		} else {
-			constr = parent == Object ?
-				function() {} :
-				function() {
-					return parent.apply(this, arguments);
-				};
-		}
+exports.register = registerClass;
 
-		var proto = Object.create(parent.prototype);
+var Class = exports;
 
-		constr.prototype = proto;
-
-		Object.defineProperty(proto, 'constructor', {
-			configurable: true,
-			writable: true,
-			value: constr
-		});
-
-		Object.keys(parent).forEach(function(name) {
-			Object.defineProperty(constr, name, Object.getOwnPropertyDescriptor(parent, name));
-		});
-
-		if (hasOwn.call(declaration, 'static')) {
-			mixin(constr, declaration.static);
-			delete declaration.static;
-		}
-
-		if (!constr.extend) {
-			constr.extend = extend;
-		}
-
-		mixin(proto, declaration);
-
-		if (name) {
-			registerClass(name, constr);
-		}
-
-		return constr;
+/**
+ * @typesign (declaration: { static?: Object, constructor?: Function }): Function;
+ * @typesign (name?: string, declaration: { static?: Object, constructor?: Function }): Function;
+ */
+function extend(name, declaration) {
+	if (typeof name == 'object') {
+		declaration = name;
+		name = undefined;
 	}
 
-	rt.EventEmitter.extend = extend;
+	var parent = this == Class ? Object : this;
+	var constr;
 
-	Class = {
-		classes: classes,
-		get: getClass,
-		register: registerClass,
-		extend: extend
-	};
+	if (hasOwn.call(declaration, 'constructor')) {
+		constr = declaration.constructor;
+		delete declaration.constructor;
+	} else {
+		constr = parent == Object ?
+			function() {} :
+			function() {
+				return parent.apply(this, arguments);
+			};
+	}
 
-	rt.Class = Class;
-})();
+	var proto = Object.create(parent.prototype);
+
+	constr.prototype = proto;
+
+	Object.defineProperty(proto, 'constructor', {
+		configurable: true,
+		writable: true,
+		value: constr
+	});
+
+	Object.keys(parent).forEach(function(name) {
+		Object.defineProperty(constr, name, Object.getOwnPropertyDescriptor(parent, name));
+	});
+
+	if (hasOwn.call(declaration, 'static')) {
+		mixin(constr, declaration.static);
+		delete declaration.static;
+	}
+
+	if (!constr.extend) {
+		constr.extend = extend;
+	}
+
+	mixin(proto, declaration);
+
+	if (name) {
+		registerClass(name, constr);
+	}
+
+	return constr;
+}
+
+exports.extend = extend;
+
+cellx.EventEmitter.extend = extend;
