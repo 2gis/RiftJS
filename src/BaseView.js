@@ -422,6 +422,27 @@ var BaseView = Disposable.extend({
 			params = {};
 		}
 
+		var app;
+		var parent = params.parent;
+
+		if (params.app) {
+			app = this.app = params.app;
+		} else {
+			if (parent && parent.app) {
+				app = this.app = parent.app;
+			}
+		}
+
+		if (params.model) {
+			this.model = params.model;
+		} else {
+			if (parent && parent.model) {
+				this.model = parent.model;
+			} else if (app) {
+				this.model = app.model;
+			}
+		}
+
 		if (this._initAssets) {
 			this._initAssets(params);
 			bindCells(this);
@@ -463,33 +484,11 @@ var BaseView = Disposable.extend({
 			this.owner = params.owner;
 		}
 
-		if (params.parent) {
-			this.parent = params.parent;
+		if (parent) {
+			this.parent = parent;
 		}
-
-		var parent = this._parent;
 
 		this._id = this._nextID();
-
-		var app;
-
-		if (params.app) {
-			app = this.app = params.app;
-		} else {
-			if (parent && parent.app) {
-				app = this.app = parent.app;
-			}
-		}
-
-		if (params.model) {
-			this.model = params.model;
-		} else {
-			if (parent && parent.model) {
-				this.model = parent.model;
-			} else if (app) {
-				this.model = app.model;
-			}
-		}
 
 		this.children = [];
 

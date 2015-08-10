@@ -1,13 +1,13 @@
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory();
+		module.exports = factory(require("superagent"));
 	else if(typeof define === 'function' && define.amd)
-		define(factory);
+		define(["superagent"], factory);
 	else if(typeof exports === 'object')
-		exports["Rift"] = factory();
+		exports["Rift"] = factory(require("superagent"));
 	else
-		root["Rift"] = factory();
-})(this, function() {
+		root["Rift"] = factory(root["superagent"]);
+})(this, function(__WEBPACK_EXTERNAL_MODULE_11__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -54,7 +54,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var cellx = __webpack_require__(2);
+	var cellx = __webpack_require__(1);
 
 	exports.nextTick = cellx.nextTick;
 	exports.EventEmitter = cellx.EventEmitter;
@@ -65,100 +65,41 @@ return /******/ (function(modules) { // webpackBootstrap
 	exports.Cell = cellx.Cell;
 	exports.cellx = exports.cell = cellx;
 
-	exports.env = __webpack_require__(6);
-	exports.uid = __webpack_require__(5);
-	exports.object = __webpack_require__(7);
-	exports.regex = __webpack_require__(8);
+	exports.env = __webpack_require__(2);
+	exports.uid = __webpack_require__(3);
+	exports.object = __webpack_require__(4);
+	exports.regex = __webpack_require__(5);
 
-	var Class = __webpack_require__(9);
+	var Class = __webpack_require__(6);
 
 	exports.registerClass = Class.register;
 	exports.Class = Class;
 
-	exports.dump = __webpack_require__(10);
-	exports.bindCells = __webpack_require__(3);
-	exports.Disposable = __webpack_require__(4);
-	exports.BaseModel = __webpack_require__(1);
-	exports.domBinding = __webpack_require__(11);
+	exports.dump = __webpack_require__(7);
+	exports.bindCells = __webpack_require__(8);
+	exports.Disposable = __webpack_require__(9);
+	exports.proxy = __webpack_require__(10);
+	exports.BaseModel = __webpack_require__(12);
+	exports.domBinding = __webpack_require__(13);
 
-	var BaseView = __webpack_require__(12);
+	var BaseView = __webpack_require__(14);
 
 	exports.viewClasses = BaseView.viewClasses;
 	exports.registerViewClass = BaseView.registerViewClass;
 	exports.BaseView = BaseView;
 
-	exports.templateRuntime = __webpack_require__(13);
+	exports.templateRuntime = __webpack_require__(15);
 
-	__webpack_require__(14);
-	__webpack_require__(15);
+	__webpack_require__(16);
+	__webpack_require__(17);
 
-	exports.ViewState = __webpack_require__(16);
-	exports.Router = __webpack_require__(17);
-	exports.BaseApp = __webpack_require__(18);
+	exports.ViewState = __webpack_require__(18);
+	exports.Router = __webpack_require__(19);
+	exports.BaseApp = __webpack_require__(20);
 
 
 /***/ },
 /* 1 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var cellx = __webpack_require__(2);
-	var bindCells = __webpack_require__(3);
-	var Disposable = __webpack_require__(4);
-
-	/**
-	 * @class Rift.BaseModel
-	 * @extends {Rift.Disposable}
-	 * @abstract
-	 * @typesign new (data?: Object): Rift.BaseModel;
-	 */
-	var BaseModel = Disposable.extend({
-		constructor: function(data) {
-			Disposable.call(this);
-
-			if (this._initAssets) {
-				this._initAssets(data || {});
-				bindCells(this);
-			}
-		},
-
-		/**
-		 * @typesign (data: Object);
-		 */
-		collectDumpObject: function(data) {
-			var names = Object.keys(this);
-
-			for (var i = 0, l = names.length; i < l; i++) {
-				var value = Object.getOwnPropertyDescriptor(this, names[i]).value;
-
-				if (typeof value == 'function' && value.constructor == cellx) {
-					var cell = value('unwrap', 0);
-
-					if (!cell.computed) {
-						var cellValue = cell.read();
-
-						if (cellValue === Object(cellValue) ? cell.changed() : cell.initialValue !== cellValue) {
-							data[names[i]] = cellValue;
-						}
-					}
-				}
-			}
-		},
-
-		/**
-		 * @typesign (data: Object);
-		 */
-		expandFromDumpObject: function(data) {
-			for (var name in data) {
-				this[name](data[name]);
-			}
-		}
-	});
-
-	module.exports = BaseModel;
-
-
-/***/ },
-/* 2 */
 /***/ function(module, exports, __webpack_require__) {
 
 	(function(undefined) {
@@ -2447,10 +2388,437 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
+/* 2 */
+/***/ function(module, exports) {
+
+	var isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
+
+	exports.isServer = isServer;
+	exports.isClient = !isServer;
+
+
+/***/ },
 /* 3 */
+/***/ function(module, exports) {
+
+	/* WEBPACK VAR INJECTION */(function(global) {var KEY_UID = '__rt_uid__';
+	if (global.Symbol && typeof Symbol.iterator == 'symbol') {
+		KEY_UID = Symbol(KEY_UID);
+	}
+
+	exports.KEY = KEY_UID;
+
+	var uidCounter = 0;
+
+	/**
+	 * Генерирует уникальный идентификатор.
+	 *
+	 * @example
+	 * nextUID(); // '1'
+	 * nextUID(); // '2'
+	 * nextUID('uid-'); // 'uid-3'
+	 *
+	 * @typesign (prefix: string = ''): string;
+	 */
+	function nextUID(prefix) {
+		return (prefix || '') + (++uidCounter);
+	}
+
+	exports.next = nextUID;
+
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
+
+/***/ },
+/* 4 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var cellx = __webpack_require__(2);
+	var uid = __webpack_require__(3);
+
+	var KEY_UID = uid.KEY;
+	var nextUID = uid.next;
+
+	/**
+	 * Получает уникальный идентификатор объекта.
+	 * @typesign (obj: Object, prefix: string = ''): string;
+	 */
+	var getUID;
+
+	if (typeof KEY_UID == 'symbol') {
+		getUID = function getUID(obj, prefix) {
+			return obj[KEY_UID] || (obj[KEY_UID] = nextUID(prefix));
+		};
+	} else {
+		var hasOwn = Object.prototype.hasOwnProperty;
+
+		getUID = function getUID(obj, prefix) {
+			if (!hasOwn.call(obj, KEY_UID)) {
+				Object.defineProperty(obj, KEY_UID, {
+					value: nextUID(prefix)
+				});
+			}
+
+			return obj[KEY_UID];
+		};
+	}
+
+	exports.getUID = getUID;
+
+	/**
+	 * @typesign (obj: Object, source: Object): Object;
+	 */
+	var assign = Object.assign || function assign(obj, source) {
+		var keys = Object.keys(source);
+
+		for (var i = keys.length; i;) {
+			obj[keys[--i]] = source[keys[i]];
+		}
+
+		return obj;
+	};
+
+	exports.assign = assign;
+
+	/**
+	 * @typesign (obj: Object, source: Object): Object;
+	 */
+	function mixin(obj, source) {
+		var names = Object.getOwnPropertyNames(source);
+
+		for (var i = names.length; i;) {
+			Object.defineProperty(obj, names[--i], Object.getOwnPropertyDescriptor(source, names[i]));
+		}
+
+		return obj;
+	}
+
+	exports.mixin = mixin;
+
+
+/***/ },
+/* 5 */
+/***/ function(module, exports) {
+
+	var reEscapableChars = /([?+|$(){}[^.\-\]\/\\*])/g;
+
+	/**
+	 * Экранирует спецсимволы регулярного выражения.
+	 *
+	 * @example
+	 * var re = 'Hello?!*`~World+()[]';
+	 * re = new RegExp(escapeRegExp(re));
+	 * console.log(re);
+	 * // => /Hello\?!\*`~World\+\(\)\[\]/
+	 *
+	 * @typesign (str: string): string;
+	 */
+	function escapeRegExp(str) {
+		return str.replace(reEscapableChars, '\\$1');
+	}
+
+	exports.escape = escapeRegExp;
+
+
+/***/ },
+/* 6 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var cellx = __webpack_require__(1);
+	var object = __webpack_require__(4);
+
+	var mixin = object.mixin;
+
+	var hasOwn = Object.prototype.hasOwnProperty;
+
+	/**
+	 * @type {Object<Function>}
+	 */
+	var classes = Object.create(null);
+
+	exports.classes = classes;
+
+	/**
+	 * @typesign (name: string): Function;
+	 */
+	function getClass(name) {
+		if (!(name in classes)) {
+			throw new TypeError('Class "' + name + '" is not defined');
+		}
+
+		return classes[name];
+	}
+
+	exports.get = getClass;
+
+	/**
+	 * @typesign (name: string, cl: Function): Function;
+	 */
+	function registerClass(name, cl) {
+		if (name in classes) {
+			throw new TypeError('Class "' + name + '" is already registered');
+		}
+
+		Object.defineProperty(cl, '$class', {
+			value: name
+		});
+
+		classes[name] = cl;
+
+		return cl;
+	}
+
+	exports.register = registerClass;
+
+	var Class = exports;
+
+	/**
+	 * @typesign (declaration: { static?: Object, constructor?: Function }): Function;
+	 * @typesign (name?: string, declaration: { static?: Object, constructor?: Function }): Function;
+	 */
+	function extend(name, declaration) {
+		if (typeof name == 'object') {
+			declaration = name;
+			name = undefined;
+		}
+
+		var parent = this == Class ? Object : this;
+		var constr;
+
+		if (hasOwn.call(declaration, 'constructor')) {
+			constr = declaration.constructor;
+			delete declaration.constructor;
+		} else {
+			constr = parent == Object ?
+				function() {} :
+				function() {
+					return parent.apply(this, arguments);
+				};
+		}
+
+		var proto = Object.create(parent.prototype);
+
+		constr.prototype = proto;
+
+		Object.defineProperty(proto, 'constructor', {
+			configurable: true,
+			writable: true,
+			value: constr
+		});
+
+		Object.keys(parent).forEach(function(name) {
+			Object.defineProperty(constr, name, Object.getOwnPropertyDescriptor(parent, name));
+		});
+
+		if (hasOwn.call(declaration, 'static')) {
+			mixin(constr, declaration.static);
+			delete declaration.static;
+		}
+
+		if (!constr.extend) {
+			constr.extend = extend;
+		}
+
+		mixin(proto, declaration);
+
+		if (name) {
+			registerClass(name, constr);
+		}
+
+		return constr;
+	}
+
+	exports.extend = extend;
+
+	cellx.EventEmitter.extend = extend;
+
+
+/***/ },
+/* 7 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var cellx = __webpack_require__(1);
+	var object = __webpack_require__(4);
+	var Class = __webpack_require__(6);
+
+	var ActiveMap = cellx.ActiveMap;
+	var ActiveList = cellx.ActiveList;
+	var getUID = object.getUID;
+	var assign = object.assign;
+	var classes = Class.classes;
+
+	var toString = Object.prototype.toString;
+
+	ActiveMap.prototype.collectDumpObject = function(data, opts) {
+		var entries = data.entries = [];
+
+		this._entries.forEach(function(value, key) {
+			entries.push([key, value]);
+		});
+
+		if (this.adoptsItemChanges) {
+			opts.adoptsItemChanges = true;
+		}
+	};
+
+	ActiveMap.prototype.expandFromDumpObject = function(data) {
+		data.entries.forEach(function(entry) {
+			this.set(entry[0], entry[1]);
+		}, this);
+	};
+
+	ActiveList.prototype.collectDumpObject = function(data, opts) {
+		data.items = this.toArray();
+
+		if (this.adoptsItemChanges) {
+			opts.adoptsItemChanges = true;
+		}
+		if (this.sorted) {
+			opts.sorted = true;
+		}
+	};
+
+	ActiveList.prototype.expandFromDumpObject = function(data) {
+		this.addRange(data.items);
+	};
+
+	Class.register('ActiveMap', ActiveMap);
+	Class.register('ActiveList', ActiveList);
+
+	/**
+	 * @typesign (obj: Object, dumpData: Object): string;
+	 */
+	function collectDump(obj, dumpData) {
+		var id = getUID(obj);
+
+		if (dumpData.hasOwnProperty(id)) {
+			return id;
+		}
+
+		var data;
+		var object = dumpData[id] = {};
+
+		if (Array.isArray(obj)) {
+			object.t = 0;
+		} else if (toString.call(obj) == '[object Date]') {
+			object.t = 1;
+			object.s = obj.toString();
+
+			return id;
+		} else if (obj.constructor.hasOwnProperty('$class')) {
+			object.c = obj.constructor.$class;
+
+			if (obj.collectDumpObject) {
+				data = {};
+				var opts = {};
+
+				obj.collectDumpObject(data, opts);
+
+				if (Object.keys(opts).length) {
+					object.o = opts;
+				}
+			}
+		}
+
+		if (!data) {
+			data = assign({}, obj);
+		}
+
+		var isDataEmpty = true;
+
+		for (var name in data) {
+			isDataEmpty = false;
+
+			var value = data[name];
+
+			if (value === Object(value)) {
+				data[name] = collectDump(value, dumpData);
+			} else {
+				data[name] = value === undefined ? {} : { v: value };
+			}
+		}
+
+		if (!isDataEmpty) {
+			object.d = data;
+		}
+
+		return id;
+	}
+
+	/**
+	 * Сериализует объект в дамп.
+	 * @typesign (obj: Object): string;
+	 */
+	function serialize(obj) {
+		var dumpData = {};
+
+		return JSON.stringify({
+			d: dumpData,
+			r: collectDump(obj, dumpData)
+		});
+	}
+
+	exports.serialize = serialize;
+
+	/**
+	 * Восстанавливает объект из дампа.
+	 * @typesign (dump: string|Object): Object;
+	 */
+	function deserialize(dump) {
+		if (typeof dump == 'string') {
+			dump = JSON.parse(dump);
+		}
+
+		var dumpData = dump.d;
+		var id;
+		var obj;
+
+		for (id in dumpData) {
+			obj = dumpData[id];
+
+			if (obj.hasOwnProperty('t')) {
+				obj.instance = obj.t ? new Date(obj.s) : [];
+			} else if (obj.hasOwnProperty('c')) {
+				var cl = classes[obj.c];
+				obj.instance = obj.hasOwnProperty('o') ? new cl(undefined, obj.o) : new cl();
+			} else {
+				obj.instance = {};
+			}
+		}
+
+		for (id in dumpData) {
+			obj = dumpData[id];
+
+			if (obj.hasOwnProperty('d')) {
+				var data = obj.d;
+
+				for (var name in data) {
+					var value = data[name];
+
+					if (typeof value == 'object') {
+						data[name] = value.hasOwnProperty('v') ? value.v : undefined;
+					} else {
+						data[name] = dumpData[value].instance;
+					}
+				}
+
+				if (obj.hasOwnProperty('c') && obj.instance.expandFromDumpObject) {
+					obj.instance.expandFromDumpObject(data);
+				} else {
+					assign(obj.instance, data);
+				}
+			}
+		}
+
+		return dumpData[dump.r].instance;
+	}
+
+	exports.deserialize = deserialize;
+
+
+/***/ },
+/* 8 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var cellx = __webpack_require__(1);
 
 	/**
 	 * @typesign (obj: Object): Object;
@@ -2473,11 +2841,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 4 */
+/* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var cellx = __webpack_require__(2);
-	var uid = __webpack_require__(5);
+	var cellx = __webpack_require__(1);
+	var uid = __webpack_require__(3);
 
 	var EventEmitter = cellx.EventEmitter;
 	var nextUID = uid.next;
@@ -2677,437 +3045,181 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 5 */
-/***/ function(module, exports) {
-
-	/* WEBPACK VAR INJECTION */(function(global) {var KEY_UID = '__rt_uid__';
-	if (global.Symbol && typeof Symbol.iterator == 'symbol') {
-		KEY_UID = Symbol(KEY_UID);
-	}
-
-	exports.KEY = KEY_UID;
-
-	var uidCounter = 0;
-
-	/**
-	 * Генерирует уникальный идентификатор.
-	 *
-	 * @example
-	 * nextUID(); // '1'
-	 * nextUID(); // '2'
-	 * nextUID('uid-'); // 'uid-3'
-	 *
-	 * @typesign (prefix: string = ''): string;
-	 */
-	function nextUID(prefix) {
-		return (prefix || '') + (++uidCounter);
-	}
-
-	exports.next = nextUID;
-
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
-
-/***/ },
-/* 6 */
-/***/ function(module, exports) {
-
-	var isServer = typeof window == 'undefined' && typeof navigator == 'undefined';
-
-	exports.isServer = isServer;
-	exports.isClient = !isServer;
-
-
-/***/ },
-/* 7 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var uid = __webpack_require__(5);
-
-	var KEY_UID = uid.KEY;
-	var nextUID = uid.next;
-
-	/**
-	 * Получает уникальный идентификатор объекта.
-	 * @typesign (obj: Object, prefix: string = ''): string;
-	 */
-	var getUID;
-
-	if (typeof KEY_UID == 'symbol') {
-		getUID = function getUID(obj, prefix) {
-			return obj[KEY_UID] || (obj[KEY_UID] = nextUID(prefix));
-		};
-	} else {
-		var hasOwn = Object.prototype.hasOwnProperty;
-
-		getUID = function getUID(obj, prefix) {
-			if (!hasOwn.call(obj, KEY_UID)) {
-				Object.defineProperty(obj, KEY_UID, {
-					value: nextUID(prefix)
-				});
-			}
-
-			return obj[KEY_UID];
-		};
-	}
-
-	exports.getUID = getUID;
-
-	/**
-	 * @typesign (obj: Object, source: Object): Object;
-	 */
-	var assign = Object.assign || function assign(obj, source) {
-		var keys = Object.keys(source);
-
-		for (var i = keys.length; i;) {
-			obj[keys[--i]] = source[keys[i]];
-		}
-
-		return obj;
-	};
-
-	exports.assign = assign;
-
-	/**
-	 * @typesign (obj: Object, source: Object): Object;
-	 */
-	function mixin(obj, source) {
-		var names = Object.getOwnPropertyNames(source);
-
-		for (var i = names.length; i;) {
-			Object.defineProperty(obj, names[--i], Object.getOwnPropertyDescriptor(source, names[i]));
-		}
-
-		return obj;
-	}
-
-	exports.mixin = mixin;
-
-
-/***/ },
-/* 8 */
-/***/ function(module, exports) {
-
-	var reEscapableChars = /([?+|$(){}[^.\-\]\/\\*])/g;
-
-	/**
-	 * Экранирует спецсимволы регулярного выражения.
-	 *
-	 * @example
-	 * var re = 'Hello?!*`~World+()[]';
-	 * re = new RegExp(escapeRegExp(re));
-	 * console.log(re);
-	 * // => /Hello\?!\*`~World\+\(\)\[\]/
-	 *
-	 * @typesign (str: string): string;
-	 */
-	function escapeRegExp(str) {
-		return str.replace(reEscapableChars, '\\$1');
-	}
-
-	exports.escape = escapeRegExp;
-
-
-/***/ },
-/* 9 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var cellx = __webpack_require__(2);
-	var object = __webpack_require__(7);
-
-	var mixin = object.mixin;
-
-	var hasOwn = Object.prototype.hasOwnProperty;
-
-	/**
-	 * @type {Object<Function>}
-	 */
-	var classes = Object.create(null);
-
-	exports.classes = classes;
-
-	/**
-	 * @typesign (name: string): Function;
-	 */
-	function getClass(name) {
-		if (!(name in classes)) {
-			throw new TypeError('Class "' + name + '" is not defined');
-		}
-
-		return classes[name];
-	}
-
-	exports.get = getClass;
-
-	/**
-	 * @typesign (name: string, cl: Function): Function;
-	 */
-	function registerClass(name, cl) {
-		if (name in classes) {
-			throw new TypeError('Class "' + name + '" is already registered');
-		}
-
-		Object.defineProperty(cl, '$class', {
-			value: name
-		});
-
-		classes[name] = cl;
-
-		return cl;
-	}
-
-	exports.register = registerClass;
-
-	var Class = exports;
-
-	/**
-	 * @typesign (declaration: { static?: Object, constructor?: Function }): Function;
-	 * @typesign (name?: string, declaration: { static?: Object, constructor?: Function }): Function;
-	 */
-	function extend(name, declaration) {
-		if (typeof name == 'object') {
-			declaration = name;
-			name = undefined;
-		}
-
-		var parent = this == Class ? Object : this;
-		var constr;
-
-		if (hasOwn.call(declaration, 'constructor')) {
-			constr = declaration.constructor;
-			delete declaration.constructor;
-		} else {
-			constr = parent == Object ?
-				function() {} :
-				function() {
-					return parent.apply(this, arguments);
-				};
-		}
-
-		var proto = Object.create(parent.prototype);
-
-		constr.prototype = proto;
-
-		Object.defineProperty(proto, 'constructor', {
-			configurable: true,
-			writable: true,
-			value: constr
-		});
-
-		Object.keys(parent).forEach(function(name) {
-			Object.defineProperty(constr, name, Object.getOwnPropertyDescriptor(parent, name));
-		});
-
-		if (hasOwn.call(declaration, 'static')) {
-			mixin(constr, declaration.static);
-			delete declaration.static;
-		}
-
-		if (!constr.extend) {
-			constr.extend = extend;
-		}
-
-		mixin(proto, declaration);
-
-		if (name) {
-			registerClass(name, constr);
-		}
-
-		return constr;
-	}
-
-	exports.extend = extend;
-
-	cellx.EventEmitter.extend = extend;
-
-
-/***/ },
 /* 10 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var cellx = __webpack_require__(2);
-	var object = __webpack_require__(7);
-	var Class = __webpack_require__(9);
+	var request = __webpack_require__(11);
 
-	var ActiveMap = cellx.ActiveMap;
-	var ActiveList = cellx.ActiveList;
-	var getUID = object.getUID;
-	var assign = object.assign;
-	var classes = Class.classes;
-
-	var toString = Object.prototype.toString;
-
-	ActiveMap.prototype.collectDumpObject = function(data, opts) {
-		var entries = data.entries = [];
-
-		this._entries.forEach(function(value, key) {
-			entries.push([key, value]);
-		});
-
-		if (this.adoptsItemChanges) {
-			opts.adoptsItemChanges = true;
-		}
-	};
-
-	ActiveMap.prototype.expandFromDumpObject = function(data) {
-		data.entries.forEach(function(entry) {
-			this.set(entry[0], entry[1]);
-		}, this);
-	};
-
-	ActiveList.prototype.collectDumpObject = function(data, opts) {
-		data.items = this.toArray();
-
-		if (this.adoptsItemChanges) {
-			opts.adoptsItemChanges = true;
-		}
-		if (this.sorted) {
-			opts.sorted = true;
-		}
-	};
-
-	ActiveList.prototype.expandFromDumpObject = function(data) {
-		this.addRange(data.items);
-	};
-
-	Class.register('ActiveMap', ActiveMap);
-	Class.register('ActiveList', ActiveList);
+	var cache = {};
 
 	/**
-	 * @typesign (obj: Object, dumpData: Object): string;
+	 * @typesign (): string;
 	 */
-	function collectDump(obj, dumpData) {
-		var id = getUID(obj);
+	function serializeCache() {
+		return JSON.stringify(cache);
+	}
 
-		if (dumpData.hasOwnProperty(id)) {
-			return id;
-		}
+	exports.serializeCache = serializeCache;
 
-		var data;
-		var object = dumpData[id] = {};
+	/**
+	 * @typesign (cacheDump: string);
+	 */
+	function deserializeCache(cacheDump) {
+		cache = JSON.parse(cacheDump);
+	}
 
-		if (Array.isArray(obj)) {
-			object.t = 0;
-		} else if (toString.call(obj) == '[object Date]') {
-			object.t = 1;
-			object.s = obj.toString();
+	exports.deserializeCache = deserializeCache;
 
-			return id;
-		} else if (obj.constructor.hasOwnProperty('$class')) {
-			object.c = obj.constructor.$class;
+	/**
+	 * @typesign ();
+	 */
+	function clearCache() {
+		cache = {};
+	}
 
-			if (obj.collectDumpObject) {
-				data = {};
-				var opts = {};
+	exports.clearCache = clearCache;
 
-				obj.collectDumpObject(data, opts);
+	['get', 'head', 'del', 'patch', 'post', 'put'].forEach(function(method) {
+		exports[method] = function(url, opts) {
+			if (!opts) {
+				opts = {};
+			}
 
-				if (Object.keys(opts).length) {
-					object.o = opts;
+			var args = [].slice.call(arguments);
+			var key = JSON.stringify(args);
+
+			if (opts.noCache !== true && cache.hasOwnProperty(key)) {
+				var res = JSON.parse(cache[key]);
+				return res.ok ? Promise.resolve(res) : Promise.reject(res);
+			}
+
+			return new Promise(function(resolve, reject) {
+				var req = request[method](url);
+
+				var headers = opts.headers;
+
+				if (headers) {
+					Object.keys(headers).forEach(function(name) {
+						req.set(name, headers[name]);
+					});
 				}
-			}
-		}
 
-		if (!data) {
-			data = assign({}, obj);
-		}
+				if (opts.withCredentials) {
+					req.withCredentials();
+				}
 
-		var isDataEmpty = true;
-
-		for (var name in data) {
-			isDataEmpty = false;
-
-			var value = data[name];
-
-			if (value === Object(value)) {
-				data[name] = collectDump(value, dumpData);
-			} else {
-				data[name] = value === undefined ? {} : { v: value };
-			}
-		}
-
-		if (!isDataEmpty) {
-			object.d = data;
-		}
-
-		return id;
-	}
-
-	/**
-	 * Сериализует объект в дамп.
-	 * @typesign (obj: Object): string;
-	 */
-	function serialize(obj) {
-		var dumpData = {};
-
-		return JSON.stringify({
-			d: dumpData,
-			r: collectDump(obj, dumpData)
-		});
-	}
-
-	exports.serialize = serialize;
-
-	/**
-	 * Восстанавливает объект из дампа.
-	 * @typesign (dump: string|Object): Object;
-	 */
-	function deserialize(dump) {
-		if (typeof dump == 'string') {
-			dump = JSON.parse(dump);
-		}
-
-		var dumpData = dump.d;
-		var id;
-		var obj;
-
-		for (id in dumpData) {
-			obj = dumpData[id];
-
-			if (obj.hasOwnProperty('t')) {
-				obj.instance = obj.t ? new Date(obj.s) : [];
-			} else if (obj.hasOwnProperty('c')) {
-				var cl = classes[obj.c];
-				obj.instance = obj.hasOwnProperty('o') ? new cl(undefined, obj.o) : new cl();
-			} else {
-				obj.instance = {};
-			}
-		}
-
-		for (id in dumpData) {
-			obj = dumpData[id];
-
-			if (obj.hasOwnProperty('d')) {
-				var data = obj.d;
-
-				for (var name in data) {
-					var value = data[name];
-
-					if (typeof value == 'object') {
-						data[name] = value.hasOwnProperty('v') ? value.v : undefined;
-					} else {
-						data[name] = dumpData[value].instance;
+				if (method == 'get') {
+					if (opts.query) {
+						req.query(opts.query);
+					}
+				} else {
+					if (opts.data) {
+						req.send(typeof opts.data == 'object' ? JSON.stringify(opts.data) : opts.data);
 					}
 				}
 
-				if (obj.hasOwnProperty('c') && obj.instance.expandFromDumpObject) {
-					obj.instance.expandFromDumpObject(data);
-				} else {
-					assign(obj.instance, data);
-				}
-			}
-		}
+				return req.end(function(err, res) {
+					res = Object.keys(res).reduce(function(response, name) {
+						var value = res[name];
 
-		return dumpData[dump.r].instance;
-	}
+						if (value !== Object(value) || value.constructor == Object || value.constructor == Array) {
+							response[name] = value;
+						}
 
-	exports.deserialize = deserialize;
+						return response;
+					}, {});
+
+					if (err) {
+						res.error = {
+							name: err.name,
+							message: err.message
+						};
+					}
+
+					cache[key] = JSON.stringify(res);
+
+					if (res.ok) {
+						resolve(res);
+					} else {
+						reject(res);
+					}
+				});
+			});
+		};
+	});
 
 
 /***/ },
 /* 11 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_11__;
+
+/***/ },
+/* 12 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var cellx = __webpack_require__(2);
+	var cellx = __webpack_require__(1);
+	var bindCells = __webpack_require__(8);
+	var Disposable = __webpack_require__(9);
+
+	/**
+	 * @class Rift.BaseModel
+	 * @extends {Rift.Disposable}
+	 * @abstract
+	 * @typesign new (data?: Object): Rift.BaseModel;
+	 */
+	var BaseModel = Disposable.extend({
+		constructor: function(data) {
+			Disposable.call(this);
+
+			if (this._initAssets) {
+				this._initAssets(data || {});
+				bindCells(this);
+			}
+		},
+
+		/**
+		 * @typesign (data: Object);
+		 */
+		collectDumpObject: function(data) {
+			var names = Object.keys(this);
+
+			for (var i = 0, l = names.length; i < l; i++) {
+				var value = Object.getOwnPropertyDescriptor(this, names[i]).value;
+
+				if (typeof value == 'function' && value.constructor == cellx) {
+					var cell = value('unwrap', 0);
+
+					if (!cell.computed) {
+						var cellValue = cell.read();
+
+						if (cellValue === Object(cellValue) ? cell.changed() : cell.initialValue !== cellValue) {
+							data[names[i]] = cellValue;
+						}
+					}
+				}
+			}
+		},
+
+		/**
+		 * @typesign (data: Object);
+		 */
+		expandFromDumpObject: function(data) {
+			for (var name in data) {
+				this[name](data[name]);
+			}
+		}
+	});
+
+	module.exports = BaseModel;
+
+
+/***/ },
+/* 13 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(global) {var cellx = __webpack_require__(1);
 
 	var Cell = cellx.Cell;
 
@@ -3371,15 +3483,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 12 */
+/* 14 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var env = __webpack_require__(6);
-	var object = __webpack_require__(7);
-	var Class = __webpack_require__(9);
-	var bindCells = __webpack_require__(3);
-	var Disposable = __webpack_require__(4);
-	var domBinding = __webpack_require__(11);
+	/* WEBPACK VAR INJECTION */(function(global) {var env = __webpack_require__(2);
+	var object = __webpack_require__(4);
+	var Class = __webpack_require__(6);
+	var bindCells = __webpack_require__(8);
+	var Disposable = __webpack_require__(9);
+	var domBinding = __webpack_require__(13);
 
 	var isServer = env.isServer;
 	var assign = object.assign;
@@ -3798,6 +3910,27 @@ return /******/ (function(modules) { // webpackBootstrap
 				params = {};
 			}
 
+			var app;
+			var parent = params.parent;
+
+			if (params.app) {
+				app = this.app = params.app;
+			} else {
+				if (parent && parent.app) {
+					app = this.app = parent.app;
+				}
+			}
+
+			if (params.model) {
+				this.model = params.model;
+			} else {
+				if (parent && parent.model) {
+					this.model = parent.model;
+				} else if (app) {
+					this.model = app.model;
+				}
+			}
+
 			if (this._initAssets) {
 				this._initAssets(params);
 				bindCells(this);
@@ -3839,33 +3972,11 @@ return /******/ (function(modules) { // webpackBootstrap
 				this.owner = params.owner;
 			}
 
-			if (params.parent) {
-				this.parent = params.parent;
+			if (parent) {
+				this.parent = parent;
 			}
-
-			var parent = this._parent;
 
 			this._id = this._nextID();
-
-			var app;
-
-			if (params.app) {
-				app = this.app = params.app;
-			} else {
-				if (parent && parent.app) {
-					app = this.app = parent.app;
-				}
-			}
-
-			if (params.model) {
-				this.model = params.model;
-			} else {
-				if (parent && parent.model) {
-					this.model = parent.model;
-				} else if (app) {
-					this.model = app.model;
-				}
-			}
 
 			this.children = [];
 
@@ -4364,12 +4475,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 13 */
+/* 15 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var cellx = __webpack_require__(2);
-	var uid = __webpack_require__(5);
-	var BaseView = __webpack_require__(12);
+	var cellx = __webpack_require__(1);
+	var uid = __webpack_require__(3);
+	var BaseView = __webpack_require__(14);
 
 	var ActiveMap = cellx.ActiveMap;
 	var ActiveList = cellx.ActiveList;
@@ -4448,11 +4559,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 14 */
+/* 16 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var BaseView = __webpack_require__(12);
-	var templateRuntime = __webpack_require__(13);
+	var BaseView = __webpack_require__(14);
+	var templateRuntime = __webpack_require__(15);
 
 	var getViewClass = BaseView.getViewClass;
 	var include = templateRuntime.defaults.include;
@@ -4569,11 +4680,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 15 */
+/* 17 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var BaseView = __webpack_require__(12);
-	var templateRuntime = __webpack_require__(13);
+	var BaseView = __webpack_require__(14);
+	var templateRuntime = __webpack_require__(15);
 
 	var getViewClass = BaseView.getViewClass;
 	var include = templateRuntime.defaults.include;
@@ -4671,12 +4782,12 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 16 */
+/* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var cellx = __webpack_require__(2);
-	var dump = __webpack_require__(10);
-	var Disposable = __webpack_require__(4);
+	var cellx = __webpack_require__(1);
+	var dump = __webpack_require__(7);
+	var Disposable = __webpack_require__(9);
 
 	var serialize = dump.serialize;
 	var deserialize = dump.deserialize;
@@ -4768,14 +4879,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 17 */
+/* 19 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var cellx = __webpack_require__(2);
-	var env = __webpack_require__(6);
-	var regex = __webpack_require__(8);
-	var dump = __webpack_require__(10);
-	var Disposable = __webpack_require__(4);
+	var cellx = __webpack_require__(1);
+	var env = __webpack_require__(2);
+	var regex = __webpack_require__(5);
+	var dump = __webpack_require__(7);
+	var Disposable = __webpack_require__(9);
 
 	var nextTick = cellx.nextTick;
 	var isServer = env.isServer;
@@ -5445,15 +5556,15 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 18 */
+/* 20 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var env = __webpack_require__(6);
-	var object = __webpack_require__(7);
-	var Class = __webpack_require__(9);
-	var dump = __webpack_require__(10);
-	var ViewState = __webpack_require__(16);
-	var Router = __webpack_require__(17);
+	var env = __webpack_require__(2);
+	var object = __webpack_require__(4);
+	var Class = __webpack_require__(6);
+	var dump = __webpack_require__(7);
+	var ViewState = __webpack_require__(18);
+	var Router = __webpack_require__(19);
 
 	var isServer = env.isServer;
 	var isClient = env.isClient;

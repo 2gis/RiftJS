@@ -22,6 +22,7 @@ exports.Class = Class;
 exports.dump = require('./dump');
 exports.bindCells = require('./bindCells');
 exports.Disposable = require('./Disposable');
+exports.proxy = require('./proxy');
 exports.BaseModel = require('./BaseModel');
 exports.domBinding = require('./domBinding');
 

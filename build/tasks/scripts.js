@@ -6,15 +6,20 @@ gulp.task('scripts-build', function() {
 	return gulp.src('src/index.js')
 		.pipe($.webpack({
 			watch: $.util.env.dev,
+
 			output: {
 				filename: 'Rift.js',
 				library: 'Rift',
 				libraryTarget: 'umd'
 			},
+
+			externals: ['superagent'],
+
 			node: {
 				process: false,
 				setImmediate: false
 			},
+
 			plugins: [
 				new WebpackNotifierPlugin()
 			]
