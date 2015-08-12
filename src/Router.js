@@ -1,16 +1,12 @@
 var cellx = require('cellx');
 var env = require('./env');
 var regex = require('./regex');
-var dump = require('./dump');
 var Disposable = require('./Disposable');
 
-var nextTick = cellx.nextTick;
+var Map = cellx.Map;
 var isServer = env.isServer;
 var isClient = env.isClient;
 var escapeRegExp = regex.escape;
-var serialize = dump.serialize;
-
-var KEY_ROUTING_STATE = '__rt_routingState__';
 
 /**
  * @typesign (str: string): number|string;
@@ -70,36 +66,57 @@ function slashifyPath(path) {
 /**
  * @typedef {{
  *     name: string,
- *     rePath: RegExp,
- *     properties: Array<{ type: int, name: string }>,
+ *     pathModel: Array<{ requiredProperties: Array<string>, value?: string, property?: string }>,
  *     requiredProperties: Array<string>,
- *     pathMap: Array<{
- *         requiredProperties: Array<string>,
- *         pathPart: string,
- *         property: undefined
- *     }|{
- *         requiredProperties: Array<string>,
- *         pathPart: undefined,
- *         property: string
- *     }>,
+ *     properties: Array<{ type: int, name: string }>,
+ *     rePath: RegExp,
  *     callback: (path: string)
- * }} Router~Route
+ * }} Rift.Router~Node
  */
 
 /**
- * @typesign (viewState: Rift.ViewState, route: Router~Route): string;
+ * @typesign (node: Rift.Router~Node, state: Object): string;
  */
-function buildPath(viewState, route) {
-	var pathMap = route.pathMap;
+function buildPath(node, state) {
 	var path = [];
 
-	for (var i = 0, l = pathMap.length; i < l; i++) {
-		var pathItem = pathMap[i];
-		var requiredProperties = pathItem.requiredProperties;
+	node.pathModel.forEach(function(pathPart) {
+		var requiredProperties = pathPart.requiredProperties;
+		var i = requiredProperties.length;
+
+		while (i--) {
+			var value = state[requiredProperties[i]]();
+
+			if (value == null || value === false || value === '') {
+				break;
+			}
+		}
+
+		if (i == -1) {
+			path.push(pathPart.value !== undefined ? pathPart.value : state[pathPart.property]());
+		}
+	});
+
+	return slashifyPath(path.join(''));
+}
+
+/**
+ * @typesign (
+ *     state: Object,
+ *     nodes: Array<Rift.Router~Node>,
+ *     preferredNode?: Rift.Router~Node
+ * ): { node: Rift.Router~Node, path: string }|null;
+ */
+function tryState(state, nodes, preferredNode) {
+	var resultNode = null;
+
+	for (var iterator = nodes.values(), step; !(step = iterator.next()).done;) {
+		var node = step.value;
+		var requiredProperties = node.requiredProperties;
 		var j = requiredProperties.length;
 
 		while (j--) {
-			var value = viewState[requiredProperties[j]]();
+			var value = state[requiredProperties[j]]();
 
 			if (value == null || value === false || value === '') {
 				break;
@@ -107,34 +124,53 @@ function buildPath(viewState, route) {
 		}
 
 		if (j == -1) {
-			path.push(pathItem.pathPart !== undefined ? pathItem.pathPart : viewState[pathItem.property]());
+			if (resultNode) {
+				if (resultNode.requiredProperties.length) {
+					if (requiredProperties.length && node === preferredNode) {
+						resultNode = node;
+						break;
+					}
+				} else {
+					if (requiredProperties.length) {
+						resultNode = node;
+
+						if (node === preferredNode) {
+							break;
+						}
+					} else {
+						if (node === preferredNode) {
+							resultNode = node;
+						}
+					}
+				}
+			} else {
+				resultNode = node;
+			}
 		}
 	}
 
-	return slashifyPath(path.join(''));
+	return resultNode && {
+		node: resultNode,
+		path: buildPath(resultNode, state)
+	};
 }
 
 /**
- * @typesign (router: Rift.Router, path: string): { route: Router~Route, state: Object }|null;
+ * @typesign (path: string, nodes: Array<Rift.Router~Node>): { node: Rift.Router~Node, state: Object }|null;
  */
-function tryPath(router, path) {
-	var routes = router.routes;
-
-	for (var i = 0, l = routes.length; i < l; i++) {
-		var route = routes[i];
-		var match = path.match(route.rePath);
+function tryPath(path, nodes) {
+	for (var iterator = nodes.values(), step; !(step = iterator.next()).done;) {
+		var node = step.value;
+		var match = path.match(node.rePath);
 
 		if (match) {
 			return {
-				route: route,
+				node: node,
 
-				state: route.properties.reduce(function(state, prop, index) {
-					if (prop.type == 1) {
-						state[prop.name] = !!match[index + 1];
-					} else {
-						state[prop.name] = match[index + 1] &&
-							tryStringAsNumber(decodeURIComponent(match[index + 1]));
-					}
+				state: node.properties.reduce(function(state, prop, index) {
+					state[prop.name] = prop.type == 1 ?
+						!!match[index + 1] :
+						match[index + 1] && tryStringAsNumber(decodeURIComponent(match[index + 1]));
 
 					return state;
 				}, {})
@@ -146,212 +182,78 @@ function tryPath(router, path) {
 }
 
 /**
- * @typesign (router: Rift.Router, preferredRoute?: Router~Route): { route: Router~Route, path: string }|null;
- */
-function tryViewState(router, preferredRoute) {
-	var viewState = router.app.viewState;
-	var routes = router.routes;
-	var resultRoute = null;
-
-	for (var i = 0, l = routes.length; i < l; i++) {
-		var route = routes[i];
-		var requiredProperties = route.requiredProperties;
-		var j = requiredProperties.length;
-
-		while (j--) {
-			var value = viewState[requiredProperties[j]]();
-
-			if (value == null || value === false || value === '') {
-				break;
-			}
-		}
-
-		if (j == -1) {
-			if (resultRoute) {
-				if (resultRoute.requiredProperties.length) {
-					if (requiredProperties.length && route === preferredRoute) {
-						resultRoute = route;
-						break;
-					}
-				} else {
-					if (requiredProperties.length) {
-						resultRoute = route;
-
-						if (route === preferredRoute) {
-							break;
-						}
-					} else if (route === preferredRoute) {
-						resultRoute = route;
-					}
-				}
-			} else {
-				resultRoute = route;
-			}
-		}
-	}
-
-	return resultRoute && {
-		route: resultRoute,
-		path: buildPath(viewState, resultRoute)
-	};
-}
-
-/**
- * @typesign (router: Rift.Router, route: Router~Route, path: string, viewStateData: Object, mode: uint = 0);
- */
-function setState(router, route, path, viewStateData, mode) {
-	router.currentRoute = route;
-	router.currentRouteName(route.name);
-
-	router.currentPath = path;
-
-	if (isClient) {
-		router._isViewStateChangeHandlingRequired = false;
-
-		var historyState;
-
-		if (mode) {
-			historyState = {};
-
-			historyState[KEY_ROUTING_STATE] = {
-				routeIndex: router.routes.indexOf(route),
-				path: path,
-				viewStateData: viewStateData
-			};
-
-			history[mode == 1 ? 'replaceState' : 'pushState'](historyState, null, path);
-		} else {
-			historyState = history.state || {};
-
-			historyState[KEY_ROUTING_STATE] = {
-				routeIndex: router.routes.indexOf(route),
-				path: path,
-				viewStateData: viewStateData
-			};
-
-			history.replaceState(historyState, null, path);
-		}
-	}
-
-	if (route.callback) {
-		route.callback.call(router.app, path);
-	}
-}
-
-/**
- * @typesign (router: Rift.Router, preferredRoute?: Router~Route): boolean;
- */
-function updateFromViewState(router, preferredRoute) {
-	var match = tryViewState(router, preferredRoute);
-
-	if (match) {
-		var path = match.path;
-
-		if (path !== router.currentPath) {
-			setState(router, match.route, path, router.app.viewState.serializeData(), 2);
-			return true;
-		}
-	}
-
-	return false;
-}
-
-/**
  * @class Rift.Router
- * @extends {Object}
+ * @extends {Rift.Disposable}
  *
  * @typesign new (
  *     app: Rift.BaseApp,
- *     routes?: Array<{ name?: string, path: string, callback?: (path: string) }|string>
+ *     nodes?: Array<{ name?: string, path: string, callback?: (path: string) }>
  * ): Rift.Router;
  */
 var Router = Disposable.extend({
-	static: {
-		KEY_ROUTING_STATE: KEY_ROUTING_STATE
-	},
-
 	/**
-	 * Ссылка на приложение.
-	 * @type {Rift.App}
+	 * @type {Rift.BaseApp}
 	 */
 	app: null,
 
 	/**
-	 * Ссылка на корневой элемент вьюшки.
 	 * @type {?HTMLElement}
 	 */
 	viewBlock: null,
 
 	/**
-	 * @type {Array<Router~Route>}
+	 * @type {cellx.Map<Rift.Router~Node>}
 	 */
-	routes: null,
+	nodes: null,
 
-	/**
-	 * @type {Object<Router~Route>}
-	 */
-	routeDict: null,
-
-	/**
-	 * @type {boolean}
-	 */
 	started: false,
 
 	/**
-	 * @type {?Router~Route}
+	 * @type {?Rift.Router~Node}
 	 */
-	currentRoute: null,
+	currentNode: null,
 	/**
 	 * @type {string}
 	 */
-	currentRouteName: cellx(''),
+	currentNodeName: cellx(''),
 
 	/**
 	 * @type {string|undefined}
 	 */
 	currentPath: undefined,
 
-	_isViewStateChangeHandlingRequired: false,
-
-	constructor: function(app, routes) {
+	constructor: function(app, nodes) {
 		Disposable.call(this);
 
 		this.app = app;
-		this.routes = [];
-		this.routeDict = Object.create(null);
+		this.nodes = new Map();
 
-		this.currentRouteName = this.currentRouteName.bind(this);
-		this.currentRouteName.constructor = cellx;
-
-		if (routes) {
-			this.addRoutes(routes);
+		if (nodes) {
+			nodes.forEach(function(node) {
+				this.addNode(node);
+			}, this);
 		}
+
+		this.currentNodeName = this.currentNodeName.bind(this);
+		this.currentNodeName.constructor = cellx;
 	},
 
 	/**
-	 * @typesign (routes: Array<{ name?: string, path: string, callback?: (path: string) }|string): Rift.Router;
+	 * @typesign (node: { name?: string, path: string, callback?: (path: string) }): Rift.Router;
 	 */
-	addRoutes: function(routes) {
-		routes.forEach(function(route) {
-			if (typeof route == 'string') {
-				route = { path: route };
-			}
-
-			this.addRoute(route.path, route.name, route.callback);
-		}, this);
-
-		return this;
-	},
-
-	/**
-	 * @typesign (path: string, name?: string, cb?: (path: string)): Rift.Router;
-	 */
-	addRoute: function(path, name, cb) {
+	addNode: function(node) {
 		if (this.started) {
-			throw new TypeError('Can\'t add route to started router');
+			throw new TypeError('Can\'t add node to started router');
 		}
 
-		path = path.split(/\((?:\?([^\s)]+)\s+)?([^)]+)\)/g);
+		var name = node.name;
+
+		if (this.nodes.has(name)) {
+			throw new TypeError('Node "' + name + '" is already exist');
+		}
+
+		var path = node.path;
+		var cb = node.callback;
 
 		var reInsert = /\{([^}]+)\}/g;
 
@@ -360,24 +262,26 @@ var Router = Disposable.extend({
 
 		var prop;
 
-		var rePath = [];
-		var props = [];
+		var pathModel = [];
 		var requiredProperties = [];
-		var pathMap = [];
+		var props = [];
+		var rePath = [];
+
+		path = path.split(/\((?:\?([^\s)]+)\s+)?([^)]+)\)/g);
 
 		for (var i = 0, l = path.length; i < l;) {
 			if (i % 3) {
-				rePath.push('(');
+				rePath.push('(' + (path[i] ? '' : '?:'));
 
-				var pathItemRequiredProperties = [];
+				var pathPartRequiredProperties = [];
 
 				if (path[i]) {
-					pathItemRequiredProperties.push(path[i]);
-
 					props.push({
 						type: 1,
 						name: path[i]
 					});
+
+					pathPartRequiredProperties.push(path[i]);
 				}
 
 				pathPart = path[i + 1].split(reInsert);
@@ -386,31 +290,31 @@ var Router = Disposable.extend({
 					if (j % 2) {
 						prop = pathPart[j];
 
-						pathItemRequiredProperties.push(prop);
-
-						rePath.push('([^\\/]+)');
+						pathModel.push({
+							requiredProperties: pathPartRequiredProperties,
+							value: undefined,
+							property: prop
+						});
 
 						props.push({
 							type: 2,
 							name: prop
 						});
 
-						pathMap.push({
-							requiredProperties: pathItemRequiredProperties,
-							pathPart: undefined,
-							property: prop
-						});
+						rePath.push('([^\\/]+)');
+
+						pathPartRequiredProperties.push(prop);
 					} else {
 						if (pathPart[j]) {
 							encodedPathPart = encodePath(pathPart[j]);
 
-							rePath.push(escapeRegExp(encodedPathPart).split('\\*').join('.*?'));
-
-							pathMap.push({
-								requiredProperties: pathItemRequiredProperties,
-								pathPart: encodedPathPart.split('*').join(''),
+							pathModel.push({
+								requiredProperties: pathPartRequiredProperties,
+								value: encodedPathPart.split('*').join(''),
 								property: undefined
 							});
+
+							rePath.push(escapeRegExp(encodedPathPart).split('\\*').join('.*?'));
 						}
 					}
 				}
@@ -426,31 +330,31 @@ var Router = Disposable.extend({
 						if (k % 2) {
 							prop = pathPart[k];
 
-							rePath.push('([^\\/]+)');
+							pathModel.push({
+								requiredProperties: [prop],
+								value: undefined,
+								property: prop
+							});
+
+							requiredProperties.push(prop);
 
 							props.push({
 								type: 0,
 								name: prop
 							});
 
-							requiredProperties.push(prop);
-
-							pathMap.push({
-								requiredProperties: [prop],
-								pathPart: undefined,
-								property: prop
-							});
+							rePath.push('([^\\/]+)');
 						} else {
 							if (pathPart[k]) {
 								encodedPathPart = encodePath(pathPart[k]);
 
-								rePath.push(escapeRegExp(encodedPathPart).split('\\*').join('.*?'));
-
-								pathMap.push({
+								pathModel.push({
 									requiredProperties: [],
-									pathPart: encodedPathPart.split('*').join(''),
+									value: encodedPathPart.split('*').join(''),
 									property: undefined
 								});
+
+								rePath.push(escapeRegExp(encodedPathPart).split('\\*').join('.*?'));
 							}
 						}
 					}
@@ -460,24 +364,23 @@ var Router = Disposable.extend({
 			}
 		}
 
-		var route = {
+		this.nodes.set(name, {
 			name: name,
-			rePath: RegExp('^\\/?' + rePath.join('') + '\\/?$'),
-			properties: props,
+
+			// Для составления пути.
+			pathModel: pathModel,
+
+			// Для проверки соответствия стейта данному узлу.
 			requiredProperties: requiredProperties,
-			pathMap: pathMap,
+
+			// Для вытаскивания данных из совпадения по регулярке,
+			// индексы будут на 1 меньше соответствующих индексов в совпадении.
+			properties: props,
+
+			rePath: RegExp('^\\/?' + rePath.join('') + '\\/?$'),
+
 			callback: cb
-		};
-
-		this.routes.push(route);
-
-		if (name) {
-			if (name in this.routeDict) {
-				throw new TypeError('Route "' + name + '" is already exist');
-			}
-
-			this.routeDict[name] = route;
-		}
+		});
 
 		return this;
 	},
@@ -499,10 +402,19 @@ var Router = Disposable.extend({
 		this._bindEvents();
 
 		if (isServer) {
-			var match = tryViewState(this, this.currentPath == '/' ? null : this.currentRoute);
+			var match = tryState(this.app.model, this.nodes, this.currentPath == '/' ? null : this.currentNode);
 
 			if (match) {
-				setState(this, match.route, match.path, this.app.viewState.serializeData());
+				var node = match.node;
+
+				this.currentNode = node;
+				this.currentNodeName(node.name);
+
+				this.currentPath = match.path;
+
+				if (node.callback) {
+					node.callback.call(this.app, match.path);
+				}
 			}
 		}
 
@@ -513,52 +425,14 @@ var Router = Disposable.extend({
 		if (isClient) {
 			this.listenTo(window, 'popstate', this._onWindowPopState);
 			this.listenTo(this.viewBlock, 'click', this._onViewBlockClick);
-
-			var viewState = this.app.viewState;
-			var onViewStatePropertyChange = this._onViewStatePropertyChange;
-			var propertyList = viewState.propertyList;
-
-			for (var i = propertyList.length; i;) {
-				this.listenTo(viewState[propertyList[--i]]('unwrap', 0), 'change', onViewStatePropertyChange);
-			}
 		}
 	},
 
 	_onWindowPopState: function() {
-		var historyState = history.state && history.state[KEY_ROUTING_STATE];
-
-		if (historyState) {
-			var route = this.routes[historyState.routeIndex];
-			var path = historyState.path;
-
-			this.currentRoute = route;
-			this.currentRouteName(route.name);
-
-			this.currentPath = path;
-
-			this.app.viewState.updateFromSerializedData(historyState.viewStateData);
-
-			if (route.callback) {
-				route.callback.call(this.app, path);
-			}
-		} else {
-			this.app.viewState.update({});
-
-			var match = tryViewState(this);
-
-			if (match) {
-				setState(this, match.route, match.path, serialize({}), 0);
-			} else {
-				this.currentRoute = null;
-				this.currentRouteName('');
-
-				this.currentPath = undefined;
-			}
-		}
+		this.route(location.pathname, false);
 	},
 
 	/**
-	 * Обработчик клика по корневому элементу вьюшки.
 	 * @typesign (evt: MouseEvent);
 	 */
 	_onViewBlockClick: function(evt) {
@@ -579,51 +453,9 @@ var Router = Disposable.extend({
 
 		var href = el.getAttribute('href');
 
-		if (href.indexOf('#') != -1) {
-			return;
-		}
-
-		if (!/^(?:\w+:)?\/\//.test(href) && this.route(href)) {
+		if (!/^(?:\w+:)?\/\//.test(href) && href.indexOf('#') == -1 && this.route(href)) {
 			evt.preventDefault();
 		}
-	},
-
-	/**
-	 * @typesign ();
-	 */
-	_onViewStatePropertyChange: function() {
-		if (this._isViewStateChangeHandlingRequired) {
-			return;
-		}
-
-		this._isViewStateChangeHandlingRequired = true;
-
-		nextTick(this.registerCallback(this._onViewStateChange));
-	},
-
-	/**
-	 * Обработчик изменения состояния представления.
-	 * @typesign ();
-	 */
-	_onViewStateChange: function() {
-		if (!this._isViewStateChangeHandlingRequired) {
-			return;
-		}
-
-		this._isViewStateChangeHandlingRequired = false;
-
-		var historyState = history.state || {};
-
-		if (!historyState[KEY_ROUTING_STATE]) {
-			historyState[KEY_ROUTING_STATE] = {
-				routeIndex: this.routes.indexOf(this.currentRoute),
-				path: this.currentPath
-			};
-		}
-
-		historyState[KEY_ROUTING_STATE].viewStateData = this.app.viewState.serializeData();
-
-		history.replaceState(historyState, null, this.currentPath);
 	},
 
 	/**
@@ -633,38 +465,70 @@ var Router = Disposable.extend({
 	 * @typesign (path: string, newHistoryStep: boolean = true): boolean;
 	 */
 	route: function(path, newHistoryStep) {
-		path = encodePath(path.replace(/[\/\\]+/g, '/'));
+		var model = this.app.model;
+		var match;
 
-		if (path[0] != '/') {
-			var locationPath = location.pathname;
-			path = locationPath + (locationPath[locationPath.length - 1] == '/' ? '' : '/') + path;
+		if (this.nodes.has(path)) {
+			match = tryState(model, this.nodes, this.nodes.get(path));
+
+			if (!match) {
+				return false;
+			}
+
+			path = match.path;
+
+			if (path === this.currentPath) {
+				return true;
+			}
+		} else {
+			path = encodePath(path.replace(/[\/\\]+/g, '/'));
+
+			if (path[0] != '/') {
+				var locationPath = location.pathname;
+				path = locationPath + (locationPath[locationPath.length - 1] == '/' ? '' : '/') + path;
+			}
+
+			if (path[path.length - 1] != '/') {
+				path += '/';
+			}
+
+			if (path === this.currentPath) {
+				return true;
+			}
+
+			match = tryPath(path, this.nodes);
+
+			if (!match) {
+				return false;
+			}
+
+			var state = match.state;
+
+			for (var name in state) {
+				model[name](state[name]);
+			}
 		}
 
-		if (path[path.length - 1] != '/') {
-			path += '/';
+		var node = match.node;
+
+		this.currentNode = node;
+		this.currentNodeName(node.name);
+
+		this.currentPath = path;
+
+		if (isClient) {
+			if (newHistoryStep !== false) {
+				history.pushState({}, null, path);
+			} else {
+				history.replaceState(history.state, null, path);
+			}
 		}
 
-		if (path === this.currentPath) {
-			return true;
+		if (node.callback) {
+			node.callback.call(this.app, path);
 		}
-
-		var match = tryPath(this, path);
-
-		if (!match) {
-			return false;
-		}
-
-		this.app.viewState.update(match.state);
-		setState(this, match.route, path, this.app.viewState.serializeData(), newHistoryStep !== false ? 2 : 1);
 
 		return true;
-	},
-
-	/**
-	 * @typesign (preferredRoute: string): boolean;
-	 */
-	update: function(preferredRoute) {
-		return updateFromViewState(this, preferredRoute ? this.routeDict[preferredRoute] : this.currentRoute);
 	}
 });
 

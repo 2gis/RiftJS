@@ -1,34 +1,8 @@
 var env = require('./env');
-var object = require('./object');
 var Class = require('./Class');
-var dump = require('./dump');
-var ViewState = require('./ViewState');
 var Router = require('./Router');
 
-var isServer = env.isServer;
 var isClient = env.isClient;
-var assign = object.assign;
-var deserialize = dump.deserialize;
-
-var hasOwn = Object.prototype.hasOwnProperty;
-
-function collectViewStateProperties(viewState, routes) {
-	var props = assign({}, viewState);
-
-	for (var i = routes.length; i;) {
-		var routeProps = routes[--i].properties;
-
-		for (var j = routeProps.length; j;) {
-			var name = routeProps[--j].name;
-
-			if (!hasOwn.call(props, name)) {
-				props[name] = undefined;
-			}
-		}
-	}
-
-	return props;
-}
 
 /**
  * @class Rift.BaseApp
@@ -47,11 +21,6 @@ var BaseApp = Class.extend({
 	view: null,
 
 	/**
-	 * @type {Rift.ViewState}
-	 */
-	viewState: null,
-
-	/**
 	 * @type {Rift.Router}
 	 */
 	router: null,
@@ -60,51 +29,29 @@ var BaseApp = Class.extend({
 	 * @typesign (params: {
 	 *     modelClass: Function,
 	 *     viewClass: Function,
-	 *     viewStateFields: Object,
-	 *     routes: Array<{ name?: string, path: string, callback?: (path: string) }|string>,
+	 *     nodes: Array<{ name?: string, path: string, callback?: (path: string) }>,
 	 *     path: string
 	 * });
 	 *
 	 * @typesign (params: {
-	 *     modelDataDump: Object,
+	 *     modelClass: Function,
 	 *     viewClass: Function,
 	 *     viewBlock: HTMLElement,
-	 *     viewStateFields: Object,
-	 *     viewStateDataDump: Object,
-	 *     routes: Array<{ name?: string, path: string, callback?: (path: string) }|string>,
+	 *     nodes: Array<{ name?: string, path: string, callback?: (path: string) }>,
 	 *     path: string
 	 * });
 	 */
 	_init: function(params) {
-		this.model = isServer ? new params.modelClass() : deserialize(params.modelDataDump);
+		this.model = new params.modelClass();
 
-		var router = this.router = new Router(this, params.routes);
-		var viewState = this.viewState =
-			new ViewState(collectViewStateProperties(params.viewStateFields, router.routes));
+		var router = this.router = new Router(this, params.nodes);
 
 		router.route(params.path, false);
 
-		var view;
-
-		if (isClient) {
-			var viewStateData = deserialize(params.viewStateDataDump);
-
-			for (var name in viewStateData) {
-				viewState[name](viewStateData[name]);
-			}
-
-			view = new params.viewClass({
-				app: this,
-				block: params.viewBlock
-			});
-		} else {
-			view = new params.viewClass({
-				app: this,
-				block: null
-			});
-		}
-
-		this.view = view;
+		var view = this.view = new params.viewClass({
+			app: this,
+			block: isClient ? params.viewBlock : null
+		});
 
 		router.start();
 
@@ -116,7 +63,6 @@ var BaseApp = Class.extend({
 	dispose: function() {
 		this.router.dispose();
 		this.view.dispose();
-		this.viewState.dispose();
 		this.model.dispose();
 	}
 });

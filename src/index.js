@@ -14,12 +14,9 @@ exports.uid = require('./uid');
 exports.object = require('./object');
 exports.regex = require('./regex');
 
-var Class = require('./Class');
+var Class = exports.Class = require('./Class');
+cellx.EventEmitter.extend = Class.extend;
 
-exports.registerClass = Class.register;
-exports.Class = Class;
-
-exports.dump = require('./dump');
 exports.bindCells = require('./bindCells');
 exports.Disposable = require('./Disposable');
 exports.proxy = require('./proxy');
@@ -37,6 +34,5 @@ exports.templateRuntime = require('./templateRuntime');
 require('./ViewList');
 require('./ViewSwitch');
 
-exports.ViewState = require('./ViewState');
 exports.Router = require('./Router');
 exports.BaseApp = require('./BaseApp');

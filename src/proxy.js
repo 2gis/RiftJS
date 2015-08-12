@@ -40,7 +40,7 @@ exports.clearCache = clearCache;
 
 		if (opts.noCache !== true && cache.hasOwnProperty(key)) {
 			var res = JSON.parse(cache[key]);
-			return res.ok ? Promise.resolve(res) : Promise.reject(res);
+			return res.error ? Promise.reject(res) : Promise.resolve(res);
 		}
 
 		return new Promise(function(resolve, reject) {
@@ -69,29 +69,19 @@ exports.clearCache = clearCache;
 			}
 
 			return req.end(function(err, res) {
-				res = Object.keys(res).reduce(function(response, name) {
-					var value = res[name];
-
-					if (value !== Object(value) || value.constructor == Object || value.constructor == Array) {
-						response[name] = value;
-					}
-
-					return response;
-				}, {});
-
-				if (err) {
-					res.error = {
-						name: err.name,
-						message: err.message
-					};
-				}
+				res = {
+					status: res.status,
+					headers: res.headers,
+					error: err ? { name: err.name, message: err.message } : null,
+					body: res.body
+				};
 
 				cache[key] = JSON.stringify(res);
 
-				if (res.ok) {
-					resolve(res);
-				} else {
+				if (res.error) {
 					reject(res);
+				} else {
+					resolve(res);
 				}
 			});
 		});

@@ -1,50 +1,8 @@
-var cellx = require('cellx');
 var object = require('./object');
 
 var mixin = object.mixin;
 
 var hasOwn = Object.prototype.hasOwnProperty;
-
-/**
- * @type {Object<Function>}
- */
-var classes = Object.create(null);
-
-exports.classes = classes;
-
-/**
- * @typesign (name: string): Function;
- */
-function getClass(name) {
-	if (!(name in classes)) {
-		throw new TypeError('Class "' + name + '" is not defined');
-	}
-
-	return classes[name];
-}
-
-exports.get = getClass;
-
-/**
- * @typesign (name: string, cl: Function): Function;
- */
-function registerClass(name, cl) {
-	if (name in classes) {
-		throw new TypeError('Class "' + name + '" is already registered');
-	}
-
-	Object.defineProperty(cl, '$class', {
-		value: name
-	});
-
-	classes[name] = cl;
-
-	return cl;
-}
-
-exports.register = registerClass;
-
-var Class = exports;
 
 /**
  * @typesign (declaration: { static?: Object, constructor?: Function }): Function;
@@ -56,7 +14,7 @@ function extend(name, declaration) {
 		name = undefined;
 	}
 
-	var parent = this == Class ? Object : this;
+	var parent = this == exports ? Object : this;
 	var constr;
 
 	if (hasOwn.call(declaration, 'constructor')) {
@@ -95,13 +53,7 @@ function extend(name, declaration) {
 
 	mixin(proto, declaration);
 
-	if (name) {
-		registerClass(name, constr);
-	}
-
 	return constr;
 }
 
 exports.extend = extend;
-
-cellx.EventEmitter.extend = extend;
