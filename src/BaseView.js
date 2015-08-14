@@ -422,14 +422,13 @@ var BaseView = Disposable.extend({
 			params = {};
 		}
 
-		var app;
 		var parent = params.parent;
 
 		if (params.app) {
-			app = this.app = params.app;
+			this.app = params.app;
 		} else {
 			if (parent && parent.app) {
-				app = this.app = parent.app;
+				this.app = parent.app;
 			}
 		}
 
@@ -438,8 +437,8 @@ var BaseView = Disposable.extend({
 		} else {
 			if (parent && parent.model) {
 				this.model = parent.model;
-			} else if (app) {
-				this.model = app.model;
+			} else if (this.app) {
+				this.model = this.app.model;
 			}
 		}
 

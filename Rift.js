@@ -87,8 +87,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	exports.templateRuntime = __webpack_require__(14);
 
-	__webpack_require__(15);
-	__webpack_require__(16);
+	exports.ViewList = __webpack_require__(15);
+	exports.ViewSwitch = __webpack_require__(16);
 
 	exports.Router = __webpack_require__(17);
 	exports.BaseApp = __webpack_require__(18);
@@ -3665,14 +3665,13 @@ return /******/ (function(modules) { // webpackBootstrap
 				params = {};
 			}
 
-			var app;
 			var parent = params.parent;
 
 			if (params.app) {
-				app = this.app = params.app;
+				this.app = params.app;
 			} else {
 				if (parent && parent.app) {
-					app = this.app = parent.app;
+					this.app = parent.app;
 				}
 			}
 
@@ -3681,8 +3680,8 @@ return /******/ (function(modules) { // webpackBootstrap
 			} else {
 				if (parent && parent.model) {
 					this.model = parent.model;
-				} else if (app) {
-					this.model = app.model;
+				} else if (this.app) {
+					this.model = this.app.model;
 				}
 			}
 
@@ -4328,7 +4327,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		/**
 		 * @override Rift.BaseView#model
-		 * @type {Rift.cellx<Array|Rift.ActiveList>}
+		 * @type {Rift.cellx<Array|Rift.ActiveList>|Rift.ActiveList}
 		 */
 		model: null,
 
@@ -4336,9 +4335,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		getItemParams: null,
 
-		constructor: function(params) {
-			BaseView.call(this, params);
-
+		_initAssets: function(params) {
 			this.itemViewClass = getViewClass(params.itemViewClass);
 
 			if (params.getItemParams) {
@@ -4347,10 +4344,14 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		template: function() {
-			var model = this.model();
+			var model = this.model;
 
-			if (!model) {
-				return '';
+			if (typeof model == 'function') {
+				model = model();
+
+				if (!model) {
+					return '';
+				}
 			}
 
 			var itemViewClass = this.itemViewClass;
@@ -4368,11 +4369,24 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		_initClient: function() {
-			this.listenTo(this, 'change', { model: this._onModelChange });
+			if (typeof this.model == 'function') {
+				this.listenTo(this, 'change', { model: this._onModelChange });
+			} else {
+				this.listenTo(this.model, 'change', this._onModelChange);
+			}
 		},
 
 		_onModelChange: function() {
-			var model = this.model() || [];
+			var model = this.model;
+
+			if (typeof model == 'function') {
+				model = model();
+
+				if (!model) {
+					model = [];
+				}
+			}
+
 			var itemViewClass = this.itemViewClass;
 			var getItemParams = this.getItemParams;
 			var items = this.children.item || (this.children.item = []);
@@ -4445,20 +4459,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	var include = templateRuntime.defaults.include;
 
 	BaseView.extend('ViewSwitch', {
-		_states: null,
-		_stateSource: null,
+		states: null,
+		stateSource: null,
 
 		initialState: undefined,
 
 		_currentState: undefined,
 
-		constructor: function(params) {
-			BaseView.call(this, params);
-
-			this._states = params.states;
+		_initAssets: function(params) {
+			this.states = params.states;
 
 			if (params.stateSource) {
-				this._stateSource = params.stateSource;
+				this.stateSource = params.stateSource;
 			}
 
 			var initialState;
@@ -4467,13 +4479,13 @@ return /******/ (function(modules) { // webpackBootstrap
 				initialState = this.initialState = params.initialState;
 			}
 
-			var currentState = initialState || (this._stateSource ? this._stateSource() : undefined);
+			var currentState = initialState || (this.stateSource ? this.stateSource() : undefined);
 
-			if ((!currentState || !this._states[currentState]) && this._states.default) {
+			if ((!currentState || !this.states[currentState]) && this.states.default) {
 				currentState = 'default';
 			}
 
-			if (currentState && this._states[currentState]) {
+			if (currentState && this.states[currentState]) {
 				this._currentState = currentState;
 			}
 		},
@@ -4485,7 +4497,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			return this._currentState;
 		},
 		set currentState(newState) {
-			if ((!newState || !this._states[newState]) && this._states.default) {
+			if ((!newState || !this.states[newState]) && this.states.default) {
 				newState = 'default';
 			}
 
@@ -4497,8 +4509,8 @@ return /******/ (function(modules) { // webpackBootstrap
 				this.children[0].dispose();
 			}
 
-			if (newState && this._states[newState]) {
-				var state = this._states[newState];
+			if (newState && this.states[newState]) {
+				var state = this.states[newState];
 				var params = Object.create(state.viewParams || null);
 
 				params.parent = this;
@@ -4516,8 +4528,8 @@ return /******/ (function(modules) { // webpackBootstrap
 		template: function() {
 			var currentState = this._currentState;
 
-			if (currentState && this._states[currentState]) {
-				var state = this._states[currentState];
+			if (currentState && this.states[currentState]) {
+				var state = this.states[currentState];
 				return include.call(this, state.viewClass, state.viewParams || null);
 			}
 
@@ -4525,13 +4537,13 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		_initClient: function() {
-			if (this._stateSource) {
-				this.listenTo(this, 'change', { _stateSource: this._onStateSourceChange });
+			if (this.stateSource) {
+				this.listenTo(this, 'change', { stateSource: this._onStateSourceChange });
 			}
 		},
 
 		_onStateSourceChange: function() {
-			this.currentState = this._stateSource();
+			this.currentState = this.stateSource();
 		}
 	});
 

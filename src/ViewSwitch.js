@@ -5,20 +5,18 @@ var getViewClass = BaseView.getViewClass;
 var include = templateRuntime.defaults.include;
 
 BaseView.extend('ViewSwitch', {
-	_states: null,
-	_stateSource: null,
+	states: null,
+	stateSource: null,
 
 	initialState: undefined,
 
 	_currentState: undefined,
 
-	constructor: function(params) {
-		BaseView.call(this, params);
-
-		this._states = params.states;
+	_initAssets: function(params) {
+		this.states = params.states;
 
 		if (params.stateSource) {
-			this._stateSource = params.stateSource;
+			this.stateSource = params.stateSource;
 		}
 
 		var initialState;
@@ -27,13 +25,13 @@ BaseView.extend('ViewSwitch', {
 			initialState = this.initialState = params.initialState;
 		}
 
-		var currentState = initialState || (this._stateSource ? this._stateSource() : undefined);
+		var currentState = initialState || (this.stateSource ? this.stateSource() : undefined);
 
-		if ((!currentState || !this._states[currentState]) && this._states.default) {
+		if ((!currentState || !this.states[currentState]) && this.states.default) {
 			currentState = 'default';
 		}
 
-		if (currentState && this._states[currentState]) {
+		if (currentState && this.states[currentState]) {
 			this._currentState = currentState;
 		}
 	},
@@ -45,7 +43,7 @@ BaseView.extend('ViewSwitch', {
 		return this._currentState;
 	},
 	set currentState(newState) {
-		if ((!newState || !this._states[newState]) && this._states.default) {
+		if ((!newState || !this.states[newState]) && this.states.default) {
 			newState = 'default';
 		}
 
@@ -57,8 +55,8 @@ BaseView.extend('ViewSwitch', {
 			this.children[0].dispose();
 		}
 
-		if (newState && this._states[newState]) {
-			var state = this._states[newState];
+		if (newState && this.states[newState]) {
+			var state = this.states[newState];
 			var params = Object.create(state.viewParams || null);
 
 			params.parent = this;
@@ -76,8 +74,8 @@ BaseView.extend('ViewSwitch', {
 	template: function() {
 		var currentState = this._currentState;
 
-		if (currentState && this._states[currentState]) {
-			var state = this._states[currentState];
+		if (currentState && this.states[currentState]) {
+			var state = this.states[currentState];
 			return include.call(this, state.viewClass, state.viewParams || null);
 		}
 
@@ -85,12 +83,12 @@ BaseView.extend('ViewSwitch', {
 	},
 
 	_initClient: function() {
-		if (this._stateSource) {
-			this.listenTo(this, 'change', { _stateSource: this._onStateSourceChange });
+		if (this.stateSource) {
+			this.listenTo(this, 'change', { stateSource: this._onStateSourceChange });
 		}
 	},
 
 	_onStateSourceChange: function() {
-		this.currentState = this._stateSource();
+		this.currentState = this.stateSource();
 	}
 });

@@ -9,7 +9,7 @@ BaseView.extend('ViewList', {
 
 	/**
 	 * @override Rift.BaseView#model
-	 * @type {Rift.cellx<Array|Rift.ActiveList>}
+	 * @type {Rift.cellx<Array|Rift.ActiveList>|Rift.ActiveList}
 	 */
 	model: null,
 
@@ -17,9 +17,7 @@ BaseView.extend('ViewList', {
 
 	getItemParams: null,
 
-	constructor: function(params) {
-		BaseView.call(this, params);
-
+	_initAssets: function(params) {
 		this.itemViewClass = getViewClass(params.itemViewClass);
 
 		if (params.getItemParams) {
@@ -28,10 +26,14 @@ BaseView.extend('ViewList', {
 	},
 
 	template: function() {
-		var model = this.model();
+		var model = this.model;
 
-		if (!model) {
-			return '';
+		if (typeof model == 'function') {
+			model = model();
+
+			if (!model) {
+				return '';
+			}
 		}
 
 		var itemViewClass = this.itemViewClass;
@@ -49,11 +51,24 @@ BaseView.extend('ViewList', {
 	},
 
 	_initClient: function() {
-		this.listenTo(this, 'change', { model: this._onModelChange });
+		if (typeof this.model == 'function') {
+			this.listenTo(this, 'change', { model: this._onModelChange });
+		} else {
+			this.listenTo(this.model, 'change', this._onModelChange);
+		}
 	},
 
 	_onModelChange: function() {
-		var model = this.model() || [];
+		var model = this.model;
+
+		if (typeof model == 'function') {
+			model = model();
+
+			if (!model) {
+				model = [];
+			}
+		}
+
 		var itemViewClass = this.itemViewClass;
 		var getItemParams = this.getItemParams;
 		var items = this.children.item || (this.children.item = []);

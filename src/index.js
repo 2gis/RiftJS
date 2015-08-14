@@ -31,8 +31,8 @@ exports.BaseView = BaseView;
 
 exports.templateRuntime = require('./templateRuntime');
 
-require('./ViewList');
-require('./ViewSwitch');
+exports.ViewList = require('./ViewList');
+exports.ViewSwitch = require('./ViewSwitch');
 
 exports.Router = require('./Router');
 exports.BaseApp = require('./BaseApp');

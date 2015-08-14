@@ -1,6 +1,6 @@
 {
   "name": "riftjs",
-  "version": "0.41.1",
+  "version": "0.41.2",
   "description": "The experimental javascript framework",
   "main": "Rift.js",
   "scripts": {
