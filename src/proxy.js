@@ -69,11 +69,15 @@ exports.clearCache = clearCache;
 			}
 
 			return req.end(function(err, res) {
+				if (!res) {
+					res = {};
+				}
+
 				res = {
+					headers: res.headers || null,
 					status: res.status,
-					headers: res.headers,
 					error: err ? { name: err.name, message: err.message } : null,
-					body: res.body
+					body: res.body || null
 				};
 
 				cache[key] = JSON.stringify(res);
