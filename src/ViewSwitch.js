@@ -12,7 +12,9 @@ BaseView.extend('ViewSwitch', {
 
 	_currentState: undefined,
 
-	_initAssets: function(params) {
+	constructor: function(params) {
+		BaseView.call(this, params);
+
 		this.states = params.states;
 
 		if (params.stateSource) {

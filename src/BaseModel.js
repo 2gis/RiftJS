@@ -1,5 +1,4 @@
 var cellx = require('cellx');
-var bindCells = require('./bindCells');
 var Disposable = require('./Disposable');
 
 /**
@@ -9,15 +8,6 @@ var Disposable = require('./Disposable');
  * @typesign new (data?: Object): Rift.BaseModel;
  */
 var BaseModel = Disposable.extend({
-	constructor: function(data) {
-		Disposable.call(this);
-
-		if (this._initAssets) {
-			this._initAssets(data || {});
-			bindCells(this);
-		}
-	},
-
 	/**
 	 * @typesign (data: Object);
 	 */

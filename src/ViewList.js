@@ -17,7 +17,9 @@ BaseView.extend('ViewList', {
 
 	getItemParams: null,
 
-	_initAssets: function(params) {
+	constructor: function(params) {
+		BaseView.call(this, params);
+
 		this.itemViewClass = getViewClass(params.itemViewClass);
 
 		if (params.getItemParams) {

@@ -7,7 +7,7 @@
 		exports["Rift"] = factory(require("superagent"));
 	else
 		root["Rift"] = factory(root["superagent"]);
-})(this, function(__WEBPACK_EXTERNAL_MODULE_10__) {
+})(this, function(__WEBPACK_EXTERNAL_MODULE_8__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -73,25 +73,28 @@ return /******/ (function(modules) { // webpackBootstrap
 	var Class = exports.Class = __webpack_require__(6);
 	cellx.EventEmitter.extend = Class.extend;
 
-	exports.bindCells = __webpack_require__(7);
-	exports.Disposable = __webpack_require__(8);
-	exports.proxy = __webpack_require__(9);
-	exports.BaseModel = __webpack_require__(11);
-	exports.domBinding = __webpack_require__(12);
+	exports.proxy = __webpack_require__(7);
 
-	var BaseView = __webpack_require__(13);
+	exports.Disposable = __webpack_require__(9);
+	exports.BaseModel = __webpack_require__(10);
+
+	exports.domBinding = __webpack_require__(11);
+
+	var BaseView = __webpack_require__(12);
 
 	exports.viewClasses = BaseView.viewClasses;
 	exports.registerViewClass = BaseView.registerViewClass;
 	exports.BaseView = BaseView;
 
-	exports.templateRuntime = __webpack_require__(14);
+	exports.templateRuntime = __webpack_require__(13);
 
-	exports.ViewList = __webpack_require__(15);
-	exports.ViewSwitch = __webpack_require__(16);
+	exports.ViewList = __webpack_require__(14);
+	exports.ViewSwitch = __webpack_require__(15);
 
-	exports.Router = __webpack_require__(17);
-	exports.BaseApp = __webpack_require__(18);
+	exports.Router = __webpack_require__(16);
+	exports.BaseApp = __webpack_require__(17);
+
+	exports.d = __webpack_require__(18);
 
 
 /***/ },
@@ -2583,30 +2586,109 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var cellx = __webpack_require__(1);
+	var request = __webpack_require__(8);
+
+	var cache = {};
 
 	/**
-	 * @typesign (obj: Object): Object;
+	 * @typesign (): string;
 	 */
-	function bindCells(obj) {
-		Object.keys(obj).forEach(function(name) {
-			var descr = Object.getOwnPropertyDescriptor(obj, name);
-			var value = descr.value;
-
-			if (typeof value == 'function' && value.constructor == cellx) {
-				obj[name] = value.bind(obj);
-				obj[name].constructor = cellx;
-			}
-		});
-
-		return obj;
+	function serializeCache() {
+		return JSON.stringify(cache);
 	}
 
-	module.exports = bindCells;
+	exports.serializeCache = serializeCache;
+
+	/**
+	 * @typesign (cacheDump: string);
+	 */
+	function deserializeCache(cacheDump) {
+		cache = JSON.parse(cacheDump);
+	}
+
+	exports.deserializeCache = deserializeCache;
+
+	/**
+	 * @typesign ();
+	 */
+	function clearCache() {
+		cache = {};
+	}
+
+	exports.clearCache = clearCache;
+
+	['get', 'head', 'del', 'patch', 'post', 'put'].forEach(function(method) {
+		exports[method] = function(url, opts) {
+			if (!opts) {
+				opts = {};
+			}
+
+			var args = [].slice.call(arguments);
+			var key = JSON.stringify(args);
+
+			if (opts.noCache !== true && cache.hasOwnProperty(key)) {
+				var res = JSON.parse(cache[key]);
+				return res.error ? Promise.reject(res) : Promise.resolve(res);
+			}
+
+			return new Promise(function(resolve, reject) {
+				var req = request[method](url);
+
+				var headers = opts.headers;
+
+				if (headers) {
+					Object.keys(headers).forEach(function(name) {
+						req.set(name, headers[name]);
+					});
+				}
+
+				if (opts.withCredentials) {
+					req.withCredentials();
+				}
+
+				if (method == 'get') {
+					if (opts.query) {
+						req.query(opts.query);
+					}
+				} else {
+					if (opts.data) {
+						req.send(typeof opts.data == 'object' ? JSON.stringify(opts.data) : opts.data);
+					}
+				}
+
+				return req.end(function(err, res) {
+					if (!res) {
+						res = {};
+					}
+
+					res = {
+						headers: res.headers || null,
+						status: res.status,
+						error: err ? { name: err.name, message: err.message } : null,
+						body: res.body || null
+					};
+
+					cache[key] = JSON.stringify(res);
+
+					if (res.error) {
+						reject(res);
+					} else {
+						resolve(res);
+					}
+				});
+			});
+		};
+	});
 
 
 /***/ },
 /* 8 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_8__;
+
+/***/ },
+/* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var cellx = __webpack_require__(1);
@@ -2810,117 +2892,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 9 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var request = __webpack_require__(10);
-
-	var cache = {};
-
-	/**
-	 * @typesign (): string;
-	 */
-	function serializeCache() {
-		return JSON.stringify(cache);
-	}
-
-	exports.serializeCache = serializeCache;
-
-	/**
-	 * @typesign (cacheDump: string);
-	 */
-	function deserializeCache(cacheDump) {
-		cache = JSON.parse(cacheDump);
-	}
-
-	exports.deserializeCache = deserializeCache;
-
-	/**
-	 * @typesign ();
-	 */
-	function clearCache() {
-		cache = {};
-	}
-
-	exports.clearCache = clearCache;
-
-	['get', 'head', 'del', 'patch', 'post', 'put'].forEach(function(method) {
-		exports[method] = function(url, opts) {
-			if (!opts) {
-				opts = {};
-			}
-
-			var args = [].slice.call(arguments);
-			var key = JSON.stringify(args);
-
-			if (opts.noCache !== true && cache.hasOwnProperty(key)) {
-				var res = JSON.parse(cache[key]);
-				return res.error ? Promise.reject(res) : Promise.resolve(res);
-			}
-
-			return new Promise(function(resolve, reject) {
-				var req = request[method](url);
-
-				var headers = opts.headers;
-
-				if (headers) {
-					Object.keys(headers).forEach(function(name) {
-						req.set(name, headers[name]);
-					});
-				}
-
-				if (opts.withCredentials) {
-					req.withCredentials();
-				}
-
-				if (method == 'get') {
-					if (opts.query) {
-						req.query(opts.query);
-					}
-				} else {
-					if (opts.data) {
-						req.send(typeof opts.data == 'object' ? JSON.stringify(opts.data) : opts.data);
-					}
-				}
-
-				return req.end(function(err, res) {
-					if (!res) {
-						res = {};
-					}
-
-					res = {
-						headers: res.headers || null,
-						status: res.status,
-						error: err ? { name: err.name, message: err.message } : null,
-						body: res.body || null
-					};
-
-					cache[key] = JSON.stringify(res);
-
-					if (res.error) {
-						reject(res);
-					} else {
-						resolve(res);
-					}
-				});
-			});
-		};
-	});
-
-
-/***/ },
 /* 10 */
-/***/ function(module, exports) {
-
-	module.exports = __WEBPACK_EXTERNAL_MODULE_10__;
-
-/***/ },
-/* 11 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var cellx = __webpack_require__(1);
-	var bindCells = __webpack_require__(7);
-	var Disposable = __webpack_require__(8);
+	var Disposable = __webpack_require__(9);
 
 	/**
 	 * @class Rift.BaseModel
@@ -2929,15 +2905,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * @typesign new (data?: Object): Rift.BaseModel;
 	 */
 	var BaseModel = Disposable.extend({
-		constructor: function(data) {
-			Disposable.call(this);
-
-			if (this._initAssets) {
-				this._initAssets(data || {});
-				bindCells(this);
-			}
-		},
-
 		/**
 		 * @typesign (data: Object);
 		 */
@@ -2975,7 +2942,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 12 */
+/* 11 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {var cellx = __webpack_require__(1);
@@ -3242,15 +3209,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 13 */
+/* 12 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {var env = __webpack_require__(2);
 	var object = __webpack_require__(4);
 	var Class = __webpack_require__(6);
-	var bindCells = __webpack_require__(7);
-	var Disposable = __webpack_require__(8);
-	var domBinding = __webpack_require__(12);
+	var Disposable = __webpack_require__(9);
+	var domBinding = __webpack_require__(11);
 
 	var isServer = env.isServer;
 	var assign = object.assign;
@@ -3504,7 +3470,11 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 
 			view.isDOMReady = true;
-			view.emit({ type: 'domready', bubbles: false });
+
+			view.emit({
+				type: 'domready',
+				bubbles: false
+			});
 		})(view);
 	}
 
@@ -3669,31 +3639,6 @@ return /******/ (function(modules) { // webpackBootstrap
 				params = {};
 			}
 
-			var parent = params.parent;
-
-			if (params.app) {
-				this.app = params.app;
-			} else {
-				if (parent && parent.app) {
-					this.app = parent.app;
-				}
-			}
-
-			if (params.model) {
-				this.model = params.model;
-			} else {
-				if (parent && parent.model) {
-					this.model = parent.model;
-				} else if (this.app) {
-					this.model = this.app.model;
-				}
-			}
-
-			if (this._initAssets) {
-				this._initAssets(params);
-				bindCells(this);
-			}
-
 			if (params.tagName) {
 				this.tagName = params.tagName;
 			}
@@ -3730,6 +3675,26 @@ return /******/ (function(modules) { // webpackBootstrap
 				this.owner = params.owner;
 			}
 
+			var parent = params.parent;
+
+			if (params.app) {
+				this.app = params.app;
+			} else {
+				if (parent && parent.app) {
+					this.app = parent.app;
+				}
+			}
+
+			if (params.model) {
+				this.model = params.model;
+			} else {
+				if (parent && parent.model) {
+					this.model = parent.model;
+				} else if (this.app) {
+					this.model = this.app.model;
+				}
+			}
+
 			if (parent) {
 				this.parent = parent;
 			}
@@ -3763,27 +3728,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 
 			this.elements = {};
-
-			if (block) {
-				if (block.hasAttribute('rt-id')) {
-					this.render(function() {
-						linkToDOM(this, block);
-					});
-				} else {
-					setAttributes(block, this.attrs);
-					block.className = (pushMods([this.blockName], this.mods).join(' ') + ' ' + block.className).trim();
-
-					this._currentlyRendering = true;
-
-					receiveData(this, function() {
-						this._renderInner(function(html) {
-							this._currentlyRendering = false;
-							block.innerHTML = html;
-							linkToDOM(this, block);
-						});
-					});
-				}
-			}
 		},
 
 		/**
@@ -3896,7 +3840,30 @@ return /******/ (function(modules) { // webpackBootstrap
 		 * @typesign (cb?: ()): Rift.BaseView;
 		 */
 		initClient: function(cb) {
-			function initClient() {
+			var block = this.block[0];
+
+			if (!this.isDOMReady) {
+				if (block.hasAttribute('rt-id')) {
+					this.render(function() {
+						linkToDOM(this, block);
+					});
+				} else {
+					setAttributes(block, this.attrs);
+					block.className = (pushMods([this.blockName], this.mods).join(' ') + ' ' + block.className).trim();
+
+					this._currentlyRendering = true;
+
+					receiveData(this, function() {
+						this._renderInner(function(html) {
+							this._currentlyRendering = false;
+							block.innerHTML = html;
+							linkToDOM(this, block);
+						});
+					});
+				}
+			}
+
+			function domReady() {
 				if (!this.isClientInited) {
 					this.isClientInited = true;
 
@@ -3911,7 +3878,7 @@ return /******/ (function(modules) { // webpackBootstrap
 							this._initClient();
 						}
 
-						bindDOM(this.block[0], this.owner || this);
+						bindDOM(block, this.owner || this);
 					} catch (err) {
 						this._logError(err);
 					}
@@ -3923,9 +3890,9 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 
 			if (this.isDOMReady) {
-				initClient.call(this);
+				domReady.call(this);
 			} else {
-				this.once('domready', initClient);
+				this.once('domready', domReady);
 			}
 
 			return this;
@@ -4233,12 +4200,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 14 */
+/* 13 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var cellx = __webpack_require__(1);
 	var uid = __webpack_require__(3);
-	var BaseView = __webpack_require__(13);
+	var BaseView = __webpack_require__(12);
 
 	var ActiveMap = cellx.ActiveMap;
 	var ActiveList = cellx.ActiveList;
@@ -4317,11 +4284,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 15 */
+/* 14 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var BaseView = __webpack_require__(13);
-	var templateRuntime = __webpack_require__(14);
+	var BaseView = __webpack_require__(12);
+	var templateRuntime = __webpack_require__(13);
 
 	var getViewClass = BaseView.getViewClass;
 	var include = templateRuntime.defaults.include;
@@ -4339,7 +4306,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		getItemParams: null,
 
-		_initAssets: function(params) {
+		constructor: function(params) {
+			BaseView.call(this, params);
+
 			this.itemViewClass = getViewClass(params.itemViewClass);
 
 			if (params.getItemParams) {
@@ -4453,11 +4422,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 16 */
+/* 15 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var BaseView = __webpack_require__(13);
-	var templateRuntime = __webpack_require__(14);
+	var BaseView = __webpack_require__(12);
+	var templateRuntime = __webpack_require__(13);
 
 	var getViewClass = BaseView.getViewClass;
 	var include = templateRuntime.defaults.include;
@@ -4470,7 +4439,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		_currentState: undefined,
 
-		_initAssets: function(params) {
+		constructor: function(params) {
+			BaseView.call(this, params);
+
 			this.states = params.states;
 
 			if (params.stateSource) {
@@ -4553,13 +4524,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 17 */
+/* 16 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var cellx = __webpack_require__(1);
 	var env = __webpack_require__(2);
 	var regex = __webpack_require__(5);
-	var Disposable = __webpack_require__(8);
+	var Disposable = __webpack_require__(9);
 
 	var Map = cellx.Map;
 	var isServer = env.isServer;
@@ -5094,12 +5065,12 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 18 */
+/* 17 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var env = __webpack_require__(2);
 	var Class = __webpack_require__(6);
-	var Router = __webpack_require__(17);
+	var Router = __webpack_require__(16);
 
 	var isClient = env.isClient;
 
@@ -5167,6 +5138,75 @@ return /******/ (function(modules) { // webpackBootstrap
 	});
 
 	module.exports = BaseApp;
+
+
+/***/ },
+/* 18 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var cellx = __webpack_require__(1);
+
+	function autobind(target, name, descr) {
+		var fn = descr.initializer ? descr.initializer() : descr.value;
+
+		return {
+			configurable: false,
+			enumerable: descr.enumerable,
+
+			get: function() {
+				var bound = descr.value = fn.bind(this);
+
+				for (var n in fn) {
+					if (fn.hasOwnProperty(n)) {
+						bound[n] = fn[n];
+					}
+				}
+
+				if (bound.constructor != fn.constructor) {
+					Object.defineProperty(bound, 'constructor', {
+						configurable: true,
+						writable: true,
+						value: fn.constructor
+					});
+				}
+
+				Object.defineProperty(this, name, descr);
+
+				return this[name];
+			}
+		};
+	}
+
+	exports.autobind = autobind;
+
+	function active(target, name, descr, opts) {
+		if (arguments.length == 1) {
+			opts = target;
+
+			return function(target, name, descr) {
+				return active(target, name, descr, opts);
+			};
+		}
+
+		var cl = cellx(descr.initializer(), opts);
+
+		return {
+			configurable: descr.configurable,
+			enumerable: descr.enumerable,
+
+			get: function() {
+				return cl.call(this);
+			},
+
+			set: function(value) {
+				if (cl.call(this, value)) {
+					this.emit('change:' + name);
+				}
+			}
+		};
+	}
+
+	exports.active = active;
 
 
 /***/ }

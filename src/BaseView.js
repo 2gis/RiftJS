@@ -1,7 +1,6 @@
 var env = require('./env');
 var object = require('./object');
 var Class = require('./Class');
-var bindCells = require('./bindCells');
 var Disposable = require('./Disposable');
 var domBinding = require('./domBinding');
 
@@ -257,7 +256,11 @@ function linkToDOM(view, dom) {
 		}
 
 		view.isDOMReady = true;
-		view.emit({ type: 'domready', bubbles: false });
+
+		view.emit({
+			type: 'domready',
+			bubbles: false
+		});
 	})(view);
 }
 
@@ -422,31 +425,6 @@ var BaseView = Disposable.extend({
 			params = {};
 		}
 
-		var parent = params.parent;
-
-		if (params.app) {
-			this.app = params.app;
-		} else {
-			if (parent && parent.app) {
-				this.app = parent.app;
-			}
-		}
-
-		if (params.model) {
-			this.model = params.model;
-		} else {
-			if (parent && parent.model) {
-				this.model = parent.model;
-			} else if (this.app) {
-				this.model = this.app.model;
-			}
-		}
-
-		if (this._initAssets) {
-			this._initAssets(params);
-			bindCells(this);
-		}
-
 		if (params.tagName) {
 			this.tagName = params.tagName;
 		}
@@ -483,6 +461,26 @@ var BaseView = Disposable.extend({
 			this.owner = params.owner;
 		}
 
+		var parent = params.parent;
+
+		if (params.app) {
+			this.app = params.app;
+		} else {
+			if (parent && parent.app) {
+				this.app = parent.app;
+			}
+		}
+
+		if (params.model) {
+			this.model = params.model;
+		} else {
+			if (parent && parent.model) {
+				this.model = parent.model;
+			} else if (this.app) {
+				this.model = this.app.model;
+			}
+		}
+
 		if (parent) {
 			this.parent = parent;
 		}
@@ -516,27 +514,6 @@ var BaseView = Disposable.extend({
 		}
 
 		this.elements = {};
-
-		if (block) {
-			if (block.hasAttribute('rt-id')) {
-				this.render(function() {
-					linkToDOM(this, block);
-				});
-			} else {
-				setAttributes(block, this.attrs);
-				block.className = (pushMods([this.blockName], this.mods).join(' ') + ' ' + block.className).trim();
-
-				this._currentlyRendering = true;
-
-				receiveData(this, function() {
-					this._renderInner(function(html) {
-						this._currentlyRendering = false;
-						block.innerHTML = html;
-						linkToDOM(this, block);
-					});
-				});
-			}
-		}
 	},
 
 	/**
@@ -649,7 +626,30 @@ var BaseView = Disposable.extend({
 	 * @typesign (cb?: ()): Rift.BaseView;
 	 */
 	initClient: function(cb) {
-		function initClient() {
+		var block = this.block[0];
+
+		if (!this.isDOMReady) {
+			if (block.hasAttribute('rt-id')) {
+				this.render(function() {
+					linkToDOM(this, block);
+				});
+			} else {
+				setAttributes(block, this.attrs);
+				block.className = (pushMods([this.blockName], this.mods).join(' ') + ' ' + block.className).trim();
+
+				this._currentlyRendering = true;
+
+				receiveData(this, function() {
+					this._renderInner(function(html) {
+						this._currentlyRendering = false;
+						block.innerHTML = html;
+						linkToDOM(this, block);
+					});
+				});
+			}
+		}
+
+		function domReady() {
 			if (!this.isClientInited) {
 				this.isClientInited = true;
 
@@ -664,7 +664,7 @@ var BaseView = Disposable.extend({
 						this._initClient();
 					}
 
-					bindDOM(this.block[0], this.owner || this);
+					bindDOM(block, this.owner || this);
 				} catch (err) {
 					this._logError(err);
 				}
@@ -676,9 +676,9 @@ var BaseView = Disposable.extend({
 		}
 
 		if (this.isDOMReady) {
-			initClient.call(this);
+			domReady.call(this);
 		} else {
-			this.once('domready', initClient);
+			this.once('domready', domReady);
 		}
 
 		return this;
