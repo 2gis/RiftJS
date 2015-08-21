@@ -14,14 +14,15 @@ var hasOwn = Object.prototype.hasOwnProperty;
 var slice = Array.prototype.slice;
 var reduce = Array.prototype.reduce;
 
-var KEY_VIEW = '__rt_view__';
-var KEY_VIEW_ELEMENT_NAME = '__rt_viewElementName__';
+var KEY_VIEW = '__rt_BaseView_view__';
+var KEY_VIEW_ELEMENT_NAME = '__rt_BaseView_viewElementName__';
+
 if (global.Symbol && typeof Symbol.iterator == 'symbol') {
 	KEY_VIEW = Symbol(KEY_VIEW);
 	KEY_VIEW_ELEMENT_NAME = Symbol(KEY_VIEW_ELEMENT_NAME);
 }
 
-var selfClosingTags = assign(Object.create(null), {
+var selfClosingTags = {
 	area: 1,
 	base: 1,
 	basefont: 1,
@@ -52,7 +53,7 @@ var selfClosingTags = assign(Object.create(null), {
 	rect: 1,
 	stop: 1,
 	use: 1
-});
+};
 
 function emptyFn() {}
 
@@ -149,7 +150,7 @@ function initDescendantElements(view, blockName, name) {
  * @typesign (view: Rift.BaseView, el: HTMLElement);
  */
 function removeElement(view, el) {
-	if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME] || el[KEY_VIEW] != view) {
+	if (!el[KEY_VIEW_ELEMENT_NAME] || el[KEY_VIEW] != view) {
 		return;
 	}
 
@@ -497,12 +498,10 @@ var BaseView = Disposable.extend({
 					block = block[0];
 				}
 
-				if (block.hasOwnProperty(KEY_VIEW) && block[KEY_VIEW]) {
+				if (block[KEY_VIEW]) {
 					throw new TypeError(
-						'Element is already used as ' + (
-							block.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) && block[KEY_VIEW_ELEMENT_NAME] ?
-								'an element' : 'a block'
-						) + ' of view'
+						'Element is already used as ' +
+							(block[KEY_VIEW_ELEMENT_NAME] ? 'an element' : 'a block') + ' of view'
 					);
 				}
 			} else {
@@ -546,7 +545,7 @@ var BaseView = Disposable.extend({
 		this._currentlyRendering = true;
 
 		receiveData(this, function() {
-			if (this.tagName in selfClosingTags) {
+			if (selfClosingTags.hasOwnProperty(this.tagName)) {
 				this._currentlyRendering = false;
 				cb.call(this, this._renderOpenTag());
 			} else {
@@ -800,9 +799,7 @@ var BaseView = Disposable.extend({
 			els = this.block.find('.' + this.blockName + '_' + name);
 
 			if (initDescendantElements(this, this.blockName, name)) {
-				els = els.filter(function() {
-					return !this.hasOwnProperty(KEY_VIEW) || !this[KEY_VIEW];
-				});
+				els = els.filter(function() { return !this[KEY_VIEW]; });
 			}
 
 			var _this = this;
@@ -833,8 +830,8 @@ var BaseView = Disposable.extend({
 							container.firstChild :
 							container;
 					} else {
-						if (el.hasOwnProperty(KEY_VIEW) && el[KEY_VIEW]) {
-							if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME]) {
+						if (el[KEY_VIEW]) {
+							if (!el[KEY_VIEW_ELEMENT_NAME]) {
 								throw new TypeError('Element is already used as a block of view');
 							}
 							if (el[KEY_VIEW] != this || el[KEY_VIEW_ELEMENT_NAME] != name) {

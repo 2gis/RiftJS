@@ -42,7 +42,7 @@ function extend(name, declaration) {
 		Object.defineProperty(constr, name, Object.getOwnPropertyDescriptor(parent, name));
 	});
 
-	if (hasOwn.call(declaration, 'static')) {
+	if (declaration.static) {
 		mixin(constr, declaration.static);
 		delete declaration.static;
 	}

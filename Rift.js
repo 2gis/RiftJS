@@ -154,17 +154,14 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 
 		var KEY_UID = '__cellx_uid__';
-		var KEY_INNER = '__cellx_inner__';
 		var KEY_CELLS = '__cellx_cells__';
 
 		if (global.Symbol && typeof Symbol.iterator == 'symbol') {
 			KEY_UID = Symbol(KEY_UID);
-			KEY_INNER = Symbol(KEY_INNER);
 			KEY_CELLS = Symbol(KEY_CELLS);
 		}
 
 		cellx.KEY_UID = KEY_UID;
-		cellx.KEY_INNER = KEY_INNER;
 		cellx.KEY_CELLS = KEY_CELLS;
 
 		var uidCounter = 0;
@@ -249,15 +246,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		// gulp-include
 		(function() {
-			var create = Object.create;
-		
 			/**
 			 * @class cellx.Dictionary
 			 * @typesign new (): cellx.Dictionary;
 			 */
 			var Dictionary;
 		
-			if (create && isNative(create)) {
+			if (isNative(create)) {
 				Dictionary = function() {
 					return create(null);
 				};
@@ -615,6 +610,12 @@ return /******/ (function(modules) { // webpackBootstrap
 		(function() {
 			var Dictionary = cellx.Dictionary;
 		
+			var KEY_INNER = '__cellx_EventEmitter_inner__';
+		
+			if (global.Symbol && typeof Symbol.iterator == 'symbol') {
+				KEY_INNER = Symbol(KEY_INNER);
+			}
+		
 			/**
 			 * @class cellx.EventEmitter
 			 * @extends {Object}
@@ -631,6 +632,8 @@ return /******/ (function(modules) { // webpackBootstrap
 				 */
 				this._events = new Dictionary();
 			}
+		
+			EventEmitter.KEY_INNER = KEY_INNER;
 		
 			assign(EventEmitter.prototype, {
 				/**
@@ -735,7 +738,7 @@ return /******/ (function(modules) { // webpackBootstrap
 						if (events[--i].context == context) {
 							var lst = events[i].listener;
 		
-							if (lst == listener || (lst.hasOwnProperty(KEY_INNER) && lst[KEY_INNER] == listener)) {
+							if (lst == listener || lst[KEY_INNER] === listener) {
 								events.splice(i, 1);
 								break;
 							}
@@ -1611,6 +1614,8 @@ return /******/ (function(modules) { // webpackBootstrap
 		(function() {
 			var nextTick = cellx.nextTick;
 			var EventEmitter = cellx.EventEmitter;
+		
+			var KEY_INNER = EventEmitter.KEY_INNER;
 		
 			var error = {
 				original: null
@@ -2565,7 +2570,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			Object.defineProperty(constr, name, Object.getOwnPropertyDescriptor(parent, name));
 		});
 
-		if (hasOwn.call(declaration, 'static')) {
+		if (declaration.static) {
 			mixin(constr, declaration.static);
 			delete declaration.static;
 		}
@@ -3205,14 +3210,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	var slice = Array.prototype.slice;
 	var reduce = Array.prototype.reduce;
 
-	var KEY_VIEW = '__rt_view__';
-	var KEY_VIEW_ELEMENT_NAME = '__rt_viewElementName__';
+	var KEY_VIEW = '__rt_BaseView_view__';
+	var KEY_VIEW_ELEMENT_NAME = '__rt_BaseView_viewElementName__';
+
 	if (global.Symbol && typeof Symbol.iterator == 'symbol') {
 		KEY_VIEW = Symbol(KEY_VIEW);
 		KEY_VIEW_ELEMENT_NAME = Symbol(KEY_VIEW_ELEMENT_NAME);
 	}
 
-	var selfClosingTags = assign(Object.create(null), {
+	var selfClosingTags = {
 		area: 1,
 		base: 1,
 		basefont: 1,
@@ -3243,7 +3249,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		rect: 1,
 		stop: 1,
 		use: 1
-	});
+	};
 
 	function emptyFn() {}
 
@@ -3340,7 +3346,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * @typesign (view: Rift.BaseView, el: HTMLElement);
 	 */
 	function removeElement(view, el) {
-		if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME] || el[KEY_VIEW] != view) {
+		if (!el[KEY_VIEW_ELEMENT_NAME] || el[KEY_VIEW] != view) {
 			return;
 		}
 
@@ -3688,12 +3694,10 @@ return /******/ (function(modules) { // webpackBootstrap
 						block = block[0];
 					}
 
-					if (block.hasOwnProperty(KEY_VIEW) && block[KEY_VIEW]) {
+					if (block[KEY_VIEW]) {
 						throw new TypeError(
-							'Element is already used as ' + (
-								block.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) && block[KEY_VIEW_ELEMENT_NAME] ?
-									'an element' : 'a block'
-							) + ' of view'
+							'Element is already used as ' +
+								(block[KEY_VIEW_ELEMENT_NAME] ? 'an element' : 'a block') + ' of view'
 						);
 					}
 				} else {
@@ -3737,7 +3741,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			this._currentlyRendering = true;
 
 			receiveData(this, function() {
-				if (this.tagName in selfClosingTags) {
+				if (selfClosingTags.hasOwnProperty(this.tagName)) {
 					this._currentlyRendering = false;
 					cb.call(this, this._renderOpenTag());
 				} else {
@@ -3991,9 +3995,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				els = this.block.find('.' + this.blockName + '_' + name);
 
 				if (initDescendantElements(this, this.blockName, name)) {
-					els = els.filter(function() {
-						return !this.hasOwnProperty(KEY_VIEW) || !this[KEY_VIEW];
-					});
+					els = els.filter(function() { return !this[KEY_VIEW]; });
 				}
 
 				var _this = this;
@@ -4024,8 +4026,8 @@ return /******/ (function(modules) { // webpackBootstrap
 								container.firstChild :
 								container;
 						} else {
-							if (el.hasOwnProperty(KEY_VIEW) && el[KEY_VIEW]) {
-								if (!el.hasOwnProperty(KEY_VIEW_ELEMENT_NAME) || !el[KEY_VIEW_ELEMENT_NAME]) {
+							if (el[KEY_VIEW]) {
+								if (!el[KEY_VIEW_ELEMENT_NAME]) {
 									throw new TypeError('Element is already used as a block of view');
 								}
 								if (el[KEY_VIEW] != this || el[KEY_VIEW_ELEMENT_NAME] != name) {
@@ -5133,9 +5135,9 @@ return /******/ (function(modules) { // webpackBootstrap
 			get: function() {
 				var bound = descr.value = fn.bind(this);
 
-				for (var n in fn) {
-					if (fn.hasOwnProperty(n)) {
-						bound[n] = fn[n];
+				for (var nm in fn) {
+					if (fn.hasOwnProperty(nm)) {
+						bound[nm] = fn[nm];
 					}
 				}
 

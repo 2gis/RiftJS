@@ -10,9 +10,9 @@ function autobind(target, name, descr) {
 		get: function() {
 			var bound = descr.value = fn.bind(this);
 
-			for (var n in fn) {
-				if (fn.hasOwnProperty(n)) {
-					bound[n] = fn[n];
+			for (var nm in fn) {
+				if (fn.hasOwnProperty(nm)) {
+					bound[nm] = fn[nm];
 				}
 			}
 
