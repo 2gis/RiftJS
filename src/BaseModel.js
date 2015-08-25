@@ -7,13 +7,9 @@ var Disposable = require('./Disposable');
  * @typesign new (data?: Object): Rift.BaseModel;
  */
 var BaseModel = Disposable.extend({
-	constructor: function(data) {
-		Disposable.call(this);
-
-		if (data) {
-			for (var name in data) {
-				this[name] = data[name];
-			}
+	setData: function(data) {
+		for (var name in data) {
+			this[name](data[name]);
 		}
 	}
 });
