@@ -494,7 +494,7 @@ var BaseView = Disposable.extend({
 
 		if (block !== null) {
 			if (block) {
-				if (block instanceof $) {
+				if (block.addClass && block.append) {
 					block = block[0];
 				}
 
@@ -892,7 +892,7 @@ var BaseView = Disposable.extend({
 				el = this.elements[el];
 			}
 
-			if (el instanceof $) {
+			if (el.addClass && el.append) {
 				var _this = this;
 
 				el.each(function() {

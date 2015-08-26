@@ -23,7 +23,7 @@ var Disposable = EventEmitter.extend({
 		var listeners;
 		var listenings;
 
-		if (Array.isArray(target) || (typeof $ == 'function' && target instanceof $)) {
+		if (Array.isArray(target) || (target.addClass && target.append)) {
 			listenings = [];
 
 			for (var i = target.length; i;) {

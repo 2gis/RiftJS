@@ -2721,7 +2721,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			var listeners;
 			var listenings;
 
-			if (Array.isArray(target) || (typeof $ == 'function' && target instanceof $)) {
+			if (Array.isArray(target) || (target.addClass && target.append)) {
 				listenings = [];
 
 				for (var i = target.length; i;) {
@@ -3686,7 +3686,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 			if (block !== null) {
 				if (block) {
-					if (block instanceof $) {
+					if (block.addClass && block.append) {
 						block = block[0];
 					}
 
@@ -4084,7 +4084,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					el = this.elements[el];
 				}
 
-				if (el instanceof $) {
+				if (el.addClass && el.append) {
 					var _this = this;
 
 					el.each(function() {
@@ -5129,9 +5129,9 @@ return /******/ (function(modules) { // webpackBootstrap
 			get: function() {
 				var bound = descr.value = fn.bind(this);
 
-				for (var nm in fn) {
-					if (fn.hasOwnProperty(nm)) {
-						bound[nm] = fn[nm];
+				for (var prop in fn) {
+					if (fn.hasOwnProperty(prop)) {
+						bound[prop] = fn[prop];
 					}
 				}
 
