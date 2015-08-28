@@ -9,7 +9,11 @@ var Disposable = require('./Disposable');
 var BaseModel = Disposable.extend({
 	setData: function(data) {
 		for (var name in data) {
-			this[name](data[name]);
+			if (typeof this[name] == 'function') {
+				this[name](data[name]);
+			} else {
+				this[name] = data[name];
+			}
 		}
 	}
 });

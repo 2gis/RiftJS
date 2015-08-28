@@ -2911,7 +2911,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	var BaseModel = Disposable.extend({
 		setData: function(data) {
 			for (var name in data) {
-				this[name](data[name]);
+				if (typeof this[name] == 'function') {
+					this[name](data[name]);
+				} else {
+					this[name] = data[name];
+				}
 			}
 		}
 	});
@@ -5123,6 +5127,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	var BaseModel = __webpack_require__(10);
 	var BaseView = __webpack_require__(12);
 
+	var EventEmitter = cellx.EventEmitter;
+
 	function autobind(target, name, descr) {
 		var fn = descr.initializer ? descr.initializer() : descr.value;
 
@@ -5177,28 +5183,21 @@ return /******/ (function(modules) { // webpackBootstrap
 			};
 		}
 
-		var origInitializer = descr.initializer;
 		var _name = '_' + name;
 
-		descr.initializer = function() {
-			var value = origInitializer.call(this);
+		target[_name] = cellx(descr.initializer(), opts);
 
-			this[_name] = cellx(value, opts);
+		return {
+			configurable: descr.configurable,
+			enumerable: descr.enumerable,
 
-			Object.defineProperty(this, name, {
-				configurable: descr.configurable,
-				enumerable: descr.enumerable,
+			get: function() {
+				return this[_name]();
+			},
 
-				get: function() {
-					return this[_name]();
-				},
-
-				set: function(value) {
-					this[_name](value);
-				}
-			});
-
-			return value;
+			set: function(value) {
+				this[_name](value);
+			}
 		};
 	}
 

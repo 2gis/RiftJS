@@ -2,6 +2,8 @@ var cellx = require('cellx');
 var BaseModel = require('./BaseModel');
 var BaseView = require('./BaseView');
 
+var EventEmitter = cellx.EventEmitter;
+
 function autobind(target, name, descr) {
 	var fn = descr.initializer ? descr.initializer() : descr.value;
 
@@ -56,28 +58,21 @@ function active(target, name, descr, opts) {
 		};
 	}
 
-	var origInitializer = descr.initializer;
 	var _name = '_' + name;
 
-	descr.initializer = function() {
-		var value = origInitializer.call(this);
+	target[_name] = cellx(descr.initializer(), opts);
 
-		this[_name] = cellx(value, opts);
+	return {
+		configurable: descr.configurable,
+		enumerable: descr.enumerable,
 
-		Object.defineProperty(this, name, {
-			configurable: descr.configurable,
-			enumerable: descr.enumerable,
+		get: function() {
+			return this[_name]();
+		},
 
-			get: function() {
-				return this[_name]();
-			},
-
-			set: function(value) {
-				this[_name](value);
-			}
-		});
-
-		return value;
+		set: function(value) {
+			this[_name](value);
+		}
 	};
 }
 
