@@ -39,3 +39,5 @@ exports.Router = require('./Router');
 exports.BaseApp = require('./BaseApp');
 
 exports.d = require('./d');
+
+exports.rt = exports;

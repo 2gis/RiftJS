@@ -96,6 +96,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	exports.d = __webpack_require__(18);
 
+	exports.rt = exports;
+
 
 /***/ },
 /* 1 */
@@ -289,7 +291,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			cellx.Dictionary = Dictionary;
 		})();
 		
-
 		(function() {
 			var Map = global.Map;
 		
@@ -540,7 +541,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			cellx.Map = Map;
 		})();
 		
-
 		(function() {
 			/**
 			 * @example
@@ -602,7 +602,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			cellx.nextTick = nextTick;
 		})();
 		
-
 		/**
 		 * @typedef {{ target?: Object, type: string }} cellx~Event
 		 */
@@ -824,7 +823,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			cellx.EventEmitter = EventEmitter;
 		})();
 		
-
 		var MActiveCollection;
 		
 		(function() {
@@ -892,7 +890,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			};
 		})();
 		
-
 		(function() {
 			var Map = cellx.Map;
 		
@@ -1112,7 +1109,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			cellx.map = map;
 		})();
 		
-
 		(function() {
 			var Map = cellx.Map;
 		
@@ -1610,7 +1606,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			cellx.list = list;
 		})();
 		
-
 		(function() {
 			var nextTick = cellx.nextTick;
 			var EventEmitter = cellx.EventEmitter;
@@ -2315,7 +2310,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			cellx.Cell = Cell;
 		})();
 		
-
 		(function() {
 			var Map = cellx.Map;
 			var Cell = cellx.Cell;
@@ -2387,7 +2381,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			};
 		})();
 		
-
 	})();
 
 
