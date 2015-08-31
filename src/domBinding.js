@@ -157,7 +157,11 @@ var reDirective = RegExp(
 );
 
 /**
- * @typesign (el: HTMLElement, context: Object, opts?: { applyValues: boolean = true });
+ * @typesign (
+ *     el: HTMLElement,
+ *     context: Object,
+ *     opts?: { applyValues: boolean = true }
+ * );
  */
 function bindElement(el, context, opts) {
 	if (el.hasOwnProperty(KEY_DATA_CELLS) && el[KEY_DATA_CELLS]) {
@@ -215,8 +219,10 @@ function unbindElement(el) {
 }
 
 /**
- * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true, applyValues: boolean = true }):
- *     HTMLElement;
+ * @typesign (
+ *     el: HTMLElement,
+ *     opts?: { bindRootElement: boolean = true, applyValues: boolean = true }
+ * ): HTMLElement;
  */
 function bindDOM(el, context, opts) {
 	if (!opts) {
@@ -241,7 +247,10 @@ function bindDOM(el, context, opts) {
 exports.bind = bindDOM;
 
 /**
- * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true }): HTMLElement;
+ * @typesign (
+ *     el: HTMLElement,
+ *     opts?: { bindRootElement: boolean = true }
+ * ): HTMLElement;
  */
 function unbindDOM(el, opts) {
 	if ((!opts || opts.bindRootElement !== false) && el.hasAttribute('rt-binding')) {

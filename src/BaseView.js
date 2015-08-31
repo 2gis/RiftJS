@@ -294,7 +294,10 @@ var BaseView = Disposable.extend({
 		registerViewClass: registerViewClass,
 
 		/**
-		 * @typesign (name: string, declaration: { static?: Object, constructor?: Function }): Function;
+		 * @typesign (
+		 *     name: string,
+		 *     declaration: { static?: Object, constructor?: Function }
+		 * ): Function;
 		 */
 		extend: function(name, declaration) {
 			return registerViewClass(name, extend.call(this, undefined, declaration));
@@ -735,17 +738,17 @@ var BaseView = Disposable.extend({
 	},
 
 	/**
-	 * @typesign (children: string, method: string, ...args?: Array): Array;
+	 * @typesign (childName: string, method: string, ...args?: Array): Array;
 	 */
-	broadcast: function(children, method) {
+	broadcast: function(childName, method) {
 		var cl;
 		var name;
 
-		if (/^(.+?):(.+)$/.test(children)) {
+		if (/^<([^>]+)>(.+)$/.test(childName)) {
 			cl = RegExp.$1;
 			name = RegExp.$2;
 		} else {
-			cl = children;
+			cl = childName;
 			name = '*';
 		}
 
@@ -915,7 +918,7 @@ var BaseView = Disposable.extend({
 		if (target instanceof BaseView) {
 			var inner;
 
-			if (/^(.+?):(.+)$/.test(evt)) {
+			if (/^<([^>]+)>(.+)$/.test(evt)) {
 				var cl = RegExp.$1;
 				type = RegExp.$2;
 

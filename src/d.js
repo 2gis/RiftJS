@@ -1,6 +1,4 @@
 var cellx = require('cellx');
-var BaseModel = require('./BaseModel');
-var BaseView = require('./BaseView');
 
 var EventEmitter = cellx.EventEmitter;
 
@@ -39,24 +37,31 @@ exports.autobind = autobind;
 
 ['on', 'off'].forEach(function(name) {
 	var _name = '_' + name;
+	var origMethod = EventEmitter.prototype[_name];
 
-	BaseModel.prototype[_name] = BaseView.prototype[_name] = function(type, listener, context) {
-		if (type.slice(0, 7) == 'change_') {
-			this[type.slice(6)](name, 'change', listener, context);
+	EventEmitter.prototype[_name] = function(type, listener, context) {
+		if (type.slice(0, 7) == 'change:') {
+			this['_' + type.slice(7)](name, 'change', listener, context);
 		} else {
-			EventEmitter.prototype[_name].call(this, type, listener, context);
+			origMethod.call(this, type, listener, context);
 		}
 	};
 });
 
-function active(target, name, descr, opts) {
+function observable(target, name, descr, opts) {
 	if (arguments.length == 1) {
 		opts = target;
 
 		return function(target, name, descr) {
-			return active(target, name, descr, opts);
+			return observable(target, name, descr, opts);
 		};
 	}
+
+	if (!opts) {
+		opts = {};
+	}
+
+	opts.computed = false;
 
 	var _name = '_' + name;
 
@@ -76,4 +81,49 @@ function active(target, name, descr, opts) {
 	};
 }
 
-exports.active = active;
+exports.observable = observable;
+
+function computed(target, name, descr, opts) {
+	if (arguments.length == 1) {
+		opts = target;
+
+		return function(target, name, descr) {
+			return computed(target, name, descr, opts);
+		};
+	}
+
+	var value = descr.initializer();
+
+	if (typeof value != 'function') {
+		throw new TypeError('Property value must be a function');
+	}
+
+	if (!opts) {
+		opts = {};
+	}
+
+	opts.computed = true;
+
+	var _name = '_' + name;
+
+	target[_name] = cellx(value, opts);
+
+	var descr = {
+		configurable: descr.configurable,
+		enumerable: descr.enumerable,
+
+		get: function() {
+			return this[_name]();
+		}
+	};
+	
+	if (opts.write) {
+		descr.set = function(value) {
+			this[_name](value);
+		};
+	}
+
+	return descr;
+}
+
+exports.computed = computed;

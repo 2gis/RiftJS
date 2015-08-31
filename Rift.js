@@ -2527,7 +2527,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	/**
 	 * @typesign (declaration: { static?: Object, constructor?: Function }): Function;
-	 * @typesign (name?: string, declaration: { static?: Object, constructor?: Function }): Function;
+	 * 
+	 * @typesign (
+	 *     name?: string,
+	 *     declaration: { static?: Object, constructor?: Function }
+	 * ): Function;
 	 */
 	function extend(name, declaration) {
 		if (typeof name == 'object') {
@@ -3079,7 +3083,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	);
 
 	/**
-	 * @typesign (el: HTMLElement, context: Object, opts?: { applyValues: boolean = true });
+	 * @typesign (
+	 *     el: HTMLElement,
+	 *     context: Object,
+	 *     opts?: { applyValues: boolean = true }
+	 * );
 	 */
 	function bindElement(el, context, opts) {
 		if (el.hasOwnProperty(KEY_DATA_CELLS) && el[KEY_DATA_CELLS]) {
@@ -3137,8 +3145,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	/**
-	 * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true, applyValues: boolean = true }):
-	 *     HTMLElement;
+	 * @typesign (
+	 *     el: HTMLElement,
+	 *     opts?: { bindRootElement: boolean = true, applyValues: boolean = true }
+	 * ): HTMLElement;
 	 */
 	function bindDOM(el, context, opts) {
 		if (!opts) {
@@ -3163,7 +3173,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	exports.bind = bindDOM;
 
 	/**
-	 * @typesign (el: HTMLElement, opts?: { bindRootElement: boolean = true }): HTMLElement;
+	 * @typesign (
+	 *     el: HTMLElement,
+	 *     opts?: { bindRootElement: boolean = true }
+	 * ): HTMLElement;
 	 */
 	function unbindDOM(el, opts) {
 		if ((!opts || opts.bindRootElement !== false) && el.hasAttribute('rt-binding')) {
@@ -3483,7 +3496,10 @@ return /******/ (function(modules) { // webpackBootstrap
 			registerViewClass: registerViewClass,
 
 			/**
-			 * @typesign (name: string, declaration: { static?: Object, constructor?: Function }): Function;
+			 * @typesign (
+			 *     name: string,
+			 *     declaration: { static?: Object, constructor?: Function }
+			 * ): Function;
 			 */
 			extend: function(name, declaration) {
 				return registerViewClass(name, extend.call(this, undefined, declaration));
@@ -3924,17 +3940,17 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		/**
-		 * @typesign (children: string, method: string, ...args?: Array): Array;
+		 * @typesign (childName: string, method: string, ...args?: Array): Array;
 		 */
-		broadcast: function(children, method) {
+		broadcast: function(childName, method) {
 			var cl;
 			var name;
 
-			if (/^(.+?):(.+)$/.test(children)) {
+			if (/^<([^>]+)>(.+)$/.test(childName)) {
 				cl = RegExp.$1;
 				name = RegExp.$2;
 			} else {
-				cl = children;
+				cl = childName;
 				name = '*';
 			}
 
@@ -4104,7 +4120,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			if (target instanceof BaseView) {
 				var inner;
 
-				if (/^(.+?):(.+)$/.test(evt)) {
+				if (/^<([^>]+)>(.+)$/.test(evt)) {
 					var cl = RegExp.$1;
 					type = RegExp.$2;
 
@@ -5117,8 +5133,6 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	var cellx = __webpack_require__(1);
-	var BaseModel = __webpack_require__(10);
-	var BaseView = __webpack_require__(12);
 
 	var EventEmitter = cellx.EventEmitter;
 
@@ -5157,24 +5171,31 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	['on', 'off'].forEach(function(name) {
 		var _name = '_' + name;
+		var origMethod = EventEmitter.prototype[_name];
 
-		BaseModel.prototype[_name] = BaseView.prototype[_name] = function(type, listener, context) {
-			if (type.slice(0, 7) == 'change_') {
-				this[type.slice(6)](name, 'change', listener, context);
+		EventEmitter.prototype[_name] = function(type, listener, context) {
+			if (type.slice(0, 7) == 'change:') {
+				this['_' + type.slice(7)](name, 'change', listener, context);
 			} else {
-				EventEmitter.prototype[_name].call(this, type, listener, context);
+				origMethod.call(this, type, listener, context);
 			}
 		};
 	});
 
-	function active(target, name, descr, opts) {
+	function observable(target, name, descr, opts) {
 		if (arguments.length == 1) {
 			opts = target;
 
 			return function(target, name, descr) {
-				return active(target, name, descr, opts);
+				return observable(target, name, descr, opts);
 			};
 		}
+
+		if (!opts) {
+			opts = {};
+		}
+
+		opts.computed = false;
 
 		var _name = '_' + name;
 
@@ -5194,7 +5215,52 @@ return /******/ (function(modules) { // webpackBootstrap
 		};
 	}
 
-	exports.active = active;
+	exports.observable = observable;
+
+	function computed(target, name, descr, opts) {
+		if (arguments.length == 1) {
+			opts = target;
+
+			return function(target, name, descr) {
+				return computed(target, name, descr, opts);
+			};
+		}
+
+		var value = descr.initializer();
+
+		if (typeof value != 'function') {
+			throw new TypeError('Property value must be a function');
+		}
+
+		if (!opts) {
+			opts = {};
+		}
+
+		opts.computed = true;
+
+		var _name = '_' + name;
+
+		target[_name] = cellx(value, opts);
+
+		var descr = {
+			configurable: descr.configurable,
+			enumerable: descr.enumerable,
+
+			get: function() {
+				return this[_name]();
+			}
+		};
+		
+		if (opts.write) {
+			descr.set = function(value) {
+				this[_name](value);
+			};
+		}
+
+		return descr;
+	}
+
+	exports.computed = computed;
 
 
 /***/ }
