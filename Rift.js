@@ -2906,14 +2906,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * @typesign new (data?: Object): Rift.BaseModel;
 	 */
 	var BaseModel = Disposable.extend({
-		setData: function(data) {
+		/**
+		 * @typesign (data: Object, nameMap?: Object<string>): Rift.BaseModel;
+		 */
+		setData: function(data, nameMap) {
+			if (!nameMap) {
+				nameMap = {};
+			}
+
 			for (var name in data) {
+				var value = data[nameMap[name] || name];
+
 				if (typeof this[name] == 'function') {
-					this[name](data[name]);
+					this[name](value);
 				} else {
-					this[name] = data[name];
+					this[name] = value;
 				}
 			}
+
+			return this;
 		}
 	});
 
