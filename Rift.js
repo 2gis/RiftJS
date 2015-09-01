@@ -2915,13 +2915,15 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 
 			for (var name in data) {
-				if (name in this) {
-					var value = data[nameMap[name] || name];
+				var mappedName = nameMap[name] || name;
 
-					if (typeof this[name] == 'function') {
-						this[name](value);
+				if (mappedName in this) {
+					var value = data[name];
+
+					if (typeof this[mappedName] == 'function') {
+						this[mappedName](value);
 					} else {
-						this[name] = value;
+						this[mappedName] = value;
 					}
 				}
 			}
@@ -4130,35 +4132,17 @@ return /******/ (function(modules) { // webpackBootstrap
 		_listenTo: function(target, evt, listener, context) {
 			var type;
 
-			if (target instanceof BaseView) {
-				var inner;
+			if (target instanceof BaseView && /^<([^>]+)>(.+)$/.test(evt)) {
+				type = RegExp.$2;
 
-				if (/^<([^>]+)>(.+)$/.test(evt)) {
-					var cl = RegExp.$1;
-					type = RegExp.$2;
+				var cl = getViewClass(RegExp.$1);
+				var inner = listener;
 
-					if (cl != '*') {
-						cl = getViewClass(cl);
-						inner = listener;
-
-						listener = function(evt) {
-							if (evt.target instanceof cl) {
-								return inner.call(this, evt);
-							}
-						};
+				listener = function(evt) {
+					if (evt.target instanceof cl) {
+						return inner.call(this, evt);
 					}
-				} else {
-					type = evt;
-					inner = listener;
-
-					var _this = this;
-
-					listener = function(evt) {
-						if (evt.target == _this) {
-							return inner.call(this, evt);
-						}
-					};
-				}
+				};
 			} else {
 				type = evt;
 			}
@@ -4611,11 +4595,17 @@ return /******/ (function(modules) { // webpackBootstrap
 		var path = [];
 
 		node.pathModel.forEach(function(pathPart) {
+			var value;
+
 			var requiredProperties = pathPart.requiredProperties;
 			var i = requiredProperties.length;
 
 			while (i--) {
-				var value = state[requiredProperties[i]]();
+				value = state[requiredProperties[i]];
+
+				if (typeof value == 'function') {
+					value = value.call(state);
+				}
 
 				if (value == null || value === false || value === '') {
 					break;
@@ -4623,7 +4613,17 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 
 			if (i == -1) {
-				path.push(pathPart.value !== undefined ? pathPart.value : state[pathPart.property]());
+				if (pathPart.value !== undefined) {
+					path.push(pathPart.value);
+				} else {
+					value = state[pathPart.property];
+
+					if (typeof value == 'function') {
+						value = value.call(state);
+					}
+
+					path.push(value);
+				}
 			}
 		});
 
@@ -4646,7 +4646,11 @@ return /******/ (function(modules) { // webpackBootstrap
 			var j = requiredProperties.length;
 
 			while (j--) {
-				var value = state[requiredProperties[j]]();
+				var value = state[requiredProperties[j]];
+
+				if (typeof value == 'function') {
+					value = value.call(state);
+				}
 
 				if (value == null || value === false || value === '') {
 					break;
@@ -5035,7 +5039,11 @@ return /******/ (function(modules) { // webpackBootstrap
 				var state = match.state;
 
 				for (var name in state) {
-					model[name](state[name]);
+					if (typeof model[name] == 'function') {
+						model[name](state[name]);
+					} else {
+						model[name] = state[name];
+					}
 				}
 			}
 
@@ -5263,7 +5271,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				return this[_name]();
 			}
 		};
-		
+
 		if (opts.write) {
 			descr.set = function(value) {
 				this[_name](value);

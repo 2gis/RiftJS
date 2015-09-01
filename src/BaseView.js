@@ -915,35 +915,17 @@ var BaseView = Disposable.extend({
 	_listenTo: function(target, evt, listener, context) {
 		var type;
 
-		if (target instanceof BaseView) {
-			var inner;
+		if (target instanceof BaseView && /^<([^>]+)>(.+)$/.test(evt)) {
+			type = RegExp.$2;
 
-			if (/^<([^>]+)>(.+)$/.test(evt)) {
-				var cl = RegExp.$1;
-				type = RegExp.$2;
+			var cl = getViewClass(RegExp.$1);
+			var inner = listener;
 
-				if (cl != '*') {
-					cl = getViewClass(cl);
-					inner = listener;
-
-					listener = function(evt) {
-						if (evt.target instanceof cl) {
-							return inner.call(this, evt);
-						}
-					};
+			listener = function(evt) {
+				if (evt.target instanceof cl) {
+					return inner.call(this, evt);
 				}
-			} else {
-				type = evt;
-				inner = listener;
-
-				var _this = this;
-
-				listener = function(evt) {
-					if (evt.target == _this) {
-						return inner.call(this, evt);
-					}
-				};
-			}
+			};
 		} else {
 			type = evt;
 		}

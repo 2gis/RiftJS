@@ -81,11 +81,17 @@ function buildPath(node, state) {
 	var path = [];
 
 	node.pathModel.forEach(function(pathPart) {
+		var value;
+
 		var requiredProperties = pathPart.requiredProperties;
 		var i = requiredProperties.length;
 
 		while (i--) {
-			var value = state[requiredProperties[i]]();
+			value = state[requiredProperties[i]];
+
+			if (typeof value == 'function') {
+				value = value.call(state);
+			}
 
 			if (value == null || value === false || value === '') {
 				break;
@@ -93,7 +99,17 @@ function buildPath(node, state) {
 		}
 
 		if (i == -1) {
-			path.push(pathPart.value !== undefined ? pathPart.value : state[pathPart.property]());
+			if (pathPart.value !== undefined) {
+				path.push(pathPart.value);
+			} else {
+				value = state[pathPart.property];
+
+				if (typeof value == 'function') {
+					value = value.call(state);
+				}
+
+				path.push(value);
+			}
 		}
 	});
 
@@ -116,7 +132,11 @@ function tryState(state, nodes, preferredNode) {
 		var j = requiredProperties.length;
 
 		while (j--) {
-			var value = state[requiredProperties[j]]();
+			var value = state[requiredProperties[j]];
+
+			if (typeof value == 'function') {
+				value = value.call(state);
+			}
 
 			if (value == null || value === false || value === '') {
 				break;
@@ -505,7 +525,11 @@ var Router = Disposable.extend({
 			var state = match.state;
 
 			for (var name in state) {
-				model[name](state[name]);
+				if (typeof model[name] == 'function') {
+					model[name](state[name]);
+				} else {
+					model[name] = state[name];
+				}
 			}
 		}
 

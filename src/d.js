@@ -116,7 +116,7 @@ function computed(target, name, descr, opts) {
 			return this[_name]();
 		}
 	};
-	
+
 	if (opts.write) {
 		descr.set = function(value) {
 			this[_name](value);

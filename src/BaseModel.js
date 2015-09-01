@@ -16,13 +16,15 @@ var BaseModel = Disposable.extend({
 		}
 
 		for (var name in data) {
-			if (name in this) {
-				var value = data[nameMap[name] || name];
+			var mappedName = nameMap[name] || name;
 
-				if (typeof this[name] == 'function') {
-					this[name](value);
+			if (mappedName in this) {
+				var value = data[name];
+
+				if (typeof this[mappedName] == 'function') {
+					this[mappedName](value);
 				} else {
-					this[name] = value;
+					this[mappedName] = value;
 				}
 			}
 		}
