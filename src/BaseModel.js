@@ -8,20 +8,22 @@ var Disposable = require('./Disposable');
  */
 var BaseModel = Disposable.extend({
 	/**
-	 * @typesign (data: Object, nameMap?: Object<string>): Rift.BaseModel;
+	 * @typesign (data: Object, nameMap?: Object<string>, onlyMapNames: boolean = false): Rift.BaseModel;
 	 */
-	setData: function(data, nameMap) {
+	setData: function(data, nameMap, onlyMapNames) {
 		if (!nameMap) {
 			nameMap = {};
 		}
 
 		for (var name in data) {
-			var value = data[nameMap[name] || name];
+			if (!onlyMapNames || name in nameMap) {
+				var value = data[nameMap[name] || name];
 
-			if (typeof this[name] == 'function') {
-				this[name](value);
-			} else {
-				this[name] = value;
+				if (typeof this[name] == 'function') {
+					this[name](value);
+				} else {
+					this[name] = value;
+				}
 			}
 		}
 
