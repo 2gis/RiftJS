@@ -8,15 +8,15 @@ var Disposable = require('./Disposable');
  */
 var BaseModel = Disposable.extend({
 	/**
-	 * @typesign (data: Object, nameMap?: Object<string>, onlyMapNames: boolean = false): Rift.BaseModel;
+	 * @typesign (data: Object, nameMap?: Object<string>): Rift.BaseModel;
 	 */
-	setData: function(data, nameMap, onlyMapNames) {
+	setData: function(data, nameMap) {
 		if (!nameMap) {
 			nameMap = {};
 		}
 
 		for (var name in data) {
-			if (!onlyMapNames || name in nameMap) {
+			if (name in this) {
 				var value = data[nameMap[name] || name];
 
 				if (typeof this[name] == 'function') {
