@@ -554,7 +554,7 @@ var BaseView = Disposable.extend({
 			} else {
 				this._renderInner(function(html) {
 					this._currentlyRendering = false;
-					cb.call(this, this._renderOpenTag() + html + '</' + this.tagName + '>');
+					cb.call(this, this._renderOpenTag() + html + '</' + this.tagName + '>', html);
 				});
 			}
 		});
@@ -630,27 +630,6 @@ var BaseView = Disposable.extend({
 	initClient: function(cb) {
 		var block = this.block[0];
 
-		if (!this.isDOMReady) {
-			if (block.hasAttribute('rt-id')) {
-				this.render(function() {
-					linkToDOM(this, block);
-				});
-			} else {
-				setAttributes(block, this.attrs);
-				block.className = (pushMods([this.blockName], this.mods).join(' ') + ' ' + block.className).trim();
-
-				this._currentlyRendering = true;
-
-				receiveData(this, function() {
-					this._renderInner(function(html) {
-						this._currentlyRendering = false;
-						block.innerHTML = html;
-						linkToDOM(this, block);
-					});
-				});
-			}
-		}
-
 		function domReady() {
 			if (!this.isClientInited) {
 				this.isClientInited = true;
@@ -680,7 +659,21 @@ var BaseView = Disposable.extend({
 		if (this.isDOMReady) {
 			domReady.call(this);
 		} else {
-			this.once('domready', domReady);
+			var rendered = block.hasAttribute('rt-id');
+
+			if (!rendered) {
+				setAttributes(block, this.attrs);
+				block.className = (pushMods([this.blockName], this.mods).join(' ') + ' ' + block.className).trim();
+			}
+
+			this.render(function(html, innerHTML) {
+				if (!rendered) {
+					block.innerHTML = innerHTML;
+				}
+
+				linkToDOM(this, block);
+				domReady.call(this);
+			});
 		}
 
 		return this;
