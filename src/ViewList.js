@@ -9,7 +9,7 @@ BaseView.extend('ViewList', {
 
 	/**
 	 * @override Rift.BaseView#model
-	 * @type {Rift.cellx<Array|Rift.ActiveList>|Rift.ActiveList}
+	 * @type {Rift.cellx<Array|Rift.ObservableList>|Rift.ObservableList}
 	 */
 	model: null,
 

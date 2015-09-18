@@ -58,9 +58,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	exports.nextTick = cellx.nextTick;
 	exports.EventEmitter = cellx.EventEmitter;
-	exports.ActiveMap = cellx.ActiveMap;
+	exports.ObservableMap = cellx.ObservableMap;
 	exports.map = cellx.map;
-	exports.ActiveList = cellx.ActiveList;
+	exports.ObservableList = cellx.ObservableList;
 	exports.list = cellx.list;
 	exports.Cell = cellx.Cell;
 	exports.cellx = exports.cell = cellx;
@@ -94,7 +94,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	exports.Router = __webpack_require__(16);
 	exports.BaseApp = __webpack_require__(17);
 
-	exports.d = __webpack_require__(18);
+	var d = exports.d = __webpack_require__(18);
+	d.observable = cellx.d.observable;
+	d.computed = cellx.d.computed;
 
 	exports.rt = exports;
 
@@ -144,16 +146,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 			return cell;
 		}
-
-		if (true) {
-			if (true) {
-				module.exports = cellx;
-			} else {
-				exports.cellx = cellx;
-			}
-		} else {
-			global.cellx = cellx;
-		}
+		cellx.cellx = cellx;
 
 		var KEY_UID = '__cellx_uid__';
 		var KEY_CELLS = '__cellx_cells__';
@@ -169,10 +162,79 @@ return /******/ (function(modules) { // webpackBootstrap
 		var uidCounter = 0;
 
 		/**
-		 * @typesign (fn: Function): boolean;
+		 * @typesign (target: Object, source: Object): Object;
 		 */
-		function isNative(fn) {
-			return fn.toString().indexOf('[native code]') != -1;
+		var assign = Object.assign || function(target, source) {
+			for (var name in source) {
+				if (hasOwn.call(source, name)) {
+					target[name] = source[name];
+				}
+			}
+
+			return target;
+		};
+
+		/**
+		 * @typesign (a, b): boolean;
+		 */
+		var is = Object.is || function(a, b) {
+			return a === b || (a != a && b != b);
+		};
+
+		/**
+		 * @typesign (value): boolean;
+		 */
+		var isArray = Array.isArray || function(value) {
+			return toString.call(value) == '[object Array]';
+		};
+
+		/**
+		 * @typesign (description: {
+		 *     Extends: Function,
+		 *     Implements?: Array<Function>,
+		 *     Static?: Object,
+		 *     constructor?: Function
+		 * }): Function;
+		 */
+		function createClass(description) {
+			var parent;
+
+			if (description.Extends) {
+				parent = description.Extends;
+				delete description.Extends;
+			} else {
+				parent = Object;
+			}
+
+			var constr;
+
+			if (hasOwn.call(description, 'constructor')) {
+				constr = description.constructor;
+				delete description.constructor;
+			} else {
+				constr = function() {};
+			}
+
+			if (description.Static) {
+				assign(constr, description.Static);
+				delete description.Static;
+			}
+
+			var proto = constr.prototype = Object.create(parent.prototype);
+
+			if (description.Implements) {
+				description.Implements.forEach(function(mixin) {
+					assign(proto, mixin.prototype);
+				});
+
+				delete description.Implements;
+			}
+
+			assign(proto, description);
+
+			proto.constructor = constr;
+
+			return constr;
 		}
 
 		/**
@@ -187,7 +249,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				};
 			} else {
 				logError = function(err) {
-					console.log('!!! ' + (err === Object(err) && err.stack || err));
+					console.log('Error: ' + (err === Object(err) && err.stack || err));
 				};
 			}
 		} else {
@@ -196,126 +258,30 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		cellx.logError = logError;
 
-		/**
-		 * @typesign (child: Function, parent: Function): Function;
-		 */
-		function extend(child, parent) {
-			function F() {
-				this.constructor = child;
-			}
-			F.prototype = parent.prototype;
-
-			child.prototype = new F();
-			return child;
-		}
-
-		/**
-		 * @typesign (proto: Object): Object;
-		 */
-		var create = Object.create || function(proto) {
-			function F() {}
-			F.prototype = proto;
-			return new F();
-		};
-
-		/**
-		 * @typesign (target: Object, source: Object): Object;
-		 */
-		var assign = Object.assign || function assign(target, source) {
-			for (var name in source) {
-				if (hasOwn.call(source, name)) {
-					target[name] = source[name];
-				}
-			}
-
-			return target;
-		};
-
-		/**
-		 * https://people.mozilla.org/~jorendorff/es6-draft.html#sec-samevaluezero
-		 * @typesign (a, b): boolean;
-		 */
-		var is = Object.is || function(a, b) {
-			return a === b || (a != a && b != b);
-		};
-
-		/**
-		 * @typesign (value): boolean;
-		 */
-		var isArray = Array.isArray || function(value) {
-			return toString.call(value) == '[object Array]';
-		};
-
 		// gulp-include
-		(function() {
-			/**
-			 * @class cellx.Dictionary
-			 * @typesign new (): cellx.Dictionary;
-			 */
-			var Dictionary;
-		
-			if (isNative(create)) {
-				Dictionary = function() {
-					return create(null);
-				};
-			} else {
-				// IE8
-				Dictionary = function() {
-					var iframe = document.createElement('iframe');
-					var container = document.body || document.documentElement;
-		
-					iframe.style.display = 'none';
-					container.appendChild(iframe);
-					iframe.src = 'javascript:';
-		
-					var empty = iframe.contentWindow.Object.prototype;
-		
-					container.removeChild(iframe);
-					iframe = null;
-		
-					delete empty.constructor;
-					delete empty.isPrototypeOf;
-					delete empty.hasOwnProperty;
-					delete empty.propertyIsEnumerable;
-					delete empty.valueOf;
-					delete empty.toString;
-					delete empty.toLocaleString;
-		
-					Dictionary = function() {};
-					Dictionary.prototype = empty;
-		
-					return new Dictionary();
-				};
-			}
-		
-			cellx.Dictionary = Dictionary;
-		})();
-		
 		(function() {
 			var Map = global.Map;
 		
 			if (!Map) {
-				var Dictionary = cellx.Dictionary;
-		
 				var entryStub = { value: undefined };
 		
-				Map = function Map(entries) {
-					this._entries = new Dictionary();
-					this._objectStamps = {};
+				Map = createClass({
+					constructor: function(entries) {
+						this._entries = Object.create(null);
+						this._objectStamps = {};
 		
-					this._first = null;
-					this._last = null;
+						this._first = null;
+						this._last = null;
 		
-					this.size = 0;
+						this.size = 0;
 		
-					if (entries) {
-						for (var i = 0, l = entries.length; i < l; i++) {
-							this.set(entries[i][0], entries[i][1]);
+						if (entries) {
+							for (var i = 0, l = entries.length; i < l; i++) {
+								this.set(entries[i][0], entries[i][1]);
+							}
 						}
-					}
-				};
+					},
 		
-				assign(Map.prototype, {
 					has: function(key) {
 						return !!this._entries[this._getValueStamp(key)];
 					},
@@ -351,7 +317,7 @@ return /******/ (function(modules) { // webpackBootstrap
 						return this;
 					},
 		
-					'delete': function(key) {
+					delete: function(key) {
 						var keyStamp = this._getValueStamp(key);
 						var entry = this._entries[keyStamp];
 		
@@ -426,44 +392,31 @@ return /******/ (function(modules) { // webpackBootstrap
 						return this._getObjectStamp(value);
 					},
 		
-					_getObjectStamp: (function() {
-						// for non-extensible objects and IE8
-						function getObjectStamp(obj) {
-							var stamps = this._objectStamps;
-							var stamp;
+					_getObjectStamp: function(obj) {
+						if (!hasOwn.call(obj, KEY_UID)) {
+							if (!Object.isExtensible(obj)) {
+								var stamps = this._objectStamps;
+								var stamp;
 		
-							for (stamp in stamps) {
-								if (stamps[stamp] == obj) {
-									return stamp;
+								for (stamp in stamps) {
+									if (stamps[stamp] == obj) {
+										return stamp;
+									}
 								}
+		
+								stamp = String(++uidCounter);
+								stamps[stamp] = obj;
+		
+								return stamp;
 							}
 		
-							stamp = String(++uidCounter);
-							stamps[stamp] = obj;
-							return stamp;
+							Object.defineProperty(obj, KEY_UID, {
+								value: String(++uidCounter)
+							});
 						}
 		
-						if (
-							Object.defineProperty && isNative(Object.defineProperty) &&
-								Object.isExtensible && isNative(Object.isExtensible)
-						) {
-							return function(obj) {
-								if (!hasOwn.call(obj, KEY_UID)) {
-									if (!Object.isExtensible(obj)) {
-										return getObjectStamp.call(this, obj);
-									}
-		
-									Object.defineProperty(obj, KEY_UID, {
-										value: String(++uidCounter)
-									});
-								}
-		
-								return obj[KEY_UID];
-							};
-						}
-		
-						return getObjectStamp;
-					})(),
+						return obj[KEY_UID];
+					},
 		
 					forEach: function(cb, context) {
 						if (context == null) {
@@ -486,7 +439,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					}
 				});
 		
-				var iterators = [
+				[
 					['keys', function(entry) {
 						return entry.key;
 					}],
@@ -496,46 +449,44 @@ return /******/ (function(modules) { // webpackBootstrap
 					['entries', function(entry) {
 						return [entry.key, entry.value];
 					}]
-				];
+				].forEach(function(iterator) {
+					var getStepValue = iterator[1];
 		
-				for (var i = 0, l = iterators.length; i < l; i++) {
-					Map.prototype[iterators[i][0]] = (function(getStepValue) {
-						return function() {
-							var entries = this._entries;
-							var entry;
-							var done = false;
-							var map = this;
+					Map.prototype[iterator[0]] = function() {
+						var entries = this._entries;
+						var entry;
+						var done = false;
+						var map = this;
 		
-							return {
-								next: function() {
-									if (!done) {
-										if (entry) {
-											do {
-												entry = entry.next;
-											} while (entry && !entries[entry.keyStamp]);
-										} else {
-											entry = map._first;
-										}
-		
-										if (entry) {
-											return {
-												value: getStepValue(entry),
-												done: false
-											};
-										}
-		
-										done = true;
+						return {
+							next: function() {
+								if (!done) {
+									if (entry) {
+										do {
+											entry = entry.next;
+										} while (entry && !entries[entry.keyStamp]);
+									} else {
+										entry = map._first;
 									}
 		
-									return {
-										value: undefined,
-										done: true
-									};
+									if (entry) {
+										return {
+											value: getStepValue(entry),
+											done: false
+										};
+									}
+		
+									done = true;
 								}
-							};
+		
+								return {
+									value: undefined,
+									done: true
+								};
+							}
 						};
-					})(iterators[i][1]);
-				}
+					};
+				});
 			}
 		
 			cellx.Map = Map;
@@ -543,11 +494,6 @@ return /******/ (function(modules) { // webpackBootstrap
 		
 		(function() {
 			/**
-			 * @example
-			 * nextTick(function() {
-			 *     console.log('nextTick');
-			 * });
-			 *
 			 * @typesign (cb: ());
 			 */
 			var nextTick;
@@ -558,7 +504,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				nextTick = function(cb) {
 					setImmediate(cb);
 				};
-			} else if (global.Promise && isNative(Promise)) {
+			} else if (global.Promise && Promise.toString().indexOf('[native code]') != -1) {
 				var prm = Promise.resolve();
 		
 				nextTick = function(cb) {
@@ -603,12 +549,15 @@ return /******/ (function(modules) { // webpackBootstrap
 		})();
 		
 		/**
-		 * @typedef {{ target?: Object, type: string }} cellx~Event
+		 * @typedef {{
+		 *     target?: Object,
+		 *     type: string,
+		 *     bubbles?: boolean,
+		 *     isPropagationStopped?: boolean
+		 * }} cellx~Event
 		 */
 		
 		(function() {
-			var Dictionary = cellx.Dictionary;
-		
 			var KEY_INNER = '__cellx_EventEmitter_inner__';
 		
 			if (global.Symbol && typeof Symbol.iterator == 'symbol') {
@@ -618,23 +567,25 @@ return /******/ (function(modules) { // webpackBootstrap
 			/**
 			 * @class cellx.EventEmitter
 			 * @extends {Object}
-			 * @typesign new (): cellx.EventEmitter;
+			 * @typesign new (parent: cellx.EventEmitter): cellx.EventEmitter;
 			 */
-			function EventEmitter() {
-				/**
-				 * @type {cellx.EventEmitter}
-				 */
-				this.parent = null;
+			var EventEmitter = createClass({
+				Static: {
+					KEY_INNER: KEY_INNER
+				},
 		
-				/**
-				 * @type {cellx.Dictionary<Array<{ listener: (evt: cellx~Event): boolean|undefined, context: Object }>>}
-				 */
-				this._events = new Dictionary();
-			}
+				constructor: function(parent) {
+					/**
+					 * @type {cellx.EventEmitter}
+					 */
+					this.parent = parent || null;
 		
-			EventEmitter.KEY_INNER = KEY_INNER;
+					/**
+					 * @type {Object<Array<{ listener: (evt: cellx~Event): boolean|undefined, context: Object }>>}
+					 */
+					this._events = Object.create(null);
+				},
 		
-			assign(EventEmitter.prototype, {
 				/**
 				 * @typesign (
 				 *     type: string,
@@ -690,7 +641,7 @@ return /******/ (function(modules) { // webpackBootstrap
 							this._off(type, listener, context);
 						}
 					} else if (this._events) {
-						this._events = new Dictionary();
+						this._events = Object.create(null);
 					}
 		
 					return this;
@@ -704,16 +655,22 @@ return /******/ (function(modules) { // webpackBootstrap
 				 * );
 				 */
 				_on: function(type, listener, context) {
-					var events = (this._events || (this._events = new Dictionary()))[type];
+					var index = type.indexOf(':');
 		
-					if (!events) {
-						events = this._events[type] = [];
+					if (index != -1) {
+						this['_' + type.slice(index + 1)]('on', type.slice(0, index), listener, context);
+					} else {
+						var events = (this._events || (this._events = Object.create(null)))[type];
+		
+						if (!events) {
+							events = this._events[type] = [];
+						}
+		
+						events.push({
+							listener: listener,
+							context: context || this
+						});
 					}
-		
-					events.push({
-						listener: listener,
-						context: context || this
-					});
 				},
 				/**
 				 * @typesign (
@@ -723,29 +680,33 @@ return /******/ (function(modules) { // webpackBootstrap
 				 * );
 				 */
 				_off: function(type, listener, context) {
-					var events = this._events && this._events[type];
+					var index = type.indexOf(':');
 		
-					if (!events) {
-						return;
-					}
+					if (index != -1) {
+						this['_' + type.slice(index + 1)]('off', type.slice(0, index), listener, context);
+					} else {
+						var events = this._events && this._events[type];
 		
-					if (!context) {
-						context = this;
-					}
+						if (!events) {
+							return;
+						}
 		
-					for (var i = events.length; i;) {
-						if (events[--i].context == context) {
-							var lst = events[i].listener;
+						if (!context) {
+							context = this;
+						}
 		
-							if (lst == listener || lst[KEY_INNER] === listener) {
+						for (var i = events.length; i;) {
+							var evt = events[--i];
+		
+							if (evt.context == context && (evt.listener == listener || evt.listener[KEY_INNER] === listener)) {
 								events.splice(i, 1);
 								break;
 							}
 						}
-					}
 		
-					if (!events.length) {
-						delete this._events[type];
+						if (!events.length) {
+							delete this._events[type];
+						}
 					}
 				},
 		
@@ -769,7 +730,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (evt: { type: string }): cellx~Event;
+				 * @typesign (evt: cellx~Event): cellx~Event;
 				 * @typesign (type: string): cellx~Event;
 				 */
 				emit: function(evt) {
@@ -778,7 +739,7 @@ return /******/ (function(modules) { // webpackBootstrap
 							target: this,
 							type: evt
 						};
-					} else if (evt.target === undefined) {
+					} else if (!evt.target) {
 						evt.target = this;
 					}
 		
@@ -788,7 +749,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (evt: { target: cellx.EventEmitter, type: string });
+				 * @typesign (evt: cellx~Event);
 				 */
 				_handleEvent: function(evt) {
 					var events = this._events && this._events[evt.type];
@@ -823,12 +784,22 @@ return /******/ (function(modules) { // webpackBootstrap
 			cellx.EventEmitter = EventEmitter;
 		})();
 		
-		var MActiveCollection;
+		var ObservableCollection;
 		
 		(function() {
+			var Map = cellx.Map;
 			var EventEmitter = cellx.EventEmitter;
 		
-			MActiveCollection = {
+			ObservableCollection = createClass({
+				Extends: EventEmitter,
+		
+				constructor: function() {
+					/**
+					 * @type {Map<*, uint>}
+					 */
+					this._valueCounts = new Map();
+				},
+		
 				/**
 				 * @typesign (evt: cellx~Event);
 				 */
@@ -864,7 +835,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					if (valueCount > 1) {
 						valueCounts.set(value, valueCount - 1);
 					} else {
-						valueCounts['delete'](value);
+						valueCounts.delete(value);
 		
 						if (this.adoptsItemChanges && value instanceof EventEmitter) {
 							value.off('change', this._onItemChange, this);
@@ -878,72 +849,72 @@ return /******/ (function(modules) { // webpackBootstrap
 				 */
 				dispose: function() {
 					if (this.adoptsItemChanges) {
-						var onItemChange = this._onItemChange;
-		
 						this._valueCounts.forEach(function(value) {
 							if (value instanceof EventEmitter) {
-								value.off('change', onItemChange, this);
+								value.off('change', this._onItemChange, this);
 							}
 						}, this);
 					}
 				}
-			};
+			});
 		})();
 		
 		(function() {
 			var Map = cellx.Map;
+			var EventEmitter = cellx.EventEmitter;
 		
 			/**
-			 * @class cellx.ActiveMap
+			 * @class cellx.ObservableMap
 			 * @extends {cellx.EventEmitter}
+			 * @implements {ObservableCollection}
 			 *
-			 * @typesign new (entries?: Object|Array<{ 0, 1 }>|cellx.ActiveMap, opts?: {
+			 * @typesign new (entries?: Object|Array<{ 0, 1 }>|cellx.ObservableMap, opts?: {
 			 *     adoptsItemChanges: boolean = true
-			 * }): cellx.ActiveMap;
+			 * }): cellx.ObservableMap;
 			 */
-			function ActiveMap(entries, opts) {
-				this._entries = new Map();
-				/**
-				 * @type {Map<*, uint>}
-				 */
-				this._valueCounts = new Map();
+			var ObservableMap = createClass({
+				Extends: EventEmitter,
+				Implements: [ObservableCollection],
 		
-				this.size = 0;
+				constructor: function(entries, opts) {
+					EventEmitter.call(this);
+					ObservableCollection.call(this);
 		
-				/**
-				 * @type {boolean}
-				 */
-				this.adoptsItemChanges = !opts || opts.adoptsItemChanges !== false;
+					this._entries = new Map();
 		
-				if (entries) {
-					var thisEntries = this._entries;
+					this.size = 0;
 		
-					if (entries instanceof ActiveMap) {
-						entries._entries.forEach(function(value, key) {
-							thisEntries.set(key, value);
-							this._registerValue(value);
-						}, this);
-					} else if (isArray(entries)) {
-						for (var i = 0, l = entries.length; i < l; i++) {
-							var entry = entries[i];
+					/**
+					 * @type {boolean}
+					 */
+					this.adoptsItemChanges = !opts || opts.adoptsItemChanges !== false;
 		
-							thisEntries.set(entry[0], entry[1]);
-							this._registerValue(entry[1]);
+					if (entries) {
+						var mapEntries = this._entries;
+		
+						if (entries instanceof ObservableMap) {
+							entries._entries.forEach(function(value, key) {
+								mapEntries.set(key, value);
+								this._registerValue(value);
+							}, this);
+						} else if (isArray(entries)) {
+							for (var i = 0, l = entries.length; i < l; i++) {
+								var entry = entries[i];
+		
+								mapEntries.set(entry[0], entry[1]);
+								this._registerValue(entry[1]);
+							}
+						} else {
+							for (var key in entries) {
+								mapEntries.set(key, entries[key]);
+								this._registerValue(entries[key]);
+							}
 						}
-					} else {
-						for (var key in entries) {
-							thisEntries.set(key, entries[key]);
-							this._registerValue(entries[key]);
-						}
+		
+						this.size = mapEntries.size;
 					}
+				},
 		
-					this.size = thisEntries.size;
-				}
-			}
-			extend(ActiveMap, cellx.EventEmitter);
-		
-			assign(ActiveMap.prototype, MActiveCollection);
-			assign(ActiveMap.prototype, {
 				/**
 				 * @typesign (key): boolean;
 				 */
@@ -966,7 +937,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (key, value): cellx.ActiveMap;
+				 * @typesign (key, value): cellx.ObservableMap;
 				 */
 				set: function(key, value) {
 					var entries = this._entries;
@@ -1004,7 +975,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				/**
 				 * @typesign (key): boolean;
 				 */
-				'delete': function(key) {
+				delete: function(key) {
 					var entries = this._entries;
 		
 					if (!entries.has(key)) {
@@ -1013,7 +984,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		
 					var value = entries.get(key);
 		
-					entries['delete'](key);
+					entries.delete(key);
 					this._unregisterValue(value);
 		
 					this.size--;
@@ -1030,7 +1001,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (): cellx.ActiveMap;
+				 * @typesign (): cellx.ObservableMap;
 				 */
 				clear: function() {
 					if (!this.size) {
@@ -1050,7 +1021,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (cb: (value, key, map: cellx.ActiveMap), context?: Object);
+				 * @typesign (cb: (value, key, map: cellx.ObservableMap), context?: Object);
 				 */
 				forEach: function(cb, context) {
 					if (context == null) {
@@ -1084,7 +1055,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (): cellx.ActiveMap;
+				 * @typesign (): cellx.ObservableMap;
 				 */
 				clone: function() {
 					return new this.constructor(this, {
@@ -1093,24 +1064,28 @@ return /******/ (function(modules) { // webpackBootstrap
 				}
 			});
 		
-			cellx.ActiveMap = ActiveMap;
+			cellx.ObservableMap = ObservableMap;
 		
 			/**
-			 * @typesign (entries?: Object|Array<{ 0, 1 }>|cellx.ActiveMap, opts?: {
-			 *     adoptsItemChanges: boolean = true
-			 * }): cellx.ActiveMap;
+			 * @typesign (
+			 *     entries?: Object|Array<{ 0, 1 }>|cellx.ObservableMap,
+			 *     opts?: { adoptsItemChanges: boolean = true }
+			 * ): cellx.ObservableMap;
 			 *
-			 * @typesign (entries?: Object|Array<{ 0, 1 }>|cellx.ActiveMap, adoptsItemChanges: boolean = true): cellx.ActiveMap;
+			 * @typesign (
+			 *     entries?: Object|Array<{ 0, 1 }>|cellx.ObservableMap,
+			 *     adoptsItemChanges: boolean = true
+			 * ): cellx.ObservableMap;
 			 */
 			function map(entries, opts) {
-				return new ActiveMap(entries, typeof opts == 'boolean' ? { adoptsItemChanges: opts } : opts);
+				return new ObservableMap(entries, typeof opts == 'boolean' ? { adoptsItemChanges: opts } : opts);
 			}
 		
 			cellx.map = map;
 		})();
 		
 		(function() {
-			var Map = cellx.Map;
+			var EventEmitter = cellx.EventEmitter;
 		
 			var arrayProto = Array.prototype;
 		
@@ -1118,17 +1093,13 @@ return /******/ (function(modules) { // webpackBootstrap
 			 * @typesign (a, b): enum[-1, 1, 0];
 			 */
 			function defaultComparator(a, b) {
-				if (a < b) {
-					return -1;
-				}
-				if (a > b) {
-					return 1;
-				}
+				if (a < b) { return -1; }
+				if (a > b) { return 1; }
 				return 0;
 			}
 		
 			/**
-			 * @typesign (list: cellx.ActiveList, items: Array);
+			 * @typesign (list: cellx.ObservableList, items: Array);
 			 */
 			function addRange(list, items) {
 				var listItems = list._items;
@@ -1166,57 +1137,58 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 		
 			/**
-			 * @class cellx.ActiveList
+			 * @class cellx.ObservableList
 			 * @extends {cellx.EventEmitter}
+			 * @implements {ObservableCollection}
 			 *
-			 * @typesign new (items?: Array|cellx.ActiveList, opts?: {
+			 * @typesign new (items?: Array|cellx.ObservableList, opts?: {
 			 *     adoptsItemChanges: boolean = true,
 			 *     comparator?: (a, b): int,
 			 *     sorted?: boolean
-			 * }): cellx.ActiveList;
+			 * }): cellx.ObservableList;
 			 */
-			function ActiveList(items, opts) {
-				if (!opts) {
-					opts = {};
-				}
+			var ObservableList = createClass({
+				Extends: EventEmitter,
+				Implements: [ObservableCollection],
 		
-				this._items = [];
+				constructor: function(items, opts) {
+					EventEmitter.call(this);
+					ObservableCollection.call(this);
+		
+					if (!opts) {
+						opts = {};
+					}
+		
+					this._items = [];
+		
+					this.length = 0;
+		
+					/**
+					 * @type {boolean}
+					 */
+					this.adoptsItemChanges = opts.adoptsItemChanges !== false;
+		
+					/**
+					 * @type {?Function}
+					 */
+					this.comparator = null;
+		
+					this.sorted = false;
+		
+					if (opts.sorted || (opts.comparator && opts.sorted !== false)) {
+						this.comparator = opts.comparator || defaultComparator;
+						this.sorted = true;
+					}
+		
+					if (items) {
+						addRange(this, items instanceof ObservableList ? items._items : items);
+					}
+				},
+		
 				/**
-				 * @type {Map<*, uint>}
+				 * @typesign (index: int, allowEndIndex: boolean = false): uint|undefined;
 				 */
-				this._valueCounts = new Map();
-		
-				this.length = 0;
-		
-				/**
-				 * @type {boolean}
-				 */
-				this.adoptsItemChanges = opts.adoptsItemChanges !== false;
-		
-				/**
-				 * @type {?Function}
-				 */
-				this.comparator = null;
-		
-				this.sorted = false;
-		
-				if (opts.sorted || (opts.comparator && opts.sorted !== false)) {
-					this.comparator = opts.comparator || defaultComparator;
-					this.sorted = true;
-				}
-		
-				if (items) {
-					addRange(this, items instanceof ActiveList ? items._items : items);
-				}
-			}
-			extend(ActiveList, cellx.EventEmitter);
-		
-			assign(ActiveList.prototype, MActiveCollection);
-			assign(ActiveList.prototype, {
-				/**
-				 * @typesign (index: int, endIndex: boolean = false): uint|undefined;
-				 */
-				_validateIndex: function(index, endIndex) {
+				_validateIndex: function(index, allowEndIndex) {
 					if (index === undefined) {
 						return index;
 					}
@@ -1227,7 +1199,7 @@ return /******/ (function(modules) { // webpackBootstrap
 						if (index < 0) {
 							throw new RangeError('Index out of range');
 						}
-					} else if (index >= (this.length + (endIndex ? 1 : 0))) {
+					} else if (index >= (this.length + (allowEndIndex ? 1 : 0))) {
 						throw new RangeError('Index out of range');
 					}
 		
@@ -1282,7 +1254,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (index: int, value): cellx.ActiveList;
+				 * @typesign (index: int, value): cellx.ObservableList;
 				 */
 				set: function(index, value) {
 					if (this.sorted) {
@@ -1308,7 +1280,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (index: int, items: Array): cellx.ActiveList;
+				 * @typesign (index: int, items: Array): cellx.ObservableList;
 				 */
 				setRange: function(index, items) {
 					if (this.sorted) {
@@ -1327,16 +1299,16 @@ return /******/ (function(modules) { // webpackBootstrap
 						throw new RangeError('"index" and length of "items" do not denote a valid range');
 					}
 		
-					var thisItems = this._items;
+					var listItems = this._items;
 					var changed = false;
 		
 					for (var i = index + itemCount; i > index;) {
 						var item = items[--i];
 		
-						if (!is(thisItems[i], item)) {
-							this._unregisterValue(thisItems[i]);
+						if (!is(listItems[i], item)) {
+							this._unregisterValue(listItems[i]);
 		
-							thisItems[i] = item;
+							listItems[i] = item;
 							this._registerValue(item);
 		
 							changed = true;
@@ -1351,7 +1323,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (item): cellx.ActiveList;
+				 * @typesign (item): cellx.ObservableList;
 				 */
 				add: function(item) {
 					this.addRange([item]);
@@ -1359,7 +1331,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (items: Array): cellx.ActiveList;
+				 * @typesign (items: Array): cellx.ObservableList;
 				 */
 				addRange: function(items) {
 					if (!items.length) {
@@ -1373,7 +1345,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (index: int, item): cellx.ActiveList;
+				 * @typesign (index: int, item): cellx.ObservableList;
 				 */
 				insert: function(index, item) {
 					this.insertRange(index, [item]);
@@ -1381,7 +1353,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (index: int, items: Array): cellx.ActiveList;
+				 * @typesign (index: int, items: Array): cellx.ObservableList;
 				 */
 				insertRange: function(index, items) {
 					if (this.sorted) {
@@ -1410,7 +1382,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (item, fromIndex: int = 0): cellx.ActiveList;
+				 * @typesign (item, fromIndex: int = 0): cellx.ObservableList;
 				 */
 				remove: function(item, fromIndex) {
 					var index = this._items.indexOf(item, this._validateIndex(fromIndex));
@@ -1430,7 +1402,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (item, fromIndex: int = 0): cellx.ActiveList;
+				 * @typesign (item, fromIndex: int = 0): cellx.ObservableList;
 				 */
 				removeAll: function(item, fromIndex) {
 					var items = this._items;
@@ -1453,7 +1425,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (index: int): cellx.ActiveList;
+				 * @typesign (index: int): cellx.ObservableList;
 				 */
 				removeAt: function(index) {
 					this._unregisterValue(this._items.splice(this._validateIndex(index), 1)[0]);
@@ -1465,7 +1437,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (index: int = 0, count?: uint): cellx.ActiveList;
+				 * @typesign (index: int = 0, count?: uint): cellx.ObservableList;
 				 */
 				removeRange: function(index, count) {
 					index = this._validateIndex(index || 0, true);
@@ -1495,7 +1467,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (): cellx.ActiveList;
+				 * @typesign (): cellx.ObservableList;
 				 */
 				clear: function() {
 					if (this.length) {
@@ -1518,42 +1490,42 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign (cb: (item, index: uint, arr: cellx.ActiveList), context: Object = global);
+				 * @typesign (cb: (item, index: uint, arr: cellx.ObservableList), context: Object = global);
 				 */
 				forEach: null,
 		
 				/**
-				 * @typesign (cb: (item, index: uint, arr: cellx.ActiveList): *, context: Object = global): Array;
+				 * @typesign (cb: (item, index: uint, arr: cellx.ObservableList): *, context: Object = global): Array;
 				 */
 				map: null,
 		
 				/**
-				 * @typesign (cb: (item, index: uint, arr: cellx.ActiveList): boolean, context: Object = global): Array;
+				 * @typesign (cb: (item, index: uint, arr: cellx.ObservableList): boolean, context: Object = global): Array;
 				 */
 				filter: null,
 		
 				/**
-				 * @typesign (cb: (item, index: uint, arr: cellx.ActiveList): boolean, context: Object = global): boolean;
+				 * @typesign (cb: (item, index: uint, arr: cellx.ObservableList): boolean, context: Object = global): boolean;
 				 */
 				every: null,
 		
 				/**
-				 * @typesign (cb: (item, index: uint, arr: cellx.ActiveList): boolean, context: Object = global): boolean;
+				 * @typesign (cb: (item, index: uint, arr: cellx.ObservableList): boolean, context: Object = global): boolean;
 				 */
 				some: null,
 		
 				/**
-				 * @typesign (cb: (accumulator: *, item, index: uint, arr: cellx.ActiveList): *, initialValue?): *;
+				 * @typesign (cb: (accumulator: *, item, index: uint, arr: cellx.ObservableList): *, initialValue?): *;
 				 */
 				reduce: null,
 		
 				/**
-				 * @typesign (cb: (accumulator: *, item, index: uint, arr: cellx.ActiveList): *, initialValue?): *;
+				 * @typesign (cb: (accumulator: *, item, index: uint, arr: cellx.ObservableList): *, initialValue?): *;
 				 */
 				reduceRight: null,
 		
 				/**
-				 * @typesign (): cellx.ActiveList;
+				 * @typesign (): cellx.ObservableList;
 				 */
 				clone: function() {
 					return new this.constructor(this, {
@@ -1578,29 +1550,25 @@ return /******/ (function(modules) { // webpackBootstrap
 				}
 			});
 		
-			var methods = ['forEach', 'map', 'filter', 'every', 'some', 'reduce', 'reduceRight'];
+			['forEach', 'map', 'filter', 'every', 'some', 'reduce', 'reduceRight'].forEach(function(name) {
+				ObservableList.prototype[name] = function() {
+					return arrayProto[name].apply(this._items, arguments);
+				};
+			});
 		
-			for (var i = methods.length; i;) {
-				(function(name) {
-					ActiveList.prototype[name] = function() {
-						return arrayProto[name].apply(this._items, arguments);
-					};
-				})(methods[--i]);
-			}
-		
-			cellx.ActiveList = ActiveList;
+			cellx.ObservableList = ObservableList;
 		
 			/**
-			 * @typesign (items?: Array|cellx.ActiveList, opts?: {
+			 * @typesign (items?: Array|cellx.ObservableList, opts?: {
 			 *     adoptsItemChanges: boolean = true,
 			 *     comparator?: (a, b): int,
 			 *     sorted?: boolean
-			 * }): cellx.ActiveList;
+			 * }): cellx.ObservableList;
 			 *
-			 * @typesign (items?: Array|cellx.ActiveList, adoptsItemChanges: boolean = true): cellx.ActiveList;
+			 * @typesign (items?: Array|cellx.ObservableList, adoptsItemChanges: boolean = true): cellx.ObservableList;
 			 */
 			function list(items, opts) {
-				return new ActiveList(items, typeof opts == 'boolean' ? { adoptsItemChanges: opts } : opts);
+				return new ObservableList(items, typeof opts == 'boolean' ? { adoptsItemChanges: opts } : opts);
 			}
 		
 			cellx.list = list;
@@ -1740,87 +1708,88 @@ return /******/ (function(modules) { // webpackBootstrap
 			 *     computed?: true
 			 * }): cellx.Cell;
 			 */
-			function Cell(value, opts) {
-				EventEmitter.call(this);
+			var Cell = createClass({
+				Extends: EventEmitter,
 		
-				if (!opts) {
-					opts = {};
-				}
+				constructor: function(value, opts) {
+					EventEmitter.call(this);
 		
-				this.owner = opts.owner || null;
-		
-				this.computed = typeof value == 'function' &&
-					(opts.computed !== undefined ? opts.computed : value.constructor == Function);
-		
-				this._value = undefined;
-				this._fixedValue = undefined;
-				this.initialValue = undefined;
-				this._formula = null;
-		
-				this._read = opts.read || null;
-				this._write = opts.write || null;
-		
-				this._validate = opts.validate || null;
-		
-				/**
-				 * Ведущие ячейки.
-				 * @type {?Array<cellx.Cell>}
-				 */
-				this._masters = null;
-				/**
-				 * Ведомые ячейки.
-				 * @type {Array<cellx.Cell>}
-				 */
-				this._slaves = [];
-		
-				/**
-				 * @type {uint|undefined}
-				 */
-				this._level = 0;
-		
-				this._active = !this.computed;
-		
-				this._changeEvent = null;
-				this._isChangeCancellable = true;
-		
-				this._lastErrorEvent = null;
-		
-				this._fixed = true;
-		
-				this._version = 0;
-		
-				this._changed = false;
-		
-				this._circularityCounter = 0;
-		
-				if (this.computed) {
-					this._formula = value;
-				} else {
-					if (this._validate) {
-						this._validate.call(this.owner || this, value);
+					if (!opts) {
+						opts = {};
 					}
 		
-					this._value = this._fixedValue = this.initialValue = value;
+					this.owner = opts.owner || null;
 		
-					if (value instanceof EventEmitter) {
-						value.on('change', this._onValueChange, this);
+					this.computed = typeof value == 'function' &&
+						(opts.computed !== undefined ? opts.computed : value.constructor == Function);
+		
+					this._value = undefined;
+					this._fixedValue = undefined;
+					this.initialValue = undefined;
+					this._formula = null;
+		
+					this._read = opts.read || null;
+					this._write = opts.write || null;
+		
+					this._validate = opts.validate || null;
+		
+					/**
+					 * Ведущие ячейки.
+					 * @type {?Array<cellx.Cell>}
+					 */
+					this._masters = null;
+					/**
+					 * Ведомые ячейки.
+					 * @type {Array<cellx.Cell>}
+					 */
+					this._slaves = [];
+		
+					/**
+					 * @type {uint|undefined}
+					 */
+					this._level = 0;
+		
+					this._active = !this.computed;
+		
+					this._changeEvent = null;
+					this._isChangeCancellable = true;
+		
+					this._lastErrorEvent = null;
+		
+					this._fixed = true;
+		
+					this._version = 0;
+		
+					this._changed = false;
+		
+					this._circularityCounter = 0;
+		
+					if (this.computed) {
+						this._formula = value;
+					} else {
+						if (this._validate) {
+							this._validate.call(this.owner || this, value);
+						}
+		
+						this._value = this._fixedValue = this.initialValue = value;
+		
+						if (value instanceof EventEmitter) {
+							value.on('change', this._onValueChange, this);
+						}
 					}
-				}
 		
-				if (opts.onchange) {
-					this.on('change', opts.onchange);
-				}
-				if (opts.onerror) {
-					this.on('error', opts.onerror);
-				}
-			}
-			extend(Cell, EventEmitter);
+					if (opts.onchange) {
+						this.on('change', opts.onchange);
+					}
+					if (opts.onerror) {
+						this.on('error', opts.onerror);
+					}
+				},
 		
-			assign(Cell.prototype, {
 				/**
-				 * @typesign (): boolean;
+				 * @type {boolean}
 				 */
-				changed: function() {
+				get changed() {
 					if (!currentlyRelease) {
 						release();
 					}
@@ -2026,9 +1995,7 @@ return /******/ (function(modules) { // webpackBootstrap
 						if (value === error) {
 							this._handleError(error.original);
 						} else {
-							var oldValue = this._value;
-		
-							if (!is(oldValue, value)) {
+							if (!is(this._value, value)) {
 								this._value = value;
 								this._changed = true;
 							}
@@ -2351,7 +2318,7 @@ return /******/ (function(modules) { // webpackBootstrap
 						}
 					}
 		
-					opts = create(opts);
+					opts = Object.create(opts);
 					opts.owner = owner;
 		
 					cell = new Cell(initialValue, opts);
@@ -2366,21 +2333,117 @@ return /******/ (function(modules) { // webpackBootstrap
 						return cell.write(firstArg);
 					}
 					default: {
-						if (firstArg === 'bind') {
-							wrapper = wrapper.bind(owner);
-							wrapper.constructor = cellx;
-							return wrapper;
+						switch (firstArg) {
+							case 'bind': {
+								wrapper = wrapper.bind(owner);
+								wrapper.constructor = cellx;
+								return wrapper;
+							}
+							case 'unwrap': {
+								return cell;
+							}
+							default: {
+								return cellProto[firstArg].apply(cell, otherArgs);
+							}
 						}
-						if (firstArg === 'unwrap') {
-							return cell;
-						}
-		
-						return cellProto[firstArg].apply(cell, otherArgs);
 					}
 				}
 			};
 		})();
 		
+		(function() {
+			function observable(target, name, descr, opts) {
+				if (arguments.length == 1) {
+					opts = target;
+		
+					return function(target, name, descr) {
+						return observable(target, name, descr, opts);
+					};
+				}
+		
+				if (!opts) {
+					opts = {};
+				}
+		
+				opts.computed = false;
+		
+				var _name = '_' + name;
+		
+				target[_name] = cellx(descr.initializer(), opts);
+		
+				return {
+					configurable: descr.configurable,
+					enumerable: descr.enumerable,
+		
+					get: function() {
+						return this[_name]();
+					},
+		
+					set: function(value) {
+						this[_name](value);
+					}
+				};
+			}
+		
+			function computed(target, name, descr, opts) {
+				if (arguments.length == 1) {
+					opts = target;
+		
+					return function(target, name, descr) {
+						return computed(target, name, descr, opts);
+					};
+				}
+		
+				var value = descr.initializer();
+		
+				if (typeof value != 'function') {
+					throw new TypeError('Property value must be a function');
+				}
+		
+				if (!opts) {
+					opts = {};
+				}
+		
+				opts.computed = true;
+		
+				var _name = '_' + name;
+		
+				target[_name] = cellx(value, opts);
+		
+				var descr = {
+					configurable: descr.configurable,
+					enumerable: descr.enumerable,
+		
+					get: function() {
+						return this[_name]();
+					}
+				};
+		
+				if (opts.write) {
+					descr.set = function(value) {
+						this[_name](value);
+					};
+				}
+		
+				return descr;
+			}
+		
+			cellx.d = {
+				observable: observable,
+				computed: computed
+			};
+		})();
+		
+
+		if (true) {
+			if (true) {
+				module.exports = cellx;
+			} else {
+				exports.cellx = cellx;
+			}
+		} else {
+			global.cellx = cellx;
+		}
 	})();
 
 
@@ -2527,18 +2590,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	/**
 	 * @typesign (declaration: { static?: Object, constructor?: Function }): Function;
-	 * 
-	 * @typesign (
-	 *     name?: string,
-	 *     declaration: { static?: Object, constructor?: Function }
-	 * ): Function;
 	 */
-	function extend(name, declaration) {
-		if (typeof name == 'object') {
-			declaration = name;
-			name = undefined;
-		}
-
+	function extend(declaration) {
 		var parent = this == exports ? Object : this;
 		var constr;
 
@@ -3495,7 +3548,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	 *     name?: string,
 	 *     owner?: Rift.BaseView,
 	 *     app?: Rift.BaseApp,
-	 *     model?: Rift.BaseModel|Rift.ActiveMap|Rift.ActiveList|Rift.Cell|Rift.cellx,
+	 *     model?: Rift.BaseModel|Rift.ObservableMap|Rift.ObservableList|Rift.Cell|Rift.cellx,
 	 *     parent?: Rift.BaseView,
 	 *     block?: HTMLElement|$
 	 * }): Rift.BaseView;
@@ -3517,7 +3570,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			 * ): Function;
 			 */
 			extend: function(name, declaration) {
-				return registerViewClass(name, extend.call(this, undefined, declaration));
+				return registerViewClass(name, extend.call(this, declaration));
 			}
 		},
 
@@ -3558,7 +3611,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		app: null,
 
 		/**
-		 * @type {?(Rift.BaseModel|Rift.ActiveMap|Rift.ActiveList|Rift.Cell|Rift.cellx)}
+		 * @type {?(Rift.BaseModel|Rift.ObservableMap|Rift.ObservableList|Rift.Cell|Rift.cellx)}
 		 */
 		model: null,
 
@@ -4185,8 +4238,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	var uid = __webpack_require__(3);
 	var BaseView = __webpack_require__(12);
 
-	var ActiveMap = cellx.ActiveMap;
-	var ActiveList = cellx.ActiveList;
+	var ObservableMap = cellx.ObservableMap;
+	var ObservableList = cellx.ObservableList;
 	var nextUID = uid.next;
 	var getViewClass = BaseView.getViewClass;
 
@@ -4226,16 +4279,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	/**
-	 * @typesign (obj?: Object|Array|Rift.ActiveMap|Rift.ActiveList, cb: (value, key), context: Object);
+	 * @typesign (obj?: Object|Array|Rift.ObservableMap|Rift.ObservableList, cb: (value, key), context: Object);
 	 */
 	function each(obj, cb, context) {
 		if (!obj) {
 			return;
 		}
 
-		if (obj instanceof ActiveMap) {
+		if (obj instanceof ObservableMap) {
 			obj = obj.toObject();
-		} else if (obj instanceof ActiveList) {
+		} else if (obj instanceof ObservableList) {
 			obj = obj.toArray();
 		}
 
@@ -4276,7 +4329,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		/**
 		 * @override Rift.BaseView#model
-		 * @type {Rift.cellx<Array|Rift.ActiveList>|Rift.ActiveList}
+		 * @type {Rift.cellx<Array|Rift.ObservableList>|Rift.ObservableList}
 		 */
 		model: null,
 
@@ -5144,11 +5197,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 /***/ },
 /* 18 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var cellx = __webpack_require__(1);
-
-	var EventEmitter = cellx.EventEmitter;
+/***/ function(module, exports) {
 
 	function autobind(target, name, descr) {
 		var fn = descr.initializer ? descr.initializer() : descr.value;
@@ -5182,99 +5231,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	exports.autobind = autobind;
-
-	['on', 'off'].forEach(function(name) {
-		var _name = '_' + name;
-		var origMethod = EventEmitter.prototype[_name];
-
-		EventEmitter.prototype[_name] = function(type, listener, context) {
-			if (type.slice(0, 7) == 'change:') {
-				this['_' + type.slice(7)](name, 'change', listener, context);
-			} else {
-				origMethod.call(this, type, listener, context);
-			}
-		};
-	});
-
-	function observable(target, name, descr, opts) {
-		if (arguments.length == 1) {
-			opts = target;
-
-			return function(target, name, descr) {
-				return observable(target, name, descr, opts);
-			};
-		}
-
-		if (!opts) {
-			opts = {};
-		}
-
-		opts.computed = false;
-
-		var _name = '_' + name;
-
-		target[_name] = cellx(descr.initializer(), opts);
-
-		return {
-			configurable: descr.configurable,
-			enumerable: descr.enumerable,
-
-			get: function() {
-				return this[_name]();
-			},
-
-			set: function(value) {
-				this[_name](value);
-			}
-		};
-	}
-
-	exports.observable = observable;
-
-	function computed(target, name, descr, opts) {
-		if (arguments.length == 1) {
-			opts = target;
-
-			return function(target, name, descr) {
-				return computed(target, name, descr, opts);
-			};
-		}
-
-		var value = descr.initializer();
-
-		if (typeof value != 'function') {
-			throw new TypeError('Property value must be a function');
-		}
-
-		if (!opts) {
-			opts = {};
-		}
-
-		opts.computed = true;
-
-		var _name = '_' + name;
-
-		target[_name] = cellx(value, opts);
-
-		var descr = {
-			configurable: descr.configurable,
-			enumerable: descr.enumerable,
-
-			get: function() {
-				return this[_name]();
-			}
-		};
-
-		if (opts.write) {
-			descr.set = function(value) {
-				this[_name](value);
-			};
-		}
-
-		return descr;
-	}
-
-	exports.computed = computed;
 
 
 /***/ }

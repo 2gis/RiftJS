@@ -2,9 +2,9 @@ var cellx = require('cellx');
 
 exports.nextTick = cellx.nextTick;
 exports.EventEmitter = cellx.EventEmitter;
-exports.ActiveMap = cellx.ActiveMap;
+exports.ObservableMap = cellx.ObservableMap;
 exports.map = cellx.map;
-exports.ActiveList = cellx.ActiveList;
+exports.ObservableList = cellx.ObservableList;
 exports.list = cellx.list;
 exports.Cell = cellx.Cell;
 exports.cellx = exports.cell = cellx;
@@ -38,6 +38,8 @@ exports.ViewSwitch = require('./ViewSwitch');
 exports.Router = require('./Router');
 exports.BaseApp = require('./BaseApp');
 
-exports.d = require('./d');
+var d = exports.d = require('./d');
+d.observable = cellx.d.observable;
+d.computed = cellx.d.computed;
 
 exports.rt = exports;

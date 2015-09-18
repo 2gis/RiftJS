@@ -278,7 +278,7 @@ function linkToDOM(view, dom) {
  *     name?: string,
  *     owner?: Rift.BaseView,
  *     app?: Rift.BaseApp,
- *     model?: Rift.BaseModel|Rift.ActiveMap|Rift.ActiveList|Rift.Cell|Rift.cellx,
+ *     model?: Rift.BaseModel|Rift.ObservableMap|Rift.ObservableList|Rift.Cell|Rift.cellx,
  *     parent?: Rift.BaseView,
  *     block?: HTMLElement|$
  * }): Rift.BaseView;
@@ -300,7 +300,7 @@ var BaseView = Disposable.extend({
 		 * ): Function;
 		 */
 		extend: function(name, declaration) {
-			return registerViewClass(name, extend.call(this, undefined, declaration));
+			return registerViewClass(name, extend.call(this, declaration));
 		}
 	},
 
@@ -341,7 +341,7 @@ var BaseView = Disposable.extend({
 	app: null,
 
 	/**
-	 * @type {?(Rift.BaseModel|Rift.ActiveMap|Rift.ActiveList|Rift.Cell|Rift.cellx)}
+	 * @type {?(Rift.BaseModel|Rift.ObservableMap|Rift.ObservableList|Rift.Cell|Rift.cellx)}
 	 */
 	model: null,
 

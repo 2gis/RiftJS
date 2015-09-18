@@ -2,8 +2,8 @@ var cellx = require('cellx');
 var uid = require('./uid');
 var BaseView = require('./BaseView');
 
-var ActiveMap = cellx.ActiveMap;
-var ActiveList = cellx.ActiveList;
+var ObservableMap = cellx.ObservableMap;
+var ObservableList = cellx.ObservableList;
 var nextUID = uid.next;
 var getViewClass = BaseView.getViewClass;
 
@@ -43,16 +43,16 @@ function include(viewClass, viewParams) {
 }
 
 /**
- * @typesign (obj?: Object|Array|Rift.ActiveMap|Rift.ActiveList, cb: (value, key), context: Object);
+ * @typesign (obj?: Object|Array|Rift.ObservableMap|Rift.ObservableList, cb: (value, key), context: Object);
  */
 function each(obj, cb, context) {
 	if (!obj) {
 		return;
 	}
 
-	if (obj instanceof ActiveMap) {
+	if (obj instanceof ObservableMap) {
 		obj = obj.toObject();
-	} else if (obj instanceof ActiveList) {
+	} else if (obj instanceof ObservableList) {
 		obj = obj.toArray();
 	}
 

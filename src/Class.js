@@ -6,18 +6,8 @@ var hasOwn = Object.prototype.hasOwnProperty;
 
 /**
  * @typesign (declaration: { static?: Object, constructor?: Function }): Function;
- * 
- * @typesign (
- *     name?: string,
- *     declaration: { static?: Object, constructor?: Function }
- * ): Function;
  */
-function extend(name, declaration) {
-	if (typeof name == 'object') {
-		declaration = name;
-		name = undefined;
-	}
-
+function extend(declaration) {
 	var parent = this == exports ? Object : this;
 	var constr;
 
