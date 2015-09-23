@@ -479,69 +479,79 @@ var Router = Disposable.extend({
 	},
 
 	/**
-	 * Редиректит по указанному пути.
-	 * Если нет подходящего маршрута - возвращает false, редиректа не происходит.
-	 *
-	 * @typesign (path: string, newHistoryStep: boolean = true): boolean;
+	 * @typesign (path: string, pushHistory: boolean = true): boolean;
 	 */
-	route: function(path, newHistoryStep) {
+	route: function(path, pushHistory) {
+		path = encodePath(path.replace(/[\/\\]+/g, '/'));
+
+		if (path[0] != '/') {
+			var locationPath = location.pathname;
+			path = locationPath + (locationPath[locationPath.length - 1] == '/' ? '' : '/') + path;
+		}
+
+		if (path[path.length - 1] != '/') {
+			path += '/';
+		}
+
+		if (path === this.currentPath) {
+			return true;
+		}
+
+		var match = tryPath(path, this.nodes);
+
+		if (!match) {
+			return false;
+		}
+
 		var model = this.app.model;
-		var match;
+		var state = match.state;
 
-		if (this.nodes.has(path)) {
-			match = tryState(model, this.nodes, this.nodes.get(path));
-
-			if (!match) {
-				return false;
-			}
-
-			path = match.path;
-
-			if (path === this.currentPath) {
-				return true;
-			}
-		} else {
-			path = encodePath(path.replace(/[\/\\]+/g, '/'));
-
-			if (path[0] != '/') {
-				var locationPath = location.pathname;
-				path = locationPath + (locationPath[locationPath.length - 1] == '/' ? '' : '/') + path;
-			}
-
-			if (path[path.length - 1] != '/') {
-				path += '/';
-			}
-
-			if (path === this.currentPath) {
-				return true;
-			}
-
-			match = tryPath(path, this.nodes);
-
-			if (!match) {
-				return false;
-			}
-
-			var state = match.state;
-
-			for (var name in state) {
-				if (typeof model[name] == 'function') {
-					model[name](state[name]);
-				} else {
-					model[name] = state[name];
-				}
+		for (var name in state) {
+			if (typeof model[name] == 'function') {
+				model[name](state[name]);
+			} else {
+				model[name] = state[name];
 			}
 		}
 
-		var node = match.node;
+		this._route(match.node, path, pushHistory);
 
+		return true;
+	},
+
+	/**
+	 * @typesign (node: string, pushHistory: boolean = true): boolean;
+	 */
+	redirect: function(node, pushHistory) {
+		node = this.nodes.get(node);
+
+		if (!node) {
+			return false;
+		}
+
+		var match = tryState(this.app.model, this.nodes, node);
+
+		if (!match || node != match.node) {
+			return false;
+		}
+
+		var path = match.path;
+
+		if (path !== this.currentPath) {
+			this._route(node, path, pushHistory);
+		}
+
+		return true;
+	},
+
+	_route: function(node, path, pushHistory) {
 		this.currentNode = node;
 		this.currentNodeName(node.name);
 
 		this.currentPath = path;
 
 		if (isClient) {
-			if (newHistoryStep !== false) {
+			if (pushHistory !== false) {
 				history.pushState({}, null, path);
 			} else {
 				history.replaceState(history.state, null, path);
@@ -551,8 +561,6 @@ var Router = Disposable.extend({
 		if (node.callback) {
 			node.callback.call(this.app, path);
 		}
-
-		return true;
 	}
 });
 

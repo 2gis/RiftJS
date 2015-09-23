@@ -1,6 +1,6 @@
 {
   "name": "riftjs",
-  "version": "0.46.0",
+  "version": "0.47.0",
   "description": "The experimental javascript framework",
   "main": "Rift.js",
   "scripts": {
@@ -22,7 +22,7 @@
   "devDependencies": {
     "gulp": "^3.8.11",
     "gulp-eslint": "^1.0.0",
-    "gulp-jscs": "^2.0.0",
+    "gulp-jscs": "^3.0.0",
     "gulp-load-plugins": "^1.0.0-rc.1",
     "gulp-rename": "^1.2.2",
     "gulp-uglify": "^1.4.1",
