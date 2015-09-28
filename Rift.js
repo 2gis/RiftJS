@@ -120,14 +120,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		/**
 		 * @typesign (value?, opts?: {
-		 *     read?: (value): *,
+		 *     get?: (value): *,
 		 *     validate?: (value): *,
 		 *     computed?: false
 		 * }): cellx;
 		 *
 		 * @typesign (formula: (): *, opts?: {
-		 *     read?: (value): *,
-		 *     write?: (value),
+		 *     get?: (value): *,
+		 *     set?: (value),
 		 *     validate?: (value): *,
 		 *     computed?: true
 		 * }): cellx;
@@ -263,7 +263,9 @@ return /******/ (function(modules) { // webpackBootstrap
 			var Map = global.Map;
 		
 			if (!Map) {
-				var entryStub = { value: undefined };
+				var entryStub = {
+					value: undefined
+				};
 		
 				Map = createClass({
 					constructor: function(entries) {
@@ -1090,7 +1092,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			var arrayProto = Array.prototype;
 		
 			/**
-			 * @typesign (a, b): enum[-1, 1, 0];
+			 * @typesign (a, b): -1|1|0;
 			 */
 			function defaultComparator(a, b) {
 				if (a < b) { return -1; }
@@ -1675,23 +1677,23 @@ return /******/ (function(modules) { // webpackBootstrap
 			 * var a = new Cell(1);
 			 * var b = new Cell(2);
 			 * var c = new Cell(function() {
-			 *     return a.read() + b.read();
+			 *     return a.get() + b.get();
 			 * });
 			 *
 			 * c.on('change', function() {
-			 *     console.log('c = ' + c.read());
+			 *     console.log('c = ' + c.get());
 			 * });
 			 *
-			 * console.log(c.read());
+			 * console.log(c.get());
 			 * // => 3
 			 *
-			 * a.write(5);
-			 * b.write(10);
+			 * a.set(5);
+			 * b.set(10);
 			 * // => 'c = 15'
 			 *
 			 * @typesign new (value?, opts?: {
 			 *     owner?: Object,
-			 *     read?: (value): *,
+			 *     get?: (value): *,
 			 *     validate?: (value): *,
 			 *     onchange?: (evt: cellx~Event): boolean|undefined,
 			 *     onerror?: (evt: cellx~Event): boolean|undefined,
@@ -1700,8 +1702,8 @@ return /******/ (function(modules) { // webpackBootstrap
 			 *
 			 * @typesign new (formula: (): *, opts?: {
 			 *     owner?: Object,
-			 *     read?: (value): *,
-			 *     write?: (value),
+			 *     get?: (value): *,
+			 *     set?: (value),
 			 *     validate?: (value): *,
 			 *     onchange?: (evt: cellx~Event): boolean|undefined,
 			 *     onerror?: (evt: cellx~Event): boolean|undefined,
@@ -1728,8 +1730,8 @@ return /******/ (function(modules) { // webpackBootstrap
 					this.initialValue = undefined;
 					this._formula = null;
 		
-					this._read = opts.read || null;
-					this._write = opts.write || null;
+					this._get = opts.get || null;
+					this._set = opts.set || null;
 		
 					this._validate = opts.validate || null;
 		
@@ -1966,22 +1968,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				/**
 				 * @typesign (): *;
 				 */
-				read: function() {
-					if (calculatedCell) {
-						if (calculatedCell._masters) {
-							if (calculatedCell._masters.indexOf(this) == -1) {
-								calculatedCell._masters.push(this);
-		
-								if (calculatedCell._level <= this._level) {
-									calculatedCell._level = this._level + 1;
-								}
-							}
-						} else {
-							calculatedCell._masters = [this];
-							calculatedCell._level = this._level + 1;
-						}
-					}
-		
+				get: function() {
 					if (!currentlyRelease) {
 						release();
 					}
@@ -2004,14 +1991,29 @@ return /******/ (function(modules) { // webpackBootstrap
 						this._version = releaseVersion;
 					}
 		
-					return this._read ? this._read.call(this.owner || this, this._value) : this._value;
+					if (calculatedCell) {
+						if (calculatedCell._masters) {
+							if (calculatedCell._masters.indexOf(this) == -1) {
+								calculatedCell._masters.push(this);
+		
+								if (calculatedCell._level <= this._level) {
+									calculatedCell._level = this._level + 1;
+								}
+							}
+						} else {
+							calculatedCell._masters = [this];
+							calculatedCell._level = this._level + 1;
+						}
+					}
+		
+					return this._get ? this._get.call(this.owner || this, this._value) : this._value;
 				},
 		
 				/**
 				 * @typesign (value): boolean;
 				 */
-				write: function(value) {
-					if (this.computed && !this._write) {
+				set: function(value) {
+					if (this.computed && !this._set) {
 						throw new TypeError('Cannot write to read-only cell');
 					}
 		
@@ -2026,7 +2028,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					}
 		
 					if (this.computed) {
-						this._write.call(this.owner || this, value);
+						this._set.call(this.owner || this, value);
 					} else {
 						this._value = value;
 		
@@ -2087,20 +2089,29 @@ return /******/ (function(modules) { // webpackBootstrap
 				},
 		
 				/**
-				 * @typesign ();
+				 * @typesign (): boolean|undefined;
 				 */
-				_recalc: function() {
-					if (this._version == releaseVersion + 1) {
-						if (++this._circularityCounter == 10) {
-							this._fixed = true;
-							this._version = releaseVersion + 1;
+				recalc: function() {
+					return this._recalc(true);
+				},
 		
-							this._handleError(new RangeError('Circular dependency detected'));
+				/**
+				 * @typesign (force: boolean = false): boolean|undefined;
+				 */
+				_recalc: function(force) {
+					if (!force) {
+						if (this._version == releaseVersion + 1) {
+							if (++this._circularityCounter == 10) {
+								this._fixed = true;
+								this._version = releaseVersion + 1;
 		
-							return;
+								this._handleError(new RangeError('Circular dependency detected'));
+		
+								return false;
+							}
+						} else {
+							this._circularityCounter = 1;
 						}
-					} else {
-						this._circularityCounter = 1;
 					}
 		
 					var oldMasters = this._masters;
@@ -2139,6 +2150,10 @@ return /******/ (function(modules) { // webpackBootstrap
 		
 							if (maxLevel < level) {
 								maxLevel = level;
+							}
+		
+							if (force) {
+								nextTick(release);
 							}
 		
 							return;
@@ -2183,8 +2198,12 @@ return /******/ (function(modules) { // webpackBootstrap
 									slave._fixed = false;
 								}
 							}
+		
+							return true;
 						}
 					}
+		
+					return false;
 				},
 		
 				/**
@@ -2327,10 +2346,10 @@ return /******/ (function(modules) { // webpackBootstrap
 		
 				switch (argCount) {
 					case 0: {
-						return cell.read();
+						return cell.get();
 					}
 					case 1: {
-						return cell.write(firstArg);
+						return cell.set(firstArg);
 					}
 					default: {
 						switch (firstArg) {
@@ -2419,7 +2438,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					}
 				};
 		
-				if (opts.write) {
+				if (opts.set) {
 					descr.set = function(value) {
 						this[_name](value);
 					};
@@ -3172,14 +3191,14 @@ return /******/ (function(modules) { // webpackBootstrap
 			(function(name, meta, expr) {
 				var cell = new Cell(Function('var _ = this; return ' + expr + ';').bind(context), {
 					onchange: function() {
-						directiveHandlers[name](el, this.read(), meta);
+						directiveHandlers[name](el, this.get(), meta);
 					}
 				});
 
 				cells.push(cell);
 
 				if (applyValues) {
-					directiveHandlers[name](el, cell.read(), meta);
+					directiveHandlers[name](el, cell.get(), meta);
 				}
 			})(directive[1], directive[2], directive[3]);
 		}
@@ -5159,10 +5178,16 @@ return /******/ (function(modules) { // webpackBootstrap
 		router: null,
 
 		/**
+		 * @type {Object}
+		 */
+		request: null,
+
+		/**
 		 * @typesign (params: {
 		 *     modelClass: Function,
 		 *     viewClass: Function,
 		 *     nodes: Array<{ name?: string, path: string, callback?: (path: string) }>,
+		 *     request: string,
 		 *     path: string
 		 * });
 		 *
@@ -5183,10 +5208,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 			var view = this.view = new params.viewClass({
 				app: this,
-				block: isClient ? params.viewBlock : null
+				block: params.viewBlock || null
 			});
 
 			router.start();
+
+			if (params.request) {
+				this.request = params.request;
+			}
 
 			if (isClient) {
 				view.initClient();

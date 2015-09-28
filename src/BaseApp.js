@@ -26,10 +26,16 @@ var BaseApp = Class.extend({
 	router: null,
 
 	/**
+	 * @type {Object}
+	 */
+	request: null,
+
+	/**
 	 * @typesign (params: {
 	 *     modelClass: Function,
 	 *     viewClass: Function,
 	 *     nodes: Array<{ name?: string, path: string, callback?: (path: string) }>,
+	 *     request: string,
 	 *     path: string
 	 * });
 	 *
@@ -50,10 +56,14 @@ var BaseApp = Class.extend({
 
 		var view = this.view = new params.viewClass({
 			app: this,
-			block: isClient ? params.viewBlock : null
+			block: params.viewBlock || null
 		});
 
 		router.start();
+
+		if (params.request) {
+			this.request = params.request;
+		}
 
 		if (isClient) {
 			view.initClient();

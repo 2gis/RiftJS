@@ -178,14 +178,14 @@ function bindElement(el, context, opts) {
 		(function(name, meta, expr) {
 			var cell = new Cell(Function('var _ = this; return ' + expr + ';').bind(context), {
 				onchange: function() {
-					directiveHandlers[name](el, this.read(), meta);
+					directiveHandlers[name](el, this.get(), meta);
 				}
 			});
 
 			cells.push(cell);
 
 			if (applyValues) {
-				directiveHandlers[name](el, cell.read(), meta);
+				directiveHandlers[name](el, cell.get(), meta);
 			}
 		})(directive[1], directive[2], directive[3]);
 	}
