@@ -5108,13 +5108,27 @@ return /******/ (function(modules) { // webpackBootstrap
 				return false;
 			}
 
-			var match = tryState(this.app.model, this.nodes, node);
+			var state = this.app.model;
+			var requiredProperties = node.requiredProperties;
+			var i = requiredProperties.length;
 
-			if (!match || node != match.node) {
+			while (i--) {
+				var value = state[requiredProperties[i]];
+
+				if (typeof value == 'function') {
+					value = value.call(state);
+				}
+
+				if (value == null || value === false || value === '') {
+					break;
+				}
+			}
+
+			if (i != -1) {
 				return false;
 			}
 
-			var path = match.path;
+			var path = buildPath(node, state);
 
 			if (path !== this.currentPath) {
 				this._route(node, path, pushHistory);
