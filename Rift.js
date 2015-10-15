@@ -164,20 +164,23 @@ return /******/ (function(modules) { // webpackBootstrap
 		/**
 		 * @typesign (target: Object, source: Object): Object;
 		 */
-		var assign = Object.assign || function(target, source) {
-			for (var name in source) {
-				if (hasOwn.call(source, name)) {
-					target[name] = source[name];
-				}
+		function mixin(target, source) {
+			var names = Object.getOwnPropertyNames(source);
+
+			for (var i = names.length; i;) {
+				Object.defineProperty(target, names[--i], Object.getOwnPropertyDescriptor(source, names[i]));
 			}
 
 			return target;
-		};
+		}
 
 		/**
 		 * @typesign (a, b): boolean;
 		 */
 		var is = Object.is || function(a, b) {
+			if (a === 0 && b === 0) {
+				return 1 / a == 1 / b;
+			}
 			return a === b || (a != a && b != b);
 		};
 
@@ -216,21 +219,21 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 
 			if (description.Static) {
-				assign(constr, description.Static);
+				mixin(constr, description.Static);
 				delete description.Static;
 			}
 
 			var proto = constr.prototype = Object.create(parent.prototype);
 
 			if (description.Implements) {
-				description.Implements.forEach(function(mixin) {
-					assign(proto, mixin.prototype);
+				description.Implements.forEach(function(impl) {
+					mixin(proto, impl.prototype);
 				});
 
 				delete description.Implements;
 			}
 
-			assign(proto, description);
+			mixin(proto, description);
 
 			proto.constructor = constr;
 
@@ -1089,8 +1092,6 @@ return /******/ (function(modules) { // webpackBootstrap
 		(function() {
 			var EventEmitter = cellx.EventEmitter;
 		
-			var arrayProto = Array.prototype;
-		
 			/**
 			 * @typesign (a, b): -1|1|0;
 			 */
@@ -1554,7 +1555,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		
 			['forEach', 'map', 'filter', 'every', 'some', 'reduce', 'reduceRight'].forEach(function(name) {
 				ObservableList.prototype[name] = function() {
-					return arrayProto[name].apply(this._items, arguments);
+					return Array.prototype[name].apply(this._items, arguments);
 				};
 			});
 		
@@ -2322,7 +2323,7 @@ return /******/ (function(modules) { // webpackBootstrap
 						} else if (isArray(initialValue)) {
 							initialValue = initialValue.slice();
 						} else if (initialValue.constructor === Object) {
-							initialValue = assign({}, initialValue);
+							initialValue = mixin({}, initialValue);
 						} else {
 							switch (toString.call(initialValue)) {
 								case '[object Date]': {
