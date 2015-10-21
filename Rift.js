@@ -2662,6 +2662,9 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	var request = __webpack_require__(8);
+	var env = __webpack_require__(2);
+
+	var isClient = env.isClient;
 
 	var cache = {};
 
@@ -2701,7 +2704,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			var args = [].slice.call(arguments);
 			var key = JSON.stringify(args);
 
-			if (opts.noCache !== true && cache.hasOwnProperty(key)) {
+			if (isClient && opts.noCache !== true && cache.hasOwnProperty(key)) {
 				var res = JSON.parse(cache[key]);
 				return res.error ? Promise.reject(res) : Promise.resolve(res);
 			}

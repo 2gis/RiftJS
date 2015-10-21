@@ -1,4 +1,7 @@
 var request = require('superagent');
+var env = require('./env');
+
+var isClient = env.isClient;
 
 var cache = {};
 
@@ -38,7 +41,7 @@ exports.clearCache = clearCache;
 		var args = [].slice.call(arguments);
 		var key = JSON.stringify(args);
 
-		if (opts.noCache !== true && cache.hasOwnProperty(key)) {
+		if (isClient && opts.noCache !== true && cache.hasOwnProperty(key)) {
 			var res = JSON.parse(cache[key]);
 			return res.error ? Promise.reject(res) : Promise.resolve(res);
 		}
